@@ -97,11 +97,12 @@
 ## PHASE 8 — Document Management
 > **Goal**: Upload and manage project documents
 
-- [x] File upload infrastructure — multer + magic-byte verify + extension/MIME allowlist (reused for report attachments; documents tab on `ProjectDetailPage` is still a placeholder awaiting project-scoped document model)
-- [x] Document viewer — `ReportDetailPage` attachment grid with thumbnails, download
-- [x] Document model (project-scoped) — `Document` Prisma model fully implemented with backend controller/service/routes, frontend `document-api.ts` + `DocumentTab.tsx`
-- [ ] Document search
-- [ ] Document verification status
+- [x] File upload infrastructure — multer + magic-byte verify + extension/MIME allowlist
+- [x] Document model (project-scoped) — `Document` Prisma model with backend controller/service/routes
+- [x] Document search — `GET /documents/search?q=` with title/type filters
+- [x] Document verification status — PENDING / VERIFIED / REJECTED / REQUIRES_INFO workflow
+- [x] Document tab UI — `DocumentsTab.tsx` on `ProjectDetailPage` with upload modal, filter chips, verify/reject actions
+- [x] Document download — server-sent download URLs
 
 ---
 
@@ -134,7 +135,7 @@
 > **Goal**: ML-based analysis on top of rule-based system
 
 - [x] AI service architecture — `backend/src/services/aiService.ts` (rule-based + heuristic, no external API)
-- [ ] Document intelligence (OCR) — placeholder
+- [x] Document intelligence — `documentService.analyzeDocument()`: PDF text extraction via `pdf-parse` + heuristic AI analysis; image files get `MANUAL_REVIEW_NEEDED` status. Local-only (no external API).
 - [x] Text classification for reports — `aiService.analyzeReport` runs on citizen report submission (keywords, corruption indicators, sentiment, suggested severity); stored in `Report.aiAnalysis`
 - [x] Anomaly pattern recognition — `aiService.analyzePatterns`
 - [x] AI explanation layer — `AnomalyExplainer.explain()` generates per-anomaly explanation with contributing factors + recommendation; stored in `Anomaly.aiExplanation`/`aiConfidence`; surfaced in `AnomalyDetailPage` and `RiskDashboardPage`
@@ -146,9 +147,9 @@
 
 - [x] Satellite tile integration — Esri World Imagery via ArcGIS REST export (no API key), `SiteComparison.tsx`
 - [x] Before/after comparison UI — draggable split slider comparing context view (~1.5 km) vs detail view (~330 m); wired into Project detail "Site" tab
-- [ ] Land use change detection
-- [ ] Construction progress estimation
-- [ ] Water body change detection
+- [x] Land use change detection — pixel-level classification in `SiteAnalysis.tsx` (vegetation / water / urban / bare indices; construction, deforestation, water-body change indicators with severity estimates)
+- [x] Construction progress estimation — current vs. baseline pixel ratio (concrete fraction) with over-time deltas
+- [x] Water body change detection — blue channel anomaly detection with area estimates
 
 ---
 
@@ -159,7 +160,7 @@
 - [ ] MP dashboard (out of scope for SIH)
 - [x] Analytics API — `/analytics` routes (admin/analyst only)
 - [x] Charts and visualizations — `BarChart`, `LineChart`, `DonutChart`, `ChartCard` components, `AnalyticsPage.tsx`
-- [ ] Report generation (PDF export)
+- [x] Report generation (PDF export) — `GET /api/v1/projects/:id/report/pdf` via `pdfkit`; covers project metadata, financial summary, anomaly overview, risk score; "Export PDF" button on ProjectDetailPage
 
 ---
 
