@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProjectsPage from "./pages/ProjectsPage";
+import ProjectDetailPage from "./pages/ProjectDetailPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 
 const ROUTES = [
@@ -73,6 +74,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout user={user}>
               <ProjectsPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:id"
+        element={
+          <ProtectedRoute>
+            <Layout user={user}>
+              <ProjectDetailPage />
             </Layout>
           </ProtectedRoute>
         }

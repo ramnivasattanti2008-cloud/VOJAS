@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../services/api";
 import {
   type Project,
@@ -63,6 +64,7 @@ function isOverdue(p: Project): boolean {
 }
 
 export default function ProjectsPage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -262,6 +264,7 @@ export default function ProjectsPage() {
               return (
                 <div
                   key={project.id}
+                  onClick={() => navigate(`/projects/${project.id}`)}
                   className="glass rounded-xl p-5 hover:border-white/10 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-electric-500/5 cursor-pointer group"
                 >
                   {/* Top row: status + sector */}
@@ -339,7 +342,7 @@ export default function ProjectsPage() {
                   <div className="mt-3 flex items-center justify-between text-[10px] text-slate-600">
                     <span>ID: {project.id.slice(0, 8)}</span>
                     <span className="flex items-center gap-1 text-slate-500 group-hover:text-electric-400 transition-colors">
-                      Details
+                      View details
                       <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
