@@ -7,6 +7,7 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProjectDetailPage from "./pages/ProjectDetailPage";
+import ProjectFormPage from "./pages/ProjectFormPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 
 const ROUTES = [
@@ -79,11 +80,31 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/projects/new"
+        element={
+          <ProtectedRoute>
+            <Layout user={user}>
+              <ProjectFormPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/projects/:id"
         element={
           <ProtectedRoute>
             <Layout user={user}>
               <ProjectDetailPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:id/edit"
+        element={
+          <ProtectedRoute>
+            <Layout user={user}>
+              <ProjectFormPage />
             </Layout>
           </ProtectedRoute>
         }

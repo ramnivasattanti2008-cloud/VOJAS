@@ -1,50 +1,62 @@
 # VOJAS Project State
 
 ## Current Phase
-PHASE 4C — PROJECT DETAIL PAGE: ✅ COMPLETE
+PHASE 4D — PROJECT CREATE/EDIT FORM: ✅ COMPLETE
 
 ## Current Feature
-Project detail page — single project view with 4 tabs: Overview, Financial, Timeline, Documents
+Project form — single page for create and edit, with validation, delete, and route integration
 
 ## Status
 COMPLETE
 
 ## Last Completed Action
-- ProjectDetailPage.tsx (NEW): single project view with 4 tabs.
-  • Overview: project info card, location card, record card; sidebar with quick stats, risk indicators, external links (MPLADS/Bhuvan/CPPP).
-  • Financial: budget breakdown bar, utilization card, financial health metrics.
-  • Timeline: visual vertical timeline with milestones (registered → approved → started → in-progress → expected → completed → verified), overdue highlighting.
-  • Documents: placeholder with Phase 8 notice.
-- Header: status badge, sector chip, overdue warning, title, description, gradient progress bar.
-- ProjectsPage.tsx: cards now navigate to /projects/:id on click (useNavigate).
-- App.tsx: added /projects/:id route wired to ProjectDetailPage.
-- TypeScript: 1601 modules, 91.19 kB gzipped, clean.
+- ProjectFormPage.tsx (NEW): single component handles both create (`/projects/new`) and edit (`/projects/:id/edit`).
+  • 4 sections: Basic Info, Location, Financial, Timeline.
+  • Inline + Zod-style validation (required fields, positive numbers, end > start, spent ≤ approved).
+  • Submit calls POST or PUT depending on mode; on success navigates to detail page.
+  • Edit mode has Delete button with confirm dialog.
+  • Sticky footer with Cancel + Save buttons (gradient primary).
+  • Server error display with dismiss.
+- App.tsx: added /projects/new and /projects/:id/edit routes.
+- ProjectsPage.tsx: added "+ New Project" button in header (gradient, navigates to /projects/new).
+- ProjectDetailPage.tsx: added "Edit" button next to budget pill (navigates to /projects/:id/edit).
+- Removed unused imports (Link, Hash, CheckCircle in form page).
+- TypeScript: 1602 modules, 93.99 kB gzipped, clean.
 
 ## Last Successful Test
-- `npm run build` frontend: ✓ 1601 modules, 91.19 kB gzipped
+- `npm run build` frontend: ✓ 1602 modules, 93.99 kB gzipped
 - `npm run build` backend: ✓ clean
 
 ## Current Incomplete Action
-None — Phase 4C complete
+None — Phase 4D complete
 
 ## Exact Next Action
-STOP. Wait for user. Next: Phase 4D (Project create/edit form) or visual upgrade.
+STOP. Wait for user. Phase 4 (Project Management) is now fully complete (4A backend, 4B list, 4C detail, 4D form). Suggested next: visual upgrade on Dashboard, or move to Phase 5 (Map integration).
 
 ## Files Currently Being Modified
-None (Phase 4C stable)
+None (Phase 4D stable)
 
 ## Known Bugs
 None
 
-## Phase 4C Files Added/Changed
+## Phase 4D Files Added/Changed
 ```
 frontend/src/
-├── pages/ProjectDetailPage.tsx  (NEW — full detail view, 4 tabs)
-├── pages/ProjectsPage.tsx       (MODIFIED — card onClick navigates to detail)
-└── App.tsx                     (MODIFIED — added /projects/:id route)
+├── pages/ProjectFormPage.tsx  (NEW — create/edit form with validation + delete)
+├── pages/ProjectsPage.tsx    (MODIFIED — added New Project button in header)
+├── pages/ProjectDetailPage.tsx (MODIFIED — added Edit button next to budget pill)
+└── App.tsx                  (MODIFIED — added /projects/new and /projects/:id/edit routes)
 ```
 
 ## Resume Instructions
-Phase 4A (Backend CRUD), 4B (Frontend List), 4C (Detail) are COMPLETE.
+Phase 4 (Project Management) is FULLY COMPLETE:
+- 4A: Backend CRUD API
+- 4B: Frontend list page
+- 4C: Frontend detail page (4 tabs)
+- 4D: Create/edit form with validation
 DO NOT proceed without user instruction.
-Next: Phase 4D (Project create/edit form) or a visual upgrade.
+Options for next:
+- Visual upgrade: Dashboard animated stat cards (count-up, glow, shimmer)
+- Phase 5: Map integration (Leaflet + project markers)
+- Phase 6: Citizen reporting
+- Sidebar/Layout polish

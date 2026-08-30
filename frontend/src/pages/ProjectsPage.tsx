@@ -25,6 +25,7 @@ import {
   Building2,
   ChevronRight,
   Inbox,
+  Plus,
 } from "lucide-react";
 
 const PAGE_SIZE = 12;
@@ -145,6 +146,14 @@ export default function ProjectsPage() {
             </span>
           </div>
         )}
+
+        <button
+          onClick={() => navigate("/projects/new")}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-600 hover:from-electric-400 hover:to-electric-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-electric-500/20 hover:shadow-electric-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
+        >
+          <Plus className="w-4 h-4" />
+          New Project
+        </button>
       </div>
 
       {/* Filter bar */}

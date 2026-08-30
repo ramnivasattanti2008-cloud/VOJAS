@@ -81,6 +81,26 @@ model Project {
   updatedAt       DateTime      @updatedAt
 
   createdBy User? @relation("CreatedProjects", fields: [createdById], references: [id])
+  locations Location[]
+}
+
+// Location model for geospatial data
+model Location {
+  id          String    @id @default(uuid())
+  projectId   String
+  latitude    Float
+  longitude   Float
+  label       String?   // e.g. "Main Site", "Material Storage"
+  address     String?
+  landmark    String?
+  isPrimary   Boolean   @default(false) // primary site marker on map
+  verified    Boolean   @default(false)
+  verifiedById String?
+  verifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 // Audit log for tracking actions

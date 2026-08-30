@@ -28,6 +28,7 @@ import {
   TrendingUp,
   ChevronRight,
   ExternalLink,
+  Edit3,
 } from "lucide-react";
 
 function formatINR(amount: number): string {
@@ -171,10 +172,20 @@ export default function ProjectDetailPage() {
             )}
           </div>
 
-          {/* Budget pill */}
-          <div className="flex-shrink-0 text-right">
-            <p className="text-2xl font-bold text-white">{formatINR(project.approvedAmount)}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Approved budget</p>
+          {/* Budget pill + Edit button */}
+          <div className="flex-shrink-0 flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-2xl font-bold text-white">{formatINR(project.approvedAmount)}</p>
+              <p className="text-xs text-slate-500 mt-0.5">Approved budget</p>
+            </div>
+            <button
+              onClick={() => navigate(`/projects/${project.id}/edit`)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-electric-500/30 text-slate-300 hover:text-white text-sm rounded-lg transition-all"
+              title="Edit project"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </button>
           </div>
         </div>
 
