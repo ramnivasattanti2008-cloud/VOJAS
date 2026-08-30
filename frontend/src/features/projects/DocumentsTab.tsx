@@ -445,6 +445,7 @@ export default function DocumentsTab({ projectId, userRole }: DocumentsTabProps)
   const [filterStatus, setFilterStatus] = useState<VerificationStatus | "ALL">("ALL");
   const [showUpload, setShowUpload] = useState(false);
   const [statusFilterOpen, setStatusFilterOpen] = useState(false);
+  const [toast, setToast] = useState<{ kind: "ok" | "err"; message: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -468,28 +469,31 @@ export default function DocumentsTab({ projectId, userRole }: DocumentsTabProps)
   const handleVerify = async (id: string, status: "VERIFIED" | "REJECTED" | "REQUIRES_INFO") => {
     try {
       await documentApi.verify(id, status);
+      setToast({ kind: "ok", message: "Document verified" });
       await load();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Verification failed");
+      setToast({ kind: "err", message: err instanceof ApiError ? err.message : "Verification failed" });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this document? This cannot be undone.")) return;
+    if (!window.confirm("Delete this document? This cannot be undone.")) return;
     try {
       await documentApi.remove(id);
+      setToast({ kind: "ok", message: "Document deleted" });
       await load();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Delete failed");
+      setToast({ kind: "err", message: err instanceof ApiError ? err.message : "Delete failed" });
     }
   };
 
   const handleAnalyze = async (id: string) => {
     try {
       await documentApi.analyze(id);
+      setToast({ kind: "ok", message: "Analysis queued" });
       await load();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Analysis failed");
+      setToast({ kind: "err", message: err instanceof ApiError ? err.message : "Analysis failed" });
     }
   };
 

@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { projectService } from "../services/projectService.js";
+import { generateProjectPDF } from "../services/pdfService.js";
+import { auditLog } from "../services/auditLogService.js";
 import type { ProjectStatus, ProjectSector } from "@prisma/client";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────
@@ -159,5 +161,36 @@ export const projectController = {
   async stats(_req: Request, res: Response) {
     const stats = await projectService.getStats();
     res.json(successResponse({ stats }));
+  },
+
+  /**
+   * Phase 13: Generate a PDF report for a project.
+   * Returns the PDF as a binary download.
+   */
+  async exportPDF(req: Request, res: Response) {
+    const id = String(req.params.id ?? "");
+    if (!id) {
+      return res.status(400).json(
+        errorResponse("VALIDATION_ERROR", "Project ID is required")
+      );
+    }
+
+    const user = (req as any).user;
+    const buffer = await generateProjectPDF(id);
+
+    await auditLog({
+      userId: user?.userId ?? "unknown",
+      action: "PROJECT_PDF_EXPORTED",
+      resource: "Project",
+      resourceId: id,
+      details: { size: buffer.length, role: user?.role },
+      req,
+    });
+
+    const safeName = `vojas-project-${id}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+    res.send(buffer);
   },
 };

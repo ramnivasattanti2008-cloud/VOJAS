@@ -34,4 +34,11 @@ router.delete(
   asyncHandler(projectController.remove)
 );
 
+// Phase 13: PDF report export — OFFICER / ADMIN / ANALYST
+router.get(
+  "/:id/report/pdf",
+  authorize("ADMIN", "OFFICER", "ANALYST"),
+  asyncHandler(projectController.exportPDF)
+);
+
 export default router;

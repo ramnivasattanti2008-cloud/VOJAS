@@ -15,7 +15,7 @@ import {
   getPaymentStatusStyle,
   getPaymentStatusLabel,
 } from "@/types/financial-types";
-import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
+import { LoadingState, ErrorState, EmptyState, InlineToast } from "@/components/ui";
 import {
   IndianRupee,
   Plus,
@@ -73,6 +73,7 @@ export default function FinancialTab({ project, userRole, onProjectUpdate }: Fin
   const [filterStatus, setFilterStatus] = useState<PaymentStatus | "ALL">("ALL");
   const [filterCategory, setFilterCategory] = useState<ExpenditureCategory | "ALL">("ALL");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const canEdit = userRole === "ADMIN" || userRole === "OFFICER";
   const canDelete = userRole === "ADMIN";
@@ -118,7 +119,7 @@ export default function FinancialTab({ project, userRole, onProjectUpdate }: Fin
       onProjectUpdate();
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Delete failed";
-      alert(`Delete failed: ${msg}`);
+      setToast(`Delete failed: ${msg}`);
     } finally {
       setDeletingId(null);
     }
@@ -132,6 +133,12 @@ export default function FinancialTab({ project, userRole, onProjectUpdate }: Fin
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className="fixed top-20 right-4 z-50 max-w-sm">
+          <InlineToast message={toast} type="error" onDismiss={() => setToast(null)} />
+        </div>
+      )}
+
       {/* Budget summary cards */}
       <BudgetSummaryCards summary={summary} />
 
