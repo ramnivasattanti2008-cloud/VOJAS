@@ -21,6 +21,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   auditLogs AuditLog[]
+  projects  Project[]  @relation("CreatedProjects")
 }
 
 enum Role {
@@ -29,6 +30,57 @@ enum Role {
   REVIEWER
   ANALYST
   VIEWER
+}
+
+enum ProjectStatus {
+  PROPOSED
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+  CANCELLED
+}
+
+enum ProjectSector {
+  PUBLIC_INFRASTRUCTURE
+  WATER_SANITATION
+  EDUCATION
+  HEALTH
+  AGRICULTURE
+  ENVIRONMENT
+  TRANSPORT
+  ENERGY
+  HOUSING
+  RURAL_DEVELOPMENT
+  SOCIAL_WELFARE
+  PUBLIC_ADMIN
+  FINANCE_PROCUREMENT
+  JUSTICE
+  LEGISLATIVE
+  PUBLIC_SAFETY
+}
+
+// MPLAD Project model
+model Project {
+  id              String        @id @default(uuid())
+  name            String
+  description     String?
+  status          ProjectStatus @default(PROPOSED)
+  sector          ProjectSector
+  district        String
+  constituency    String?
+  state           String
+  approvedAmount  Float
+  spentAmount     Float         @default(0)
+  contractor      String?
+  startDate       DateTime?
+  expectedEndDate DateTime?
+  completedAt     DateTime?
+  createdById     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  createdBy User? @relation("CreatedProjects", fields: [createdById], references: [id])
 }
 
 // Audit log for tracking actions
@@ -44,6 +96,3 @@ model AuditLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
-// Placeholder - full schema will be built in respective phases
-// Next models to add: Project, Report, Anomaly, etc.

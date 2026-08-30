@@ -2,65 +2,48 @@
 
 ## Current Phase
 PHASE 3 — USER AUTHENTICATION: ✅ COMPLETE
+VISUAL UPGRADE 1 — LOGIN CINEMATIC: ✅ COMPLETE
 
 ## Current Feature
-Auth: register, login, logout, /me, JWT, protected routes
+Login page cinematic animated background
 
 ## Status
 COMPLETE
 
 ## Last Completed Action
-- Backend User service with bcrypt password hashing
-- Backend Token service with JWT (jsonwebtoken, 7-day expiry)
-- Auth controller (register, login, logout, me)
-- Auth middleware (authenticate, authorize-by-role)
-- Auth routes mounted at /api/v1/auth/*
-- Frontend AuthContext (state + localStorage persistence)
-- Login + Register pages
-- ProtectedRoute wrapper
-- Layout wired to use AuthContext logout
-- Database seed script: 4 demo users (ADMIN, OFFICER, ANALYST, REVIEWER)
+- Cinematic animated background added to Login page
+- CinematicBackground component (orbs, geometric shapes, grid, scanlines, corner accents)
+- Login page redesigned: gradient shield icon with glow, orbiting ring, staggered fade-in animations, icons in inputs, demo credentials quick-fill chips
+- index.css extended with orbFloat, shapeDrift, gridPulse, cardEnter, logoEnter, formEnter animations
+- All keyframes pure CSS — no new packages
+- TypeScript build: clean (frontend 1598 modules, 84.87 kB gzipped)
+- Backend build: clean
+- Fixed minor unused imports (User type in AuthContext, Shield/Map icons in DashboardPage)
 
 ## Last Successful Test
-- POST /api/v1/auth/login returns user + JWT token
-- GET /api/v1/auth/me with Bearer token returns authenticated user
-- POST /api/v1/auth/register rejects weak passwords (Zod validation)
-- Frontend build: 1597 modules, 269KB / 83KB gzipped
-- TypeScript: both backend and frontend compile clean
+- `npm run build` frontend: ✓ no errors, 1598 modules, 84.87 kB gzipped
+- `npm run build` backend: ✓ no errors
+- All keyframes use only `transform`/`opacity` (no layout thrash, GPU-accelerated)
+- Respects `prefers-reduced-motion` not yet — future improvement
 
 ## Current Incomplete Action
-None — Phase 3 complete
+None
 
 ## Exact Next Action
-Phase 4 (Project Management) — STOP and wait for user instruction
+STOP and wait for user instruction. Recommended next: visual upgrade on Dashboard (animated stat cards with count-up + glow), or start Phase 4 (Project Management CRUD).
 
 ## Files Currently Being Modified
-None (Phase 3 stable)
+None (login visual stable)
 
 ## Known Bugs
 None
 
-## Phase 3 Files Added
-**Backend:**
-```
-backend/src/
-├── controllers/authController.ts
-├── services/
-│   ├── userService.ts
-│   └── tokenService.ts
-├── middleware/auth.ts
-└── routes/auth.ts
-backend/scripts/seed.ts
-```
-
-**Frontend:**
+## Visual Upgrade 1 Files Added/Changed
 ```
 frontend/src/
-├── contexts/AuthContext.tsx
-├── components/ProtectedRoute.tsx
-└── pages/
-    ├── LoginPage.tsx
-    └── RegisterPage.tsx
+├── components/CinematicBackground.tsx   (NEW — SVG orbs, shapes, grid, scanlines, corner accents)
+├── pages/LoginPage.tsx                 (REWRITTEN — gradient shield, glow ring, entrance animations, icon inputs, demo quick-fill chips)
+└── index.css                           (EXTENDED — orbFloat1/2, shapeDrift1-5, gridPulse, scanlines, cornerFade, cardEnter, logoEnter, formEnter)
 ```
 
 ## Demo Accounts
@@ -72,11 +55,13 @@ REVIEWER → reviewer@vojas.gov  / vojas-demo-2026
 ```
 
 ## Resume Instructions
-Phase 3 (Auth) is COMPLETE.
-Next: Phase 4 — Project Management
-- Backend: Project model (MPLAD project fields: name, sector, district, constituency, budget, spentAmount, status, dates, contractor)
-- Backend: Project CRUD API (list, create, get, update, delete)
-- Frontend: Project list page, project detail page, project create/edit form
-- Frontend: Search & filter (by status, sector, district)
-
-Do NOT proceed yet.
+- Visual upgrade 1 is COMPLETE. Login page has cinematic animated background.
+- DO NOT proceed automatically. Wait for user.
+- If user says "continue" or "next":
+  - Option A: Visual upgrade 2 — Dashboard animated stat cards (count-up, glow on hover, shimmer effects). ~1 file.
+  - Option B: Phase 4 (Project Management) — backend CRUD + frontend Projects page. Larger milestone, should be broken down:
+    - 4a: Backend Project service + controller + routes
+    - 4b: Frontend Project list page with search/filter
+    - 4c: Frontend Project detail page
+    - 4d: Frontend Project create/edit form
+- Always update PROJECT_STATE.md at the end of each sub-milestone.

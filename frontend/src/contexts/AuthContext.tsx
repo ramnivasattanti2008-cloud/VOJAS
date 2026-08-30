@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "../services/api";
-import type { User } from "../types";
 
 interface AuthUser {
   id: string;

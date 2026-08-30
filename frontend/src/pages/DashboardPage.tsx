@@ -4,7 +4,6 @@ import type { HealthStatus } from "../types";
 import LoadingState from "../components/LoadingState";
 import ErrorState from "../components/ErrorState";
 import {
-  Shield,
   Activity,
   AlertTriangle,
   CheckCircle,
@@ -12,7 +11,6 @@ import {
   Clock,
   TrendingUp,
   FileText,
-  Map,
   Users,
   DollarSign,
 } from "lucide-react";
