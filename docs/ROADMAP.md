@@ -5,13 +5,23 @@
 
 - [x] Repository setup
 - [x] Technology stack decision
-- [ ] Frontend foundation (Vite + React + TS + Tailwind)
-- [ ] Backend foundation (Express + TS + Prisma + SQLite)
-- [ ] Environment configuration (.env)
-- [ ] Frontend ↔ backend connection (health API)
-- [ ] Basic logging & error handling
-- [ ] Git initialization + first commit
-- [ ] GitHub repository creation + push
+- [x] Frontend foundation (Vite + React + TS + Tailwind)
+- [x] Backend foundation (Express + TS + Prisma + SQLite)
+- [x] Environment configuration (.env)
+- [x] Frontend ↔ backend connection (health API)
+- [x] Basic logging & error handling
+- [x] Git initialization + first commit
+
+---
+
+## PHASE 2 — Core UI Shell
+> **Goal**: Basic dashboard UI with navigation, no features yet
+
+- [x] React Router setup
+- [x] Layout (Sidebar, Header, Main Content Area)
+- [x] Loading, Error, Empty state components
+- [x] Dark theme foundation
+- [x] Basic routing structure (Dashboard + placeholders)
 
 ---
 

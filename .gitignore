@@ -6,18 +6,17 @@ pnpm-lock.json
 npm-debug.log*
 
 # Build outputs
-/dist
-/dist-ssr
-/build
-.coverage
-/.next
-/.nuxt
-/vitepress
-/cache
-/.cache
-/.output
-/.temp
-/.local
+**/dist/
+**/build/
+**/coverage/
+**/.next/
+**/.nuxt/
+**/.cache/
+**/.output/
+**/.temp/
+**/.local/
+**/*.tsbuildinfo
+**/tsconfig.tsbuildinfo
 
 # Environment variables
 .env
@@ -60,18 +59,10 @@ coverage/
 Thumbs.db
 
 # Prisma
-prisma/*.db
-prisma/*.db-journal
-prisma/prisma/
-!prisma/schema.prisma
-
-# Build outputs (additional)
-*.tsbuildinfo
-/dist
-/dist-ssr
-/build
-.cache/
-.temp/
+**/prisma/*.db
+**/prisma/*.db-journal
+**/prisma/prisma/
+!**/prisma/schema.prisma
 
 # Docker
 .dockerignore

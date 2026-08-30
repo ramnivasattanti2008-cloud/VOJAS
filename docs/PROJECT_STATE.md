@@ -1,98 +1,63 @@
 # VOJAS Project State
 
 ## Current Phase
-PHASE 1 — FOUNDATION: ✅ COMPLETE
+PHASE 2 — CORE UI SHELL: ✅ COMPLETE
 
 ## Current Feature
-Backend health API + Frontend dashboard
+Dashboard, layout, navigation, state components
 
 ## Status
 COMPLETE
 
 ## Last Completed Action
-- Frontend production build verified (202KB / 63KB gzipped)
-- Backend health endpoint returns database: "connected"
-- Frontend ↔ Backend connection confirmed working
+- React Router 7 integrated
+- Layout (collapsible sidebar, header, search, notifications, user menu)
+- Dashboard page with stats, alerts, system status, sector overview
+- Loading/Error/Empty state components
+- Placeholder pages for Projects, Map, Anomalies, Reports, Citizens, Analytics, Settings
+- API client service with structured error handling
+- Production build verified (259KB / 82KB gzipped)
 
 ## Last Successful Test
-- Backend `/api/v1/health` returns: `{"success":true,"data":{"status":"ok","service":"VOJAS API","version":"1.0.0","database":"connected"}}`
-- Frontend build: 1574 modules transformed successfully
+- `npm run build` succeeds: 1593 modules transformed, 3.75s
+- All routes accessible via React Router
 
 ## Current Incomplete Action
-None — foundation phase complete
+None — UI shell phase complete
 
 ## Exact Next Action
-Phase 2 (Core UI Shell) — STOP and wait for user instruction per master prompt rule 34 STEP 10
+Phase 3 (User Authentication) — STOP and wait for user instruction
 
 ## Files Currently Being Modified
-None (foundation stable)
+None (Phase 2 stable)
 
 ## Known Bugs
 None
 
-## Dependencies (Installed)
-**Frontend:**
-- react, react-dom, react-router-dom
-- lucide-react (icons)
-- tailwindcss, autoprefixer, postcss
-- vite, @vitejs/plugin-react, typescript
-
-**Backend:**
-- express, cors, dotenv
-- @prisma/client, prisma
-- bcrypt, jsonwebtoken
-- zod
-- tsx (dev runtime)
-
-## Important Decisions
-See docs/DECISIONS.md
-- Stack: React+Vite+TS+Tailwind / Express+TS+Prisma+SQLite / JWT+bcrypt
-- Maps: Leaflet (free, swap to Google later)
-- Schema: User + Role + AuditLog only at this stage
-
-## Project Structure
+## Phase 2 Files Added
 ```
-VOJAS/
-├── frontend/
-│   ├── src/App.tsx (dashboard with health status)
-│   ├── src/main.tsx
-│   ├── src/index.css
-│   ├── src/vite-env.d.ts
-│   ├── public/favicon.svg
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   └── index.html
-├── backend/
-│   ├── src/
-│   │   ├── server.ts (entry)
-│   │   ├── app.ts (Express setup)
-│   │   ├── config/{index,database}.ts
-│   │   ├── controllers/healthController.ts
-│   │   ├── routes/index.ts
-│   │   ├── middleware/errorHandler.ts
-│   │   └── utils/{logger,response}.ts
-│   ├── prisma/{schema.prisma, dev.db}
-│   ├── .env (created locally, not committed)
-│   ├── package.json
-│   └── tsconfig.json
-├── docs/{PROJECT_STATE, ARCHITECTURE, ROADMAP, DECISIONS, SETUP, API, DATABASE}.md
-├── scripts/ (empty for now)
-├── .env.example
-├── .gitignore
-└── README.md
+frontend/src/
+├── App.tsx (router setup)
+├── components/
+│   ├── Layout.tsx (sidebar + header)
+│   ├── LoadingState.tsx
+│   ├── ErrorState.tsx
+│   └── EmptyState.tsx
+├── pages/
+│   ├── DashboardPage.tsx (real dashboard with health check)
+│   └── PlaceholderPage.tsx (route placeholders)
+├── services/
+│   └── api.ts (API client with error handling)
+└── types/
+    └── index.ts (shared types)
 ```
 
 ## Resume Instructions
-Phase 1 (Foundation) is COMPLETE.
-Next phase (Phase 2 - Core UI Shell) requires user approval before proceeding.
-On user command, implement:
-1. React Router setup
-2. Layout (Sidebar, Header, Main)
-3. Loading/Error/Empty state components
-4. Theme foundation (dark mode default)
-5. Basic routing structure
+Phase 2 (Core UI Shell) is COMPLETE.
+Next: Phase 3 — User Authentication
+- Backend: User model, auth routes (register/login/logout/me)
+- Backend: JWT issuance, bcrypt password hashing
+- Frontend: Login form, auth state, protected routes
+- Roles: ADMIN, OFFICER, REVIEWER, ANALYST, VIEWER
 
-Do NOT proceed to authentication yet — that is Phase 3.
+Do NOT skip to Phase 4 yet.
