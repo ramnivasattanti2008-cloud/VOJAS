@@ -1,4 +1,4 @@
-import type { ApiResponse } from "../types";
+import type { ApiResponse } from "@/types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
@@ -20,8 +20,16 @@ async function request<T>(
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
 
+  // Pull JWT from localStorage and attach as Bearer token for all requests
+  const token = localStorage.getItem("vojas_token");
+  const authHeader: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
+  // Don't hardcode Content-Type — let the browser set it for FormData
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
+    ...authHeader,
+    ...(!(options.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
     ...options.headers,
   };
 
@@ -67,12 +75,18 @@ async function request<T>(
 }
 
 export const api = {
-  get: <T>(endpoint: string) => request<T>(endpoint, { method: "GET" }),
+  get: <T>(endpoint: string, headers?: Record<string, string>) =>
+    request<T>(endpoint, { method: "GET", headers }),
   post: <T>(endpoint: string, body: unknown) =>
     request<T>(endpoint, { method: "POST", body: JSON.stringify(body) }),
   put: <T>(endpoint: string, body: unknown) =>
     request<T>(endpoint, { method: "PUT", body: JSON.stringify(body) }),
+  patch: <T>(endpoint: string, body: unknown) =>
+    request<T>(endpoint, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(endpoint: string) => request<T>(endpoint, { method: "DELETE" }),
+  /** Multipart/form-data upload — browser auto-sets Content-Type with boundary */
+  postForm: <T>(endpoint: string, formData: FormData) =>
+    request<T>(endpoint, { method: "POST", body: formData }),
 };
 
 export { ApiError };

@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { prisma } from "../config/database.js";
 import { config } from "../config/index.js";
 import { AppError } from "../middleware/errorHandler.js";
@@ -67,5 +67,42 @@ export const userService = {
 
   async verifyPassword(plain: string, hashed: string): Promise<boolean> {
     return bcrypt.compare(plain, hashed);
+  },
+
+  async findAll(): Promise<UserOutput[]> {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      createdAt: u.createdAt,
+    }));
+  },
+
+  async update(
+    id: string,
+    data: { name?: string; role?: Role }
+  ): Promise<UserOutput> {
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined && { name: data.name.trim() }),
+        ...(data.role !== undefined && { role: data.role }),
+      },
+    });
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+  },
+
+  async delete(id: string): Promise<void> {
+    await prisma.user.delete({ where: { id } });
   },
 };

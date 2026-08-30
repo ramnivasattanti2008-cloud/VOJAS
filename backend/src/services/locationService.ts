@@ -255,6 +255,7 @@ export const locationService = {
    */
   async getMapData(filters?: { state?: string; status?: string }): Promise<{
     total: number;
+    stateCounts: Record<string, number>;
     markers: Array<{
       id: string;
       latitude: number;
@@ -277,13 +278,33 @@ export const locationService = {
       where,
       include: {
         project: {
-          select: { id: true, name: true, status: true, district: true, state: true, sector: true },
+          select: {
+            id: true, name: true, status: true, district: true, state: true, sector: true,
+            approvedAmount: true, startDate: true, expectedEndDate: true,
+          },
         },
       },
     });
 
+    // Aggregate project counts per state (independent of state filter)
+    const stateWhere: any = {};
+    if (filters?.status) {
+      stateWhere.project = { status: filters.status as any };
+    }
+    const allForStateCount = await prisma.location.findMany({
+      where: { isPrimary: true, ...stateWhere },
+      select: { project: { select: { state: true } } },
+    });
+    const stateCounts: Record<string, number> = {};
+    for (const { project } of allForStateCount) {
+      if (project.state) {
+        stateCounts[project.state] = (stateCounts[project.state] ?? 0) + 1;
+      }
+    }
+
     return {
       total: items.length,
+      stateCounts,
       markers: items.map((l) => ({
         id: l.id,
         latitude: l.latitude,

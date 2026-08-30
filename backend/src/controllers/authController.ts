@@ -3,12 +3,20 @@ import { z } from "zod";
 import { successResponse, errorResponse } from "../utils/response.js";
 import { userService } from "../services/userService.js";
 import { tokenService } from "../services/tokenService.js";
+import { auditLog } from "../services/auditLogService.js";
 import { AppError } from "../middleware/errorHandler.js";
 
 const registerSchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
-  password: z.string().min(8).max(100),
+  password: z
+    .string()
+    .min(10, "Password must be at least 10 characters")
+    .max(100)
+    .refine(
+      (p) => /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p),
+      "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+    ),
 });
 
 const loginSchema = z.object({
@@ -32,6 +40,15 @@ export const authController = {
       role: user.role,
     });
 
+    await auditLog({
+      userId: user.id,
+      action: "REGISTER",
+      resource: "User",
+      resourceId: user.id,
+      details: { email: user.email, role: user.role },
+      req,
+    });
+
     res.status(201).json(
       successResponse({ user, token })
     );
@@ -49,6 +66,14 @@ export const authController = {
     const user = await userService.findByEmail(email);
 
     if (!user) {
+      await auditLog({
+        userId: "unknown",
+        action: "LOGIN_FAILED",
+        resource: "Auth",
+        resourceId: email,
+        details: { reason: "user_not_found", email },
+        req,
+      });
       return res.status(401).json(
         errorResponse("UNAUTHORIZED", "Invalid email or password")
       );
@@ -56,6 +81,14 @@ export const authController = {
 
     const valid = await userService.verifyPassword(password, user.password);
     if (!valid) {
+      await auditLog({
+        userId: user.id,
+        action: "LOGIN_FAILED",
+        resource: "Auth",
+        resourceId: user.id,
+        details: { reason: "bad_password", email },
+        req,
+      });
       return res.status(401).json(
         errorResponse("UNAUTHORIZED", "Invalid email or password")
       );
@@ -65,6 +98,15 @@ export const authController = {
       userId: user.id,
       email: user.email,
       role: user.role,
+    });
+
+    await auditLog({
+      userId: user.id,
+      action: "LOGIN",
+      resource: "Auth",
+      resourceId: user.id,
+      details: { email },
+      req,
     });
 
     res.json(
@@ -100,9 +142,17 @@ export const authController = {
     res.json(successResponse({ user }));
   },
 
-  async logout(_req: Request, res: Response) {
-    // JWT is stateless, so logout is client-side only
-    // Here we just return a success response
+  async logout(req: Request, res: Response) {
+    const userId = (req as any).user?.userId;
+    if (userId) {
+      await auditLog({
+        userId,
+        action: "LOGOUT",
+        resource: "Auth",
+        resourceId: userId,
+        req,
+      });
+    }
     res.json(successResponse({ message: "Logged out successfully" }));
   },
 };

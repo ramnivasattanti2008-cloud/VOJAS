@@ -6,6 +6,8 @@ generator client {
 }
 
 datasource db {
+  // Switch to "postgresql" for production deployment.
+  // See DOCKER.md for the production switch.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
@@ -22,6 +24,13 @@ model User {
 
   auditLogs AuditLog[]
   projects  Project[]  @relation("CreatedProjects")
+  assignedReports Report[] @relation("AssignedReports")
+  expenditures Expenditure[]
+  acknowledgedAnomalies Anomaly[] @relation("AnomalyAcknowledger")
+  resolvedAnomalies Anomaly[] @relation("AnomalyResolver")
+  notifications Notification[]
+  uploadedDocuments Document[] @relation("UploadedDocuments")
+  verifiedDocuments Document[] @relation("VerifiedDocuments")
 }
 
 enum Role {
@@ -82,6 +91,88 @@ model Project {
 
   createdBy User? @relation("CreatedProjects", fields: [createdById], references: [id])
   locations Location[]
+  reports   Report[]
+  expenditures Expenditure[]
+  anomalies Anomaly[]
+  risk      ProjectRisk?
+  documents Document[]
+}
+
+// ── Project Documents (Phase 8) ───────────────────────────────────────────────
+
+enum DocumentType {
+  SANCTION_ORDER       // Sanction letter from MoSPI / competent authority
+  TENDER               // Tender notice / bid documents
+  CONTRACT            // Contract agreement
+  WORK_ORDER          // Work order issued to contractor
+  INVOICE             // Vendor invoice / bill
+  RECEIPT             // Payment receipt
+  COMPLETION_CERT     // Completion certificate
+  INSPECTION_REPORT   // Site inspection report
+  PHOTOGRAPH          // Site photo evidence
+  ENVIRONMENTAL_CLEARANCE
+  OTHER
+}
+
+enum VerificationStatus {
+  PENDING          // Uploaded, awaiting officer verification
+  VERIFIED         // Reviewed and accepted as authentic
+  REJECTED         // Found to be invalid / not matching project
+  REQUIRES_INFO    // Officer needs more context
+}
+
+model Document {
+  id            String              @id @default(uuid())
+  projectId     String
+  type          DocumentType
+  title         String
+  description   String?
+  filename      String              // stored file name (UUID-based)
+  originalName  String
+  mimeType      String
+  size          Int                 // bytes
+  url           String              // public URL path
+
+  status        VerificationStatus  @default(PENDING)
+  verifiedById  String?
+  verifiedAt    DateTime?
+  verificationNote String?
+
+  uploadedById  String?
+  uploadedAt    DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Phase 11 — OCR / AI extraction
+  extractedText  String?           // raw text extracted by OCR
+  suggestedType  DocumentType?    // AI-suggested document type (verifier can override)
+  aiConfidence   Int?             // 0-100 confidence score for the suggestion
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("UploadedDocuments", fields: [uploadedById], references: [id])
+  verifiedBy User?   @relation("VerifiedDocuments", fields: [verifiedById], references: [id])
+
+  @@index([projectId, type])
+  @@index([projectId, status])
+  @@index([uploadedAt])
+}
+
+// Expenditure categories — aligned with MPLAD work heads
+enum ExpenditureCategory {
+  MATERIAL          // Construction materials, supplies
+  LABOR             // Wages, contractor payments
+  EQUIPMENT         // Equipment rental / purchase
+  CONSULTANCY       // Design, engineering, supervision
+  ADMINISTRATIVE    // Documentation, fees, taxes
+  CONTINGENCY       // Unexpected / miscellaneous
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING           // Recorded but payment not released
+  AUTHORIZED        // Sanctioned, awaiting disbursal
+  PAID              // Disbursed to vendor / contractor
+  REJECTED          // Rejected, not paid
+  REVERSED          // Paid then clawed back
 }
 
 // Location model for geospatial data
@@ -103,6 +194,122 @@ model Location {
   project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
+// Report status lifecycle
+enum ReportStatus {
+  SUBMITTED
+  ACKNOWLEDGED
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+  CLOSED
+}
+
+// Report categories
+enum ReportCategory {
+  QUALITY        // Poor workmanship, substandard materials
+  DELAY         // Project delays, timeline violations
+  CORRUPTION    // Fraud, embezzlement, bribery indicators
+  SAFETY        // Safety violations, hazardous conditions
+  ENVIRONMENT   // Environmental damage, illegal disposal
+  FINANCIAL     // Financial irregularities, over-pricing
+  DOCUMENTATION // Fake/forged documents
+  OTHER
+}
+
+// Severity level
+enum ReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// Citizen Report model
+model Report {
+  id             String         @id @default(uuid())
+  title          String
+  description    String
+  category       ReportCategory
+  severity       ReportSeverity @default(LOW)
+  status         ReportStatus   @default(SUBMITTED)
+  // Reporter info (anonymous submission supported)
+  reporterName   String?
+  reporterEmail  String?
+  reporterPhone  String?
+  isAnonymous    Boolean        @default(false)
+  // Location context
+  locationDesc   String?        // free-text description of the location
+  latitude       Float?
+  longitude      Float?
+  // Project reference
+  projectId      String?
+  // Assignment & resolution
+  assignedToId   String?
+  resolution     String?
+  resolvedAt     DateTime?
+  // Metadata
+  source         String         @default("WEB") // WEB, MOBILE, API, WHISTLEBLOWER
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  // Phase 11 — AI analysis results
+  aiAnalysis     String?       // JSON: { keywords, corruptionIndicators, sentiment, suggestedSeverity, confidence }
+  aiAnalyzedAt   DateTime?
+
+  project      Project? @relation(fields: [projectId], references: [id])
+  assignedTo   User?    @relation("AssignedReports", fields: [assignedToId], references: [id])
+  statusLogs   ReportStatusLog[]
+  attachments  ReportAttachment[]
+}
+
+// Status change audit trail for each report
+model ReportStatusLog {
+  id        String       @id @default(uuid())
+  reportId  String
+  fromStatus ReportStatus?
+  toStatus  ReportStatus
+  changedById String?
+  notes     String?
+  createdAt DateTime    @default(now())
+
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+// Report attachments (images/PDFs)
+model ReportAttachment {
+  id          String   @id @default(uuid())
+  reportId    String
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int      // bytes
+  url         String   // stored path or URL
+  uploadedAt  DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+// Expenditure — individual financial disbursements against a project
+model Expenditure {
+  id          String   @id @default(uuid())
+  projectId   String
+  amount      Float
+  category    ExpenditureCategory
+  description String
+  vendor      String?  // contractor / supplier name
+  invoiceNo   String?  // bill / invoice number
+  paidOn      DateTime? // actual payment date
+  status      PaymentStatus @default(PENDING)
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation(fields: [createdById], references: [id])
+}
+
 // Audit log for tracking actions
 model AuditLog {
   id         String   @id @default(uuid())
@@ -110,9 +317,151 @@ model AuditLog {
   action     String
   resource   String
   resourceId String
-  details    String?  // JSON stored as string in SQLite
+  details    String?  // JSON serialized (SQLite-compatible; switch to Json for PostgreSQL)
   ipAddress  String?
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Anomaly categories
+enum AnomalyCategory {
+  DUPLICATE          // Same/similar project registered twice
+  COST_OUTLIER       // Sanctioned amount significantly deviates from sector baseline
+  TIMELINE           // Invalid or impossible dates
+  BUDGET_OVERRUN     // Spent exceeds sanctioned amount
+  STALLED            // In progress for too long
+  GEOGRAPHIC         // Unverified location or suspicious coordinates
+  COMPLIANCE         // Missing required fields/verification
+  FINANCIAL          // Other financial irregularities
+}
+
+enum AnomalySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AnomalyStatus {
+  OPEN               // Newly detected, awaiting review
+  ACKNOWLEDGED       // Analyst reviewed, not fraud
+  UNDER_INVESTIGATION
+  RESOLVED           // Confirmed legitimate or false positive
+  ESCALATED          // Escalated to higher authority
+  DISMISSED          // Closed without action
+}
+
+// Detected anomaly
+model Anomaly {
+  id            String          @id @default(uuid())
+  title         String
+  description   String
+  category      AnomalyCategory
+  severity      AnomalySeverity @default(MEDIUM)
+  riskScore     Int             @default(50)  // 0-100
+  status        AnomalyStatus   @default(OPEN)
+  ruleCode      String?         // e.g. "DUPLICATE_PROJECT", "COST_OUTLIER"; optional until Phase 9
+  projectId     String?
+  reportId      String?
+  // Lifecycle
+  acknowledgedById String?
+  acknowledgedAt   DateTime?
+  resolvedById     String?
+  resolvedAt       DateTime?
+  resolution       String?     // Resolution note
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  evidence      String?        // JSON serialized (SQLite-compatible; switch to Json for PostgreSQL)
+  // Phase 11 — AI explanation
+  aiExplanation  String?      // Human-readable explanation generated by AI
+  aiConfidence   Int?          // 0-100 confidence score for the explanation
+
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  acknowledgedBy User?    @relation("AnomalyAcknowledger", fields: [acknowledgedById], references: [id])
+  resolvedBy     User?    @relation("AnomalyResolver", fields: [resolvedById], references: [id])
+  // rule: relation to AnomalyRule removed; ruleCode is a plain string reference.
+  // Phase 9 will introduce the proper FK relation (ruleId -> AnomalyRule.id).
+
+  @@index([severity])
+  @@index([status])
+  @@index([category])
+  @@index([projectId])
+  @@index([createdAt])
+  @@index([ruleCode])
+}
+
+// Detection rule definition
+model AnomalyRule {
+  id           String   @id @default(uuid())
+  code         String   @unique  // e.g. "DUPLICATE_PROJECT"
+  name         String
+  description  String
+  category     AnomalyCategory
+  severity     AnomalySeverity  @default(MEDIUM)
+  enabled      Boolean  @default(true)
+  priority     Int      @default(50)  // higher = runs first
+  params       String?  // JSON of rule parameters (SQLite-compatible; switch to Json for PostgreSQL)
+  lastRun      DateTime?
+  matchCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Risk level classification (combined score → risk tier)
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────────
+enum NotificationType {
+  ANOMALY_DETECTED   // New anomaly found during scan
+  ANOMALY_ACKNOWLEDGED // An analyst acknowledged an anomaly
+  ANOMALY_RESOLVED    // An anomaly was resolved/dismissed
+  ANOMALY_ESCALATED   // Anomaly escalated to higher authority
+  REPORT_SUBMITTED     // New citizen report submitted
+  REPORT_ASSIGNED      // Report assigned to an officer
+  RISK_THRESHOLD       // Project risk crossed threshold
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  resource  String?          // e.g. "Anomaly", "Report"
+  resourceId String?         // ID of the related entity
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// Phase 10 — Per-project unified risk score.
+// Combines anomaly, financial, report, and timeline signals into a 0-100 score.
+model ProjectRisk {
+  id              String   @id @default(uuid())
+  projectId       String   @unique
+  overallScore    Int      @default(0)  // 0-100
+  anomalyScore    Int      @default(0)  // 0-40
+  financialScore  Int      @default(0)  // 0-25
+  reportScore     Int      @default(0)  // 0-20
+  timelineScore   Int      @default(0)  // 0-15
+  riskLevel       RiskLevel @default(LOW)
+  factors         String?  // JSON: [{ code, label, points, detail }] (SQLite-compatible; switch to Json for PostgreSQL)
+  computedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([overallScore])
+  @@index([riskLevel])
 }

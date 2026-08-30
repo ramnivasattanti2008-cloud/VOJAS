@@ -1,0 +1,76 @@
+version: "3.9"
+
+# Docker Compose for VOJAS production deployment.
+#
+# Usage:
+#   docker compose up --build        # Build and start all services
+#   docker compose down -v          # Stop and remove volumes (resets DB)
+#   docker compose logs -f backend   # Tail backend logs
+#
+# On first start, the backend container runs:
+#   1. prisma generate
+#   2. prisma db push (applies schema to PostgreSQL)
+#   3. seed (loads demo data) — only if SEED_ON_BOOT=true and DB is empty
+# Then it starts the API server.
+#
+# The frontend is served as static files via nginx.
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: vojas-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vojas
+      POSTGRES_PASSWORD: vojas_dev_password
+      POSTGRES_DB: vojas
+    volumes:
+      - vojas_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vojas -d vojas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  # ── Backend (Express + Prisma) ─────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vojas-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://vojas:vojas_dev_password@db:5432/vojas?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production-please-use-a-strong-secret}
+      JWT_EXPIRES_IN: 7d
+      BCRYPT_ROUNDS: 10
+      CLIENT_BASE_URL: http://localhost
+      # Set true to seed demo data on first boot (recommended for staging/demo; disable for production)
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
+    ports:
+      - "5000:5000"
+
+  # ── Frontend (Nginx serving Vite static build) ─────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vojas-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  vojas_pg_data:
+    driver: local

@@ -1,0 +1,68 @@
+# Render Blueprint — one-click deploy to https://render.com
+#
+# Usage:
+#   1. Push this file (and the rest of the repo) to GitHub
+#   2. Sign in to Render and click "New +" → "Blueprint"
+#   3. Select your repo — Render will pick up this file and provision
+#      the database, backend, and frontend services.
+#
+# The backend image is built from ./backend/Dockerfile and the frontend
+# from ./frontend/Dockerfile. Override with `dockerCommand` if you prefer
+# a non-Docker deploy.
+
+services:
+  # ── Managed PostgreSQL ────────────────────────────────────────────────────
+  - type: pserv
+    name: vojas-db
+    plan: starter
+    env: docker
+    region: oregon
+    # Render manages the database, including backups and high availability.
+    # We reference it as `vojas-db.internal` from inside the Render network.
+
+  # ── Backend API ──────────────────────────────────────────────────────────
+  - type: web
+    name: vojas-backend
+    plan: starter
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromService: { type: pserv, name: vojas-db, property: connectionString }
+      - key: JWT_SECRET
+        generateValue: true   # auto-generated on first deploy
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: BCRYPT_ROUNDS
+        value: 10
+      - key: CLIENT_BASE_URL
+        value: https://vojas-frontend.onrender.com
+      - key: PORT
+        value: 10000
+    autoDeploy: true
+
+  # ── Frontend (static) ────────────────────────────────────────────────────
+  - type: web
+    name: vojas-frontend
+    plan: free
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://vojas-backend.onrender.com/api/v1
+      - key: VITE_APP_NAME
+        value: VOJAS
+      - key: VITE_ENABLE_RQ_DEVTOOLS
+        value: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    autoDeploy: true

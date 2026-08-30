@@ -2,16 +2,36 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const NODE_ENV = process.env.NODE_ENV || "development";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// In production, refuse to boot without a real JWT secret.
+// The dev default is intentionally weak but at least named so it's obvious.
+if (NODE_ENV === "production" && (!JWT_SECRET || JWT_SECRET.length < 32)) {
+  throw new Error(
+    "FATAL: NODE_ENV=production requires a JWT_SECRET env var of at least 32 characters."
+  );
+}
+
 export const config = {
-  env: process.env.NODE_ENV || "development",
+  env: NODE_ENV,
+  isProduction: NODE_ENV === "production",
   port: parseInt(process.env.PORT || "5000", 10),
   apiVersion: "v1",
   jwt: {
-    secret: process.env.JWT_SECRET || "vojas-dev-secret-change-in-production",
+    secret: JWT_SECRET || "vojas-dev-secret-change-in-production",
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    algorithm: "HS256" as const,
   },
   bcrypt: {
     rounds: parseInt(process.env.BCRYPT_ROUNDS || "10", 10),
   },
   clientUrl: process.env.CLIENT_BASE_URL || "http://localhost:5173",
+  // Rate limit knobs
+  rateLimit: {
+    authWindowMs: 15 * 60 * 1000,   // 15 minutes
+    authMax: 10,                    // 10 / window per IP for /auth
+    apiWindowMs: 60 * 1000,         // 1 minute
+    apiMax: 120,                    // 120 req / min / IP for general API
+  },
 };
