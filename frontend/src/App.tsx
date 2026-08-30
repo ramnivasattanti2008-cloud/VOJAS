@@ -5,15 +5,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import ProjectsPage from "./pages/ProjectsPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 
 const ROUTES = [
-  {
-    path: "/projects",
-    title: "Projects",
-    desc: "MPLAD Scheme project registry and management",
-    phase: "Phase 4",
-  },
   {
     path: "/map",
     title: "Map View",
@@ -68,6 +63,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout user={user}>
               <DashboardPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects"
+        element={
+          <ProtectedRoute>
+            <Layout user={user}>
+              <ProjectsPage />
             </Layout>
           </ProtectedRoute>
         }

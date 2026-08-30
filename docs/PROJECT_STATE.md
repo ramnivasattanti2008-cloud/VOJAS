@@ -1,81 +1,50 @@
 # VOJAS Project State
 
 ## Current Phase
-PHASE 4A — BACKEND PROJECT CRUD: ✅ COMPLETE
+PHASE 4B — FRONTEND PROJECT LIST PAGE: ✅ COMPLETE
 
 ## Current Feature
-Project CRUD API — backend service, controller, routes, Zod validation, 8-seed demo projects
+Projects list page — fetch from API, display as cards with search/filter/pagination
 
 ## Status
 COMPLETE
 
 ## Last Completed Action
-- Backend Project service (projectService.ts): create, findAll (with filters + pagination), findById, update, delete, getStats
-- Backend Project controller (projectController.ts): list, create, getOne, update, remove, stats
-  — Zod validation for all inputs, proper error responses, spentAmount ≤ approvedAmount check
-- Backend Project routes (routes/projects.ts): all routes require auth; create/update restricted to ADMIN/OFFICER; delete restricted to ADMIN
-- Projects routes mounted at /api/v1/projects/* in routes/index.ts
-- Backend seed script extended: 8 realistic MPLAD demo projects (Kerala, Karnataka, UP, Maharashtra, Odisha, Bihar, Tamil Nadu — Transport, Education, Water, Energy, Health, Agriculture, Infrastructure, Environment)
-- TypeScript: backend and frontend both build clean
+- types/index.ts: added Project, ProjectStatus, ProjectSector types; PROJECT_SECTORS/PROJECT_STATUSES const arrays; STATUS_COLORS/SECTOR_COLORS maps; formatINR(), getSectorLabel(), getStatusLabel() helpers
+- pages/ProjectsPage.tsx (NEW): fetches /projects + /projects/stats in parallel, displays projects as responsive card grid (1col mobile / 2col tablet / 3col desktop), search bar, status + sector dropdown filters, quick-filter status chips with counts, overdue warning badges, budget progress bars (₹ in Indian format: Lakh/Crore), pagination controls
+- App.tsx: replaced /projects placeholder with ProjectsPage component; imports updated
+- Fixed unused import: useMemo removed from ProjectsPage
+- TypeScript: frontend 1600 modules (87.90 kB gzipped), backend clean
 
 ## Last Successful Test
-- `npm run build` backend: ✓ no errors
-- `npm run build` frontend: ✓ no errors, 1598 modules, 84.87 kB gzipped
-
-## API Endpoints Added
-GET    /api/v1/projects          — list with ?status&sector&district&state&search&page&limit
-GET    /api/v1/projects/stats    — aggregate stats (total, byStatus, bySector, totalBudget, totalSpent)
-GET    /api/v1/projects/:id     — get single project
-POST   /api/v1/projects          — create (ADMIN/OFFICER)
-PUT    /api/v1/projects/:id      — update (ADMIN/OFFICER)
-DELETE /api/v1/projects/:id      — delete (ADMIN)
+- `npm run build` frontend: ✓ 1600 modules, 87.90 kB gzipped
+- `npm run build` backend: ✓ clean
 
 ## Current Incomplete Action
-None — Phase 4A complete
+None — Phase 4B complete
 
 ## Exact Next Action
-STOP. Wait for user. Next: Phase 4B (Frontend Project List page) — fetch projects from API, display in table/grid with search/filter, status badges.
+STOP. Wait for user. Next: Phase 4C (Project detail page) — single project view with full details, timeline, budget breakdown, links to actions.
 
 ## Files Currently Being Modified
-None (Phase 4A stable)
+None (Phase 4B stable)
 
 ## Known Bugs
 None
 
-## Phase 4A Files Added/Changed
+## Phase 4B Files Added/Changed
 ```
-backend/src/
-├── services/projectService.ts   (NEW — create, findAll, findById, update, delete, getStats)
-├── controllers/projectController.ts (NEW — list, create, getOne, update, remove, stats)
-├── routes/projects.ts           (NEW — CRUD routes with auth guards)
-└── routes/index.ts             (MODIFIED — added projects router mount)
-backend/scripts/seed.ts          (MODIFIED — added 8 demo MPLAD projects across 5 states)
+frontend/src/
+├── types/index.ts          (MODIFIED — added Project types, sector/status helpers, color maps)
+├── pages/ProjectsPage.tsx  (NEW — full projects list with search/filter/pagination)
+└── App.tsx               (MODIFIED — wired /projects route to ProjectsPage)
 ```
-
-## Demo Accounts
-```
-ADMIN    → admin@vojas.gov     / vojas-demo-2026
-OFFICER  → officer@vojas.gov   / vojas-demo-2026
-ANALYST  → analyst@vojas.gov   / vojas-demo-2026
-REVIEWER → reviewer@vojas.gov  / vojas-demo-2026
-```
-
-## Demo Projects
-8 realistic MPLAD projects seeded:
-1. Rural Road Construction — Thiruvananthapuram, Kerala (TRANSPORT, IN_PROGRESS, ₹48L)
-2. Anganwadi Renovation — Bangalore Rural, Karnataka (EDUCATION, COMPLETED, ₹15L)
-3. Community Water Tank — Varanasi, UP (WATER_SANITATION, VERIFIED, ₹32L)
-4. Solar Street Lighting — Nagpur, Maharashtra (ENERGY, APPROVED, ₹22.5L)
-5. PHC Equipment Upgrade — Koraput, Odisha (HEALTH, IN_PROGRESS, ₹28L)
-6. Village Pond Desilting — Yavatmal, Maharashtra (AGRICULTURE, COMPLETED, ₹8.5L)
-7. Flood Relief Drainage — Patna, Bihar (PUBLIC_INFRASTRUCTURE, IN_PROGRESS, ₹65L)
-8. Solid Waste Centre — Coimbatore, Tamil Nadu (ENVIRONMENT, PROPOSED, ₹18L)
 
 ## Resume Instructions
-Phase 4A (Backend CRUD) is COMPLETE.
+Phase 4A (Backend CRUD) and Phase 4B (Frontend List) are COMPLETE.
 DO NOT proceed without user instruction.
 Next steps:
-- Phase 4B: Frontend Project List page (fetch /projects, display in table with search/filter/sort)
-- Phase 4C: Frontend Project Detail page
-- Phase 4D: Frontend Project create/edit form
+- Phase 4C: Project detail page (single project view with all fields, timeline, budget, actions)
+- Phase 4D: Project create/edit form
+- Visual upgrades: Dashboard stat cards, sidebar polish
 Each is a separate sub-milestone. Update PROJECT_STATE.md after each.
