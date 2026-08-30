@@ -1,14 +1,16 @@
 # Render Blueprint — one-click deploy to https://render.com
 #
+# Render auto-detects this file on push to GitHub. Visit:
+#   https://dashboard.render.com/blueprints
+#
 # Usage:
 #   1. Push this file (and the rest of the repo) to GitHub
-#   2. Sign in to Render and click "New +" → "Blueprint"
+#   2. Sign in to Render and go to "Blueprints" → "Create Blueprint Instance"
 #   3. Select your repo — Render will pick up this file and provision
 #      the database, backend, and frontend services.
 #
-# The backend image is built from ./backend/Dockerfile and the frontend
-# from ./frontend/Dockerfile. Override with `dockerCommand` if you prefer
-# a non-Docker deploy.
+# The backend uses a Docker runtime (built from ./backend/Dockerfile).
+# The frontend is a static site served directly by Render's CDN.
 
 services:
   # ── Managed PostgreSQL ────────────────────────────────────────────────────

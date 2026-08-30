@@ -220,8 +220,8 @@ export default function ProjectsPage() {
         </div>
 
         {/* Status quick-filter chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-slate-500" />
+        <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by status">
+          <Filter className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
           <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Quick:</span>
           {PROJECT_STATUSES.map((s) => {
             const isActive = statusFilter === s.value;
@@ -387,6 +387,7 @@ export default function ProjectsPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
+                  aria-label="Previous page"
                   className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
@@ -394,6 +395,7 @@ export default function ProjectsPage() {
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
+                  aria-label="Next page"
                   className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Next

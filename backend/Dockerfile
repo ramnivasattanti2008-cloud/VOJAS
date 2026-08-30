@@ -33,15 +33,26 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --from=builder /app/dist          ./dist
 COPY --from=builder /app/node_modules  ./node_modules
 COPY --from=builder /app/package.json  ./package.json
+# Copy prisma dir then swap schema.prisma → postgresql provider for prod.
+# (The committed schema.prisma is sqlite for local dev convenience.)
 COPY --from=builder /app/prisma       ./prisma
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' ./prisma/schema.prisma && \
+    echo "Swapped prisma provider → postgresql for production"
 # Seed script is plain TS — copied for optional seeding at boot
 COPY --from=builder /app/scripts       ./scripts
+
+# Install wget for HEALTHCHECK (Alpine base image lacks it)
+RUN apk add --no-cache wget
 
 RUN chown -R nodeapp:nodejs /app
 
 USER nodeapp
 
 EXPOSE 5000
+
+# Healthcheck — wait for the API to be reachable, not just the port
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/api/v1/health || exit 1
 
 # On first start:
 #   1. prisma generate (idempotent)
@@ -52,7 +63,7 @@ EXPOSE 5000
 # Note: SEED_ON_BOOT requires tsx to be available (it is, via the
 # dev-dependency install in stage 1). If the seed script is ever
 # converted to a pre-compiled JS, remove the tsx requirement.
-CMD ["sh", "-c", "npx prisma generate && npx prisma db push --skip-generate && \
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push --skip-generate --accept-data-loss && \
   if [ \"$SEED_ON_BOOT\" = \"true\" ]; then \
     if npx tsx -e \"import('@prisma/client').then(async({PrismaClient})=>{const p=new PrismaClient();const c=await p.user.count();await p.\\$disconnect();process.exit(c===0?0:1)})\"; then \
       echo '[seed] DB is empty — loading demo data'; \

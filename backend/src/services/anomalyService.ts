@@ -410,7 +410,7 @@ export async function runAnomalyScan(): Promise<{
       const results = await fn();
       allFound.push(...results);
     } catch (err) {
-      console.error(`Rule ${rule.code} failed:`, err);
+      logger.error(`[anomalyRule] ${rule.code} failed:`, err);
     }
   }
 

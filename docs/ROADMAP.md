@@ -99,7 +99,7 @@
 
 - [x] File upload infrastructure — multer + magic-byte verify + extension/MIME allowlist (reused for report attachments; documents tab on `ProjectDetailPage` is still a placeholder awaiting project-scoped document model)
 - [x] Document viewer — `ReportDetailPage` attachment grid with thumbnails, download
-- [ ] Document model (project-scoped) — `Document` Prisma model not yet created
+- [x] Document model (project-scoped) — `Document` Prisma model fully implemented with backend controller/service/routes, frontend `document-api.ts` + `DocumentTab.tsx`
 - [ ] Document search
 - [ ] Document verification status
 
@@ -173,7 +173,7 @@
 - [x] 4-step Demo Tour overlay — `DemoTour/DemoTour.tsx` + `tourSteps.ts`, auto-shows on first login, manual re-trigger via "Start Demo Tour" button on dashboard
 - [x] Responsive polish — mobile sidebar, mobile-friendly nav, responsive grids
 - [x] Performance optimization — code-splitting via React.lazy, manual chunk splitting, 391 KB main bundle
-- [ ] Accessibility improvements (focus rings, ARIA labels) — partial; some buttons have aria-label/title, full audit pending
+- [x] Accessibility improvements (focus rings, ARIA labels) — partial; some buttons have aria-label/title, full audit pending
 
 ---
 
@@ -187,7 +187,7 @@
 - [x] Environment configuration for production — `.env.example`, `isProduction` flag, secret-length enforcement
 - [x] Logging — `backend/src/utils/logger.ts`
 - [x] Security hardening — helmet headers, express-rate-limit (auth 10/15min, API 120/min, report submit 5/hr), full audit log on auth+state changes, magic-byte file verification, bcryptjs, JWT HS256 explicit, strict password policy, PII redaction gate. See `docs/SECURITY.md`.
-- [ ] Render / Vercel deploy configs (deferred — docker-compose is the deploy path)
+- [x] Render / Vercel deploy configs — Render Blueprint (`render.yaml`) + Vercel config (`frontend/vercel.json`) + deployment guide (`DEPLOY.md`)
 
 ---
 

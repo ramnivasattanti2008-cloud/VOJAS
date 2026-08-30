@@ -85,10 +85,12 @@ export function DonutChart({
   }
 
   return (
-    <div className={`flex flex-col items-center gap-4 ${className}`}>
+    <div className={`flex flex-col items-center gap-4 ${className}`} role="img" aria-label={`Donut chart: ${slices
+      .map((s) => `${s.item.label} ${(s.pct * 100).toFixed(0)}%`)
+      .join(", ")}. Total ${formatValue(total)}.`}>
       {/* SVG donut */}
       <div className="relative" style={{ width: size, height: size }}>
-        <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, height: size }}>
+        <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, height: size }} aria-hidden="true">
           {/* Background ring */}
           <circle
             cx={cx}

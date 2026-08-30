@@ -203,7 +203,7 @@ export default function ReportsPage() {
 
       {/* Status summary chips */}
       {stats && (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Filter by report status">
           <span className="text-[10px] text-slate-600 uppercase tracking-widest mr-1">Status:</span>
           {REPORT_STATUSES.map((s) => {
             const count = stats.byStatus[s.value] ?? 0;
@@ -402,6 +402,7 @@ export default function ReportsPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
+                  aria-label="Previous page"
                   className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
@@ -409,6 +410,7 @@ export default function ReportsPage() {
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
+                  aria-label="Next page"
                   className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Next

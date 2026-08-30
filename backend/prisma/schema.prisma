@@ -6,8 +6,19 @@ generator client {
 }
 
 datasource db {
-  // Switch to "postgresql" for production deployment.
-  // See DOCKER.md for the production switch.
+  // Local development uses SQLite. Production (Docker) uses PostgreSQL —
+  // see prisma/schema.postgres.prisma for the production schema, which the
+  // Dockerfile copies over as schema.prisma before running `prisma generate`.
+  //
+  // The production schema (schema.postgres.prisma) has:
+  //
+  //   datasource db {
+  //     provider = "postgresql"
+  //     url      = env("DATABASE_URL")
+  //   }
+  //
+  // and uses `Json` columns (not `String` JSON) for: AuditLog.details,
+  // AnomalyRule.params, Anomaly.evidence, ProjectRisk.factors.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }

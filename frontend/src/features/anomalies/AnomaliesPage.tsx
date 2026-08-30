@@ -153,6 +153,7 @@ export default function AnomaliesPage() {
         <button
           onClick={handleScan}
           disabled={scanning}
+          aria-label={scanning ? "Running anomaly scan" : "Run anomaly scan"}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-600 hover:from-electric-400 hover:to-electric-500 disabled:from-electric-500/50 disabled:to-electric-600/50 text-white text-sm font-semibold rounded-lg shadow-lg shadow-electric-500/20 hover:shadow-electric-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {scanning ? (
@@ -263,8 +264,8 @@ export default function AnomaliesPage() {
         </div>
 
         {/* Severity quick-filter chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-slate-500" />
+        <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by severity">
+          <Filter className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
           <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Severity:</span>
           {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as AnomalySeverity[]).map((s) => {
             const isActive = severityFilter === s;

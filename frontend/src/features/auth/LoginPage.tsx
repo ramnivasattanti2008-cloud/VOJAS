@@ -198,6 +198,7 @@ export default function LoginPage() {
                 key={user}
                 type="button"
                 onClick={() => { setEmail(user); setPassword("VojasDemo2026"); }}
+                aria-label={`Sign in as ${role}`}
                 className="text-[10px] px-2 py-0.5 rounded border border-white/10 text-slate-500 hover:text-slate-300 hover:border-electric-500/30 transition-all cursor-pointer"
               >
                 {role}

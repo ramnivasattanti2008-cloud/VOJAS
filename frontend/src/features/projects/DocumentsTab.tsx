@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { documentApi } from "@/services/document-api";
 import { ApiError } from "@/services/api";
@@ -466,6 +466,17 @@ export default function DocumentsTab({ projectId, userRole }: DocumentsTabProps)
     load();
   }, [projectId]);
 
+  // Auto-dismiss toast after 5s
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 5000);
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, [toast]);
+
   const handleVerify = async (id: string, status: "VERIFIED" | "REJECTED" | "REQUIRES_INFO") => {
     try {
       await documentApi.verify(id, status);
@@ -544,6 +555,30 @@ export default function DocumentsTab({ projectId, userRole }: DocumentsTabProps)
 
   return (
     <div className="space-y-4">
+      {/* Inline toast — announced via aria-live */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-xl p-3 flex items-center gap-3 text-sm border ${
+            toast.kind === "ok"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+              : "bg-red-500/10 border-red-500/30 text-red-300"
+          }`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${toast.kind === "ok" ? "bg-emerald-400" : "bg-red-400"}`} />
+          <p className="flex-1">{toast.message}</p>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-current opacity-60 hover:opacity-100 transition-opacity"
+            aria-label="Dismiss notification"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Stats bar */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3">

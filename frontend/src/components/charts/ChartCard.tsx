@@ -19,6 +19,7 @@ export function ChartCard({ title, subtitle, icon, children, className = "" }: C
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={`glass rounded-xl p-5 ${className}`}
+      aria-label={`${title}${subtitle ? ` — ${subtitle}` : ""}`}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="min-w-0 flex-1">

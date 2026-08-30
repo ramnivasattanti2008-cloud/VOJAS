@@ -12,6 +12,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Vite dev server proxies /api/* to the backend.
+    // In production (Vercel), set VITE_API_BASE_URL to point to the
+    // deployed backend instead (e.g. https://vojas-backend.onrender.com/api/v1).
     proxy: {
       "/api": {
         target: "http://localhost:5000",

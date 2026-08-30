@@ -7,7 +7,7 @@
 
 import PDFDocument from "pdfkit";
 import { prisma } from "../config/database.js";
-import { appError } from "../middleware/errorHandler.js";
+import { AppError } from "../middleware/errorHandler.js";
 import type { Readable } from "stream";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ export async function generateProjectPDF(projectId: string): Promise<Buffer> {
   });
 
   if (!project) {
-    throw appError(404, "NOT_FOUND", "Project not found");
+    throw new AppError(404, "NOT_FOUND", "Project not found");
   }
 
   return new Promise((resolve, reject) => {

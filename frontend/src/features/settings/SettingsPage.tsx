@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { adminApi, type AdminUser, type SystemStats, type AnomalyRule, type AuditLog } from "@/services/admin-api";
-import { LoadingState, ErrorState } from "@/components/ui";
+import { LoadingState, ErrorState, InlineToast } from "@/components/ui";
 
 // ── Tab type ──────────────────────────────────────────────────────────────────
 
@@ -132,6 +132,7 @@ function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -188,20 +189,20 @@ function UsersTab() {
       setUsers((prev) => prev.map((u) => u.id === id ? data.user : u));
       setEditingId(null);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to update user");
+      setToast({ type: "error", message: e instanceof Error ? e.message : "Failed to update user" });
     } finally {
       setEditSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this user? This cannot be undone.")) return;
+    if (!window.confirm("Delete this user? This cannot be undone.")) return;
     setDeletingId(id);
     try {
       await adminApi.deleteUser(id);
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete user");
+      setToast({ type: "error", message: e instanceof Error ? e.message : "Failed to delete user" });
     } finally {
       setDeletingId(null);
     }
@@ -212,6 +213,7 @@ function UsersTab() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {toast && <InlineToast type={toast.type} message={toast.message} onDismiss={() => setToast(null)} />}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -378,6 +380,7 @@ function RulesTab() {
   const [rules, setRules] = useState<AnomalyRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
   const [toggling, setToggling] = useState<Set<string>>(new Set());
 
   const loadRules = useCallback(async () => {
@@ -401,7 +404,7 @@ function RulesTab() {
       const data = await adminApi.updateRule(id, { enabled });
       setRules((prev) => prev.map((r) => r.id === id ? data.rule : r));
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to toggle rule");
+      setToast({ type: "error", message: e instanceof Error ? e.message : "Failed to toggle rule" });
     } finally {
       setToggling((prev) => { const n = new Set(prev); n.delete(id); return n; });
     }
@@ -414,6 +417,7 @@ function RulesTab() {
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {toast && <InlineToast type={toast.type} message={toast.message} onDismiss={() => setToast(null)} />}
       <div>
         <h2 className="text-sm font-semibold text-slate-200">Anomaly Detection Rules</h2>
         <p className="text-xs text-slate-500">

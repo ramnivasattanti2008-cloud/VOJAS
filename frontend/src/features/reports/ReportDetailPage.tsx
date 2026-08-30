@@ -38,7 +38,7 @@ import {
   REPORT_CATEGORY_COLORS,
   STATUS_TRANSITIONS,
 } from "@/types/report-types";
-import { LoadingState, ErrorState } from "@/components/ui";
+import { LoadingState, ErrorState, InlineToast } from "@/components/ui";
 
 function getStatusStyle(v: ReportStatus) {
   return REPORT_STATUS_COLORS[v] ?? REPORT_STATUS_COLORS.SUBMITTED;
@@ -83,6 +83,7 @@ export default function ReportDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Investigation / Original data access
@@ -168,7 +169,7 @@ export default function ReportDetailPage() {
 
   async function handleDeleteAttachment(attachment: ReportAttachment) {
     if (!report) return;
-    if (!confirm(`Delete "${attachment.originalName}"?`)) return;
+    if (!window.confirm(`Delete "${attachment.originalName}"?`)) return;
     setDeletingAttachmentId(attachment.id);
     try {
       await reportApi.removeAttachment(report.id, attachment.id);
@@ -178,7 +179,7 @@ export default function ReportDetailPage() {
       });
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Delete failed";
-      alert(`Delete failed: ${msg}`);
+      setToast(`Delete failed: ${msg}`);
     } finally {
       setDeletingAttachmentId(null);
     }
@@ -229,6 +230,11 @@ export default function ReportDetailPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      {toast && (
+        <div className="fixed top-20 right-4 z-50 max-w-sm">
+          <InlineToast message={toast} type="error" onDismiss={() => setToast(null)} />
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start gap-4">
         <button

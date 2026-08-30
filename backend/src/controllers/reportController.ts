@@ -5,6 +5,7 @@ import { reportService } from "../services/reportService.js";
 import { verifyMagicBytes } from "../utils/storage.js";
 import { auditLog } from "../services/auditLogService.js";
 import { aiService } from "../services/aiService.js";
+import { logger } from "../utils/logger.js";
 
 // ── Zod Schemas ──────────────────────────────────────────────────────────────
 
@@ -108,7 +109,7 @@ export const reportController = {
       await reportService.setAIAnalysis(report.id, aiAnalysis);
     } catch (err) {
       // AI analysis failure should not block report submission
-      console.error("[AI] Report analysis failed:", err);
+      logger.error("[AI] Report analysis failed:", err);
     }
 
     await auditLog({

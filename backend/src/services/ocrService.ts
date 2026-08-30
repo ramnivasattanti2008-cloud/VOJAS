@@ -1,4 +1,5 @@
 import fs from "fs";
+import { logger } from "../utils/logger.js";
 
 /**
  * OCR / text-extraction service (Phase 11).
@@ -112,7 +113,7 @@ export const ocrService = {
       const { type, confidence } = suggestDocumentType(text);
       return { text, suggestedType: type, confidence, keywords };
     } catch (err) {
-      console.error("[OCR] Failed to extract:", err);
+      logger.error("[OCR] Failed to extract:", err);
       return { text: "", suggestedType: "OTHER", confidence: 0, keywords: [] };
     }
   },

@@ -217,9 +217,10 @@ export default function RiskDashboardPage() {
         <button
           onClick={handleRecalculate}
           disabled={recalculating}
+          aria-label={recalculating ? "Recalculating risk scores" : "Recalculate all risk scores"}
           className="flex items-center gap-2 px-4 py-2 bg-electric-500/10 border border-electric-500/20 text-electric-400 rounded-lg text-sm font-medium hover:bg-electric-500/20 transition-colors disabled:opacity-50"
         >
-          {recalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {recalculating ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="w-4 h-4" aria-hidden="true" />}
           {recalculating ? "Recalculating..." : "Recalculate All"}
         </button>
       </div>
@@ -240,7 +241,11 @@ export default function RiskDashboardPage() {
       {stats && (
         <div className="bg-navy-800/50 border border-white/5 rounded-xl p-5">
           <p className="text-sm font-medium text-slate-300 mb-3">Risk Distribution</p>
-          <div className="flex h-6 rounded-full overflow-hidden gap-0.5">
+          <div
+            className="flex h-6 rounded-full overflow-hidden gap-0.5"
+            role="img"
+            aria-label={`Risk distribution: ${stats.distribution.CRITICAL} critical, ${stats.distribution.HIGH} high, ${stats.distribution.MEDIUM} medium, ${stats.distribution.LOW} low out of ${stats.totalProjects} total projects`}
+          >
             {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as RiskLevel[]).map((level) => {
               const count = stats.distribution[level];
               const pct = stats.totalProjects > 0 ? (count / stats.totalProjects) * 100 : 0;
@@ -271,7 +276,7 @@ export default function RiskDashboardPage() {
       {/* Filters & Table */}
       <div className="bg-navy-800/50 border border-white/5 rounded-xl overflow-hidden">
         {/* Filter bar */}
-        <div className="flex items-center gap-3 p-4 border-b border-white/5 flex-wrap">
+        <div className="flex items-center gap-3 p-4 border-b border-white/5 flex-wrap" role="group" aria-label="Filter by risk level">
           <span className="text-sm text-slate-400 font-medium">Filter:</span>
           <button
             onClick={() => { setFilterLevel("ALL"); setPage(1); }}

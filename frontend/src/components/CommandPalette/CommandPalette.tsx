@@ -179,11 +179,15 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               <input
                 ref={inputRef}
                 type="text"
+                role="combobox"
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); setSelected(0); }}
                 placeholder="Search projects, locations, or type a command…"
                 className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 outline-none"
-                aria-label="Search projects and commands"
+                aria-label="Search commands"
+                aria-expanded={open}
+                aria-autocomplete="list"
+                aria-controls="command-listbox"
               />
               {loading && (
                 <div className="w-4 h-4 border-2 border-electric-500/30 border-t-electric-400 rounded-full animate-spin shrink-0" />
@@ -198,7 +202,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             </div>
 
             {/* Results */}
-            <div ref={listRef} className="max-h-[360px] overflow-y-auto py-2" role="listbox" aria-label="Search results">
+            <div ref={listRef} id="command-listbox" className="max-h-[360px] overflow-y-auto py-2" role="listbox" aria-label="Available commands">
               {allResults.length === 0 && query.trim() && (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <Search className="w-8 h-8 text-slate-600 mb-2" />

@@ -111,7 +111,7 @@ export default function FinancialTab({ project, userRole, onProjectUpdate }: Fin
   }, [expenditures, filterStatus, filterCategory]);
 
   const onDelete = async (id: string) => {
-    if (!confirm("Delete this expenditure entry? This cannot be undone.")) return;
+    if (!window.confirm("Delete this expenditure entry? This cannot be undone.")) return;
     setDeletingId(id);
     try {
       await financialApi.remove(id);

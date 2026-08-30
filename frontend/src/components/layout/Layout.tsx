@@ -128,6 +128,7 @@ function NavLink({
     <Link
       to={item.path}
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={`
         flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 group relative
         ${mobile ? "w-full" : ""}
@@ -206,7 +207,9 @@ function UserMenu({ user, logout }: { user: any; logout: () => void }) {
         <button
           onClick={() => setOpen(v => !v)}
           className="flex items-center gap-2 rounded-lg hover:bg-white/5 transition-colors px-2 py-1.5"
-          title={user?.name ?? "User"}
+          aria-label={`User menu — ${user?.name ?? "User"} (${user?.role ?? "VIEWER"})`}
+          aria-expanded={open}
+          aria-haspopup="menu"
         >
           <div className={`w-7 h-7 rounded-full ${avatarBg} border border-white/10 flex items-center justify-center text-[11px] font-bold text-white`}>
             {user?.name?.[0]?.toUpperCase() ?? "U"}
@@ -222,7 +225,11 @@ function UserMenu({ user, logout }: { user: any; logout: () => void }) {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full mt-1 w-52 bg-navy-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+          <div
+            className="absolute right-0 top-full mt-1 w-52 bg-navy-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+            role="menu"
+            aria-label="User menu"
+          >
             <div className="px-3 py-2.5 border-b border-white/5">
               <p className="text-sm font-semibold text-slate-200 truncate">{user?.name}</p>
               <p className="text-[11px] text-slate-500">{user?.email}</p>
@@ -233,12 +240,14 @@ function UserMenu({ user, logout }: { user: any; logout: () => void }) {
             <Link
               to="/profile"
               onClick={() => setOpen(false)}
+              role="menuitem"
               className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors border-b border-white/5"
             >
               <span>Profile & Preferences</span>
             </Link>
             <button
               onClick={logout}
+              role="menuitem"
               className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />

@@ -125,12 +125,37 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   const refreshProject = () => {
     if (!id) return;
     api.get<{ project: Project }>(`/projects/${id}`)
       .then(({ project }) => setProject(project))
       .catch((err: ApiError) => setError(err.message));
+  };
+
+  const handleExportPDF = async () => {
+    if (!id) return;
+    setExportingPDF(true);
+    try {
+      const response = await fetch(`/api/v1/projects/${id}/report/pdf`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      if (!response.ok) throw new Error(`Export failed: ${response.statusText}`);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vojas-project-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      setExportingPDF(false);
+    }
   };
 
   useEffect(() => {
@@ -247,6 +272,20 @@ export default function ProjectDetailPage() {
                 >
                   <Edit3 className="w-3 h-3" />
                   <span className="hidden sm:inline">Edit</span>
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  disabled={exportingPDF}
+                  className="flex items-center gap-1 px-2 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-electric-500/30 text-slate-300 hover:text-white text-xs rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Export PDF report"
+                  aria-label="Export project as PDF report"
+                >
+                  {exportingPDF ? (
+                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <FileText className="w-3 h-3" />
+                  )}
+                  <span className="hidden sm:inline">{exportingPDF ? "Exporting..." : "Export PDF"}</span>
                 </button>
               </div>
             </div>
