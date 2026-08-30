@@ -1,18 +1,13 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
-import type { User } from "./types";
 
-// Temporary guest user for Phase 2 (real auth in Phase 3)
-const guestUser: User = {
-  id: "guest",
-  email: "guest@vojas.local",
-  name: "Demo User",
-  role: "ANALYST",
-};
-
-const ROUTES: Array<{ path: string; title: string; desc: string; phase: string }> = [
+const ROUTES = [
   {
     path: "/projects",
     title: "Projects",
@@ -57,29 +52,52 @@ const ROUTES: Array<{ path: string; title: string; desc: string; phase: string }
   },
 ];
 
-function App() {
+function AppRoutes() {
+  const { user } = useAuth();
+
   return (
-    <BrowserRouter>
-      <Layout user={guestUser} onSignOut={() => console.log("Sign out — Phase 3")}>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          {ROUTES.map((r) => (
-            <Route
-              key={r.path}
-              path={r.path}
-              element={
-                <PlaceholderPage
-                  title={r.title}
-                  description={r.desc}
-                  phase={r.phase}
-                />
-              }
-            />
-          ))}
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/register" element={user ? <Navigate to="/" replace /> : <RegisterPage />} />
+
+      {/* Protected routes */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout user={user}>
+              <DashboardPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      {ROUTES.map((r) => (
+        <Route
+          key={r.path}
+          path={r.path}
+          element={
+            <ProtectedRoute>
+              <Layout user={user}>
+                <PlaceholderPage title={r.title} description={r.desc} phase={r.phase} />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+      ))}
+
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}

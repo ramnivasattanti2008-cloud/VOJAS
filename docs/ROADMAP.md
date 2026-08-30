@@ -25,26 +25,22 @@
 
 ---
 
-## PHASE 2 — Core UI Shell
-> **Goal**: Basic dashboard UI with navigation, no features yet
-
-- [ ] Basic layout: Sidebar, Header, Main Content Area
-- [ ] Responsive design foundation
-- [ ] Loading, Error, Empty states
-- [ ] Theme system (dark/light mode foundation)
-- [ ] Basic routing (React Router)
-
----
-
-## PHASE 3 — User & Authentication
+## PHASE 3 — User Authentication
 > **Goal**: Users can sign in with roles
 
-- [ ] User model (database)
-- [ ] Auth service (register, login, logout)
-- [ ] JWT authentication (backend)
-- [ ] Protected routes (frontend)
-- [ ] Role-based access (Admin, Officer, Reviewer, Analyst, Viewer)
-- [ ] Auth state management
+- [x] User model (database) — User + AuditLog
+- [x] User service (bcrypt password hashing)
+- [x] Token service (JWT issuance + verification)
+- [x] Auth controller (register, login, logout, me)
+- [x] Auth middleware (authenticate, authorize)
+- [x] Auth routes (`/api/v1/auth/*`)
+- [x] Login page UI
+- [x] Register page UI
+- [x] Auth context (React state)
+- [x] Protected routes (frontend)
+- [x] Token persistence (localStorage)
+- [x] Database seed (4 demo users)
+- [x] Form validation (Zod backend)
 
 ---
 

@@ -15,12 +15,11 @@ import {
   Search,
   LogOut,
 } from "lucide-react";
-import type { User } from "../types";
+import { useAuth } from "../contexts/AuthContext";
 
 interface LayoutProps {
   children: React.ReactNode;
-  user?: User | null;
-  onSignOut?: () => void;
+  user?: any; // accept full auth user shape
 }
 
 const NAV_ITEMS = [
@@ -34,7 +33,8 @@ const NAV_ITEMS = [
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 
-export default function Layout({ children, user, onSignOut }: LayoutProps) {
+export default function Layout({ children, user }: LayoutProps) {
+  const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -146,9 +146,9 @@ export default function Layout({ children, user, onSignOut }: LayoutProps) {
               )}
             </div>
 
-            {user && onSignOut && (
+            {user && (
               <button
-                onClick={onSignOut}
+                onClick={logout}
                 className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/10 flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors"
                 title="Sign out"
               >
