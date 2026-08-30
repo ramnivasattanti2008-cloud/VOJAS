@@ -64,6 +64,10 @@ Thumbs.db
 **/prisma/prisma/
 !**/prisma/schema.prisma
 
+# User-uploaded attachments (served at runtime from /uploads)
+backend/uploads/
+!**/uploads/.gitkeep
+
 # Docker
 .dockerignore
 docker-compose.*.override.yml
