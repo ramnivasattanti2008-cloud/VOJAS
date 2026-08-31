@@ -7,7 +7,8 @@ import { logger } from "../src/utils/logger.js";
 import type { ReportCategory, ReportSeverity, ReportStatus, ExpenditureCategory, PaymentStatus } from "@prisma/client";
 
 // Demo password: meets policy (10+ chars, mixed case, digit, no special req)
-const DEMO_PASSWORD = "VojasDemo2026";
+// In Docker/production this is overridden by the DEMO_PASSWORD env var
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "VojasDemo2026";
 
 const DEMO_USERS = [
   {
@@ -330,22 +331,27 @@ const DEMO_EXPENDITURES: DemoExpenditure[] = [
 ];
 
 async function main() {
-  // ── Seed Users ───────────────────────────────────────────────────────────
-  logger.info("Seeding demo users...");
+  // ── Seed Users (upsert — promotes legacy VIEWER accounts to correct roles) ──
+  logger.info("Ensuring demo users...");
 
   const createdUsers: Record<string, string> = {};
   for (const u of DEMO_USERS) {
     const existing = await prisma.user.findUnique({
-      where: { email: u.email },
+      where: { email: u.email.toLowerCase() },
     });
     if (existing) {
       createdUsers[u.role] = existing.id;
-      logger.info(`✓ User exists: ${u.email}`);
-      continue;
+      if (existing.role !== u.role) {
+        await prisma.user.update({ where: { id: existing.id }, data: { role: u.role, name: u.name } });
+        logger.info(`↺ Updated ${u.email}: ${existing.role} → ${u.role}`);
+      } else {
+        logger.info(`↺ ${u.email} already correct (${u.role})`);
+      }
+    } else {
+      const user = await userService.create(u);
+      createdUsers[u.role] = user.id;
+      logger.info(`✓ Created: ${u.email} (${u.role})`);
     }
-    const user = await userService.create(u);
-    createdUsers[u.role] = user.id;
-    logger.info(`✓ Created: ${u.email} (${u.role})`);
   }
 
   // ── Seed Projects ────────────────────────────────────────────────────────
