@@ -2,7 +2,6 @@ import app from "./app.js";
 import { config } from "./config/index.js";
 import { connectDatabase, disconnectDatabase } from "./config/database.js";
 import { logger } from "./utils/logger.js";
-import { seedDatabase } from "./utils/seedHook.js";
 
 const startServer = async () => {
   try {
@@ -11,13 +10,6 @@ const startServer = async () => {
       await connectDatabase();
     } catch (err) {
       logger.warn("Database not connected - server will start anyway for health check");
-    }
-
-    // Seed demo data on first boot if requested
-    if (process.env.SEED_ON_BOOT === "true") {
-      logger.info("SEED_ON_BOOT=true — running database seed...");
-      await seedDatabase();
-      logger.info("Seed complete.");
     }
 
     app.listen(config.port, () => {
