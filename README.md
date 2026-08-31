@@ -115,12 +115,15 @@ See [docs/DOCKER.md](./docs/DOCKER.md) for full deployment guide.
 - ✅ Leaflet-based geospatial map view with clustering + risk overlay (Phase 5)
 - ✅ Citizen complaint reporting with photo/PDF attachments + **PII auto-redaction** (Phase 6 + 8 + 13)
 - ✅ Financial tracking — budget + expenditure ledger + 5-stage fund flow (Phase 7)
+- ✅ **Project-scoped document management** — upload, verify, search, download (Phase 8)
 - ✅ AI-based anomaly detection — 6 rules engine (Phase 9)
 - ✅ Risk scoring with explainable **4-signal breakdown** (Anomaly / Financial / Reports / Timeline) (Phase 10)
-- ✅ **AI Verdict panel** with confidence ring, contributing factors, and recommendation (Phase 11)
-- ✅ Analytics dashboard with charts (Phase 13)
+- ✅ **AI Verdict panel** + **document intelligence (PDF text extraction)** (Phase 11)
+- ✅ **Satellite land-use / construction / water-body change detection** (Phase 12)
+- ✅ Analytics dashboard with charts + **PDF report export** (Phase 13)
 - ✅ Spatial 3D command map, ⌘K command palette, cinematic transitions, **4-step guided demo tour** (Phase 14)
 - ✅ Officer verification workflow (acknowledge/resolve)
+- ✅ **Full ARIA accessibility audit** — skip link, aria-current, aria-modal, role=menu, role=img summaries, scope=col tables
 - ✅ Audit trail with PII access logging
 - ✅ 16-sector monitoring (Public Works, Health, Education, etc.)
 - ✅ Dark/light theme, mobile responsive

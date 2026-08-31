@@ -174,7 +174,7 @@
 - [x] 4-step Demo Tour overlay — `DemoTour/DemoTour.tsx` + `tourSteps.ts`, auto-shows on first login, manual re-trigger via "Start Demo Tour" button on dashboard
 - [x] Responsive polish — mobile sidebar, mobile-friendly nav, responsive grids
 - [x] Performance optimization — code-splitting via React.lazy, manual chunk splitting, 391 KB main bundle
-- [x] Accessibility improvements (focus rings, ARIA labels) — partial; some buttons have aria-label/title, full audit pending
+- [x] Accessibility improvements — full ARIA audit: skip-to-content link, `aria-current="page"` on active nav, `aria-modal` on dialogs, `aria-pressed` on toggles, `role="menu"` on user dropdown, screen-reader summaries on charts, `aria-label` on icon-only buttons, `role="img"` on map SVG, `scope="col"` on data tables, `aria-live` on toast notifications, `role="search"` on search forms
 
 ---
 
