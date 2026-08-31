@@ -64,7 +64,7 @@
 - [x] Map integration (Leaflet + React-Leaflet)
 - [x] Project markers on map
 - [x] Click to view project details
-- [x] District/State boundaries — `frontend/src/features/map/BoundariesLayer.tsx` + `frontend/src/data/india-states.ts` (state polygon overlays with hover tooltips, state filter highlight, toggle button)
+- [x] District/State boundaries — `frontend/src/features/map/BoundariesLayer.tsx` (state polygon overlays with hover tooltips, state filter highlight, toggle button) + `DistrictsLayer.tsx` (820 real district GeoJSON polygons, choropleth by project density, visible at zoom ≥ 9); district data sourced from `frontend/public/data/india-districts.geojson` (MIT license, simplified 2.6 MB)
 - [x] Map filters — risk-level quick-filter chips + status/sector/state filters in `MapViewPage.tsx`
 - [x] Marker clustering + anomaly heatmap layer + floating layer toggle (Markers / Heatmap / Both) — `MapLayers.tsx`, `MapLegend.tsx`
 
