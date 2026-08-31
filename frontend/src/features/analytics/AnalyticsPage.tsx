@@ -1,4 +1,3 @@
-import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   BarChart3,
@@ -120,12 +119,8 @@ export default function AnalyticsPage() {
   const loading = analyticsQuery.isLoading;
   const error = analyticsQuery.error?.message ?? null;
 
-  // Keep useEffect/useCallback imports valid for any future local use
-  useEffect(() => {}, []);
-  useCallback(() => {}, []);
-
   if (loading) return <LoadingState message="Loading analytics..." />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (error) return <ErrorState message={error} onRetry={() => analyticsQuery.refetch()} />;
   if (!data) return null;
 
   // Derived data

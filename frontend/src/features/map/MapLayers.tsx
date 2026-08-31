@@ -1,3 +1,4 @@
+/// <reference types="leaflet.markercluster" />
 import { CircleMarker, Popup, Tooltip } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
