@@ -65,13 +65,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 # Note: SEED_ON_BOOT requires tsx to be available (it is, via the
 # dev-dependency install in stage 1). If the seed script is ever
 # converted to a pre-compiled JS, remove the tsx requirement.
-CMD ["sh", "-c", "npx prisma generate && npx prisma db push --skip-generate --accept-data-loss && \
-  if [ \"$SEED_ON_BOOT\" = \"true\" ]; then \
-    if npx tsx -e \"import('@prisma/client').then(async({PrismaClient})=>{const p=new PrismaClient();const c=await p.user.count();await p.\\$disconnect();process.exit(c===0?0:1)})\"; then \
-      echo '[seed] DB is empty — loading demo data'; \
-      npx tsx scripts/seed.ts; \
-    else \
-      echo '[seed] DB already populated — skipping'; \
-    fi; \
-  fi && \
-  exec node dist/server.js"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push --skip-generate --accept-data-loss && exec node dist/server.js"]
