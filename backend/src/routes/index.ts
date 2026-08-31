@@ -30,8 +30,10 @@ router.use("/financials", financialRouter);
 router.use("/anomalies", anomalyRoutes);
 router.use("/risk", riskRoutes);
 router.use("/analytics", analyticsRoutes);
-router.use("/admin", adminSeedRoutes);
+// Mount admin routes FIRST so auth middleware runs, THEN internal seed routes
+// (seed has its own secret-token auth and must not be blocked by admin auth)
 router.use("/admin", adminRoutes);
+router.use("/internal", adminSeedRoutes);
 router.use("/ai", aiRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/documents", documentRoutes);

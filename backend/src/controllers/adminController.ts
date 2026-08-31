@@ -205,8 +205,8 @@ export const adminController = {
     res.json(successResponse({ rule: updated }));
   },
 
-  // POST /admin/seed — no auth required, seeded by a secret token
-  // Call with: POST /api/v1/admin/seed?key=<SEED_SECRET>
+  // POST /internal/seed — no auth required, protected by a secret token
+  // Call with: POST /api/v1/internal/seed?key=<SEED_SECRET>
   async seed(req: Request, res: Response) {
     const key = String(req.query.key ?? "");
     const SEED_SECRET = process.env.SEED_SECRET || "vojas-dev-seed";
@@ -215,6 +215,9 @@ export const adminController = {
     }
     const bcrypt = (await import("bcryptjs")).default;
     const { config } = await import("../config/index.js");
+    if (!process.env.DEMO_PASSWORD) {
+      return res.status(500).json(errorResponse("CONFIG_ERROR", "DEMO_PASSWORD env var is not set on this server"));
+    }
     const DEMO_PASSWORD = process.env.DEMO_PASSWORD;
     const DEMO_USERS = [
       { name: "Anitha Krishnan", email: "admin@vojas.gov",   role: "ADMIN" },

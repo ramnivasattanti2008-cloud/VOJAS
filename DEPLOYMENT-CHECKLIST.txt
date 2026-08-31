@@ -1,0 +1,50 @@
+VOJAS DEPLOYMENT CHECKLIST
+==========================
+
+BEFORE YOU START:
+- [ ] Code pushed to GitHub
+- [ ] GitHub account ready
+- [ ] Neon account created
+- [ ] Cyclic account created  
+- [ ] Vercel account created
+
+CYCLIC SETUP (Backend):
+- [ ] NODE_ENV = production
+- [ ] PORT = 3000
+- [ ] DATABASE_URL = postgresql://user:pass@host/vojas?sslmode=require
+- [ ] JWT_SECRET = 14000cb099eca64f72c8a0a3c4bf0a02078c3ecedecf26495b99ddf52ae28fd2
+- [ ] JWT_EXPIRES_IN = 7d
+- [ ] BCRYPT_ROUNDS = 10
+- [ ] CLIENT_BASE_URL = https://vojas-frontend.vercel.app
+- [ ] SEED_ON_BOOT = true
+
+VERCEL SETUP (Frontend):
+- [ ] VITE_API_BASE_URL = https://YOUR-CYCLIC-APP.cyclic.app/api/v1
+- [ ] VITE_APP_NAME = VOJAS
+- [ ] VITE_ENABLE_RQ_DEVTOOLS = false
+
+NEON SETUP (Database):
+- [ ] Project created
+- [ ] Connection string copied
+- [ ] Connection tested (optional)
+
+TESTING:
+- [ ] Backend health check: curl https://YOUR-APP.cyclic.app/api/v1/health
+- [ ] Frontend loads: https://vojas-frontend.vercel.app
+- [ ] Login works: admin@vojas.gov / VojasDemo2026
+- [ ] Dashboard displays data
+- [ ] Maps load correctly
+
+SECRETS (Save These Securely):
+JWT_SECRET: 14000cb099eca64f72c8a0a3c4bf0a02078c3ecedecf26495b99ddf52ae28fd2
+(Store in password manager or secure location)
+
+AUTOMATION COMPLETE!
+====================
+All configuration files are ready.
+Follow the platform-specific instructions above to deploy.
+
+Need help? See:
+- DEPLOYMENT.md (comprehensive guide)
+- QUICK-DEPLOY.md (15-minute walkthrough)
+- DEPLOYMENT-PACKAGE.md (resource index)

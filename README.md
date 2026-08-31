@@ -14,13 +14,32 @@ The system combines official project data, geospatial analysis, citizen reports,
 
 > **🎬 5-Minute Demo Script:** See [docs/DEMO.md](./docs/DEMO.md) for the SIH pitch walkthrough.
 
-## 🚀 One-Click Deploy (Free, 15 minutes)
+---
 
-> **Live in 15 min** with Vercel (frontend) + Cyclic.sh (backend) + Neon (database) — all free tiers.
+## 🚀 **DEPLOY NOW** (Free Forever, $0/month)
 
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ramnivasattanti2008-cloud/VOJAS&root-directory=frontend&env=VITE_API_BASE_URL,VITE_APP_NAME,VITE_ENABLE_RQ_DEVTOOLS&envDescription=Set%20VITE_API_BASE_URL%20to%20your%20backend%20URL%20(https%3A%2F%2Fyour-app.cyclic.app%2Fapi%2Fv1)&envLink=https://github.com/ramnivasattanti2008-cloud/VOJAS/blob/master/QUICK-DEPLOY.md)
+**Choose your deployment method:**
 
-📄 **Full step-by-step guide:** [QUICK-DEPLOY.md](./QUICK-DEPLOY.md)
+### Option 1: Fast Deploy (Vercel + Cyclic + Neon) — 15 minutes
+- **Frontend:** [Vercel](https://vercel.com) (Global CDN)
+- **Backend:** [Cyclic.sh](https://cyclic.sh) (Always-on)
+- **Database:** [Neon](https://neon.tech) (Free PostgreSQL)
+
+👉 **[Start QUICK-DEPLOY.md (15 min)](./QUICK-DEPLOY.md)** ← Follow this first!
+
+### Option 2: Complete Guide with Troubleshooting
+👉 **[Read DEPLOYMENT.md](./DEPLOYMENT.md)** — Full setup, architecture, monitoring, scaling
+
+### Option 3: One-Click Render Blueprint
+👉 **[Deploy to Render](https://dashboard.render.com/blueprints)** — All services in one dashboard
+
+### Local Development
+```bash
+bash scripts/setup-local.sh    # One-command setup
+bash scripts/pre-deploy-check.sh  # Verify before deploying
+```
+
+---
 
 ## Tech Stack
 
