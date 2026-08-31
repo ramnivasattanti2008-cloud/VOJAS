@@ -1,0 +1,32 @@
+{
+  "$schema": "https://extract.cyclic.sh/schema",
+  "version": 2,
+  "framework": "node",
+  "buildCommand": "npm ci && npx prisma generate && npm run build",
+  "startCommand": "npx prisma db push --accept-data-loss && node dist/server.js",
+  "routes": [
+    {
+      "path": "/api",
+      "dest": "server"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "JWT_SECRET": {
+      "description": "32+ character secret. Set via Cyclic dashboard or here.",
+      "required": true
+    },
+    "JWT_EXPIRES_IN": "7d",
+    "BCRYPT_ROUNDS": "10",
+    "CLIENT_BASE_URL": {
+      "description": "Your Vercel frontend URL, e.g. https://vojas-frontend.vercel.app",
+      "required": true
+    },
+    "SEED_ON_BOOT": "true",
+    "DATABASE_URL": {
+      "description": "PostgreSQL connection string. Use Neon free tier: postgresql://user:pass@host/db",
+      "required": true
+    }
+  }
+}

@@ -14,6 +14,14 @@ The system combines official project data, geospatial analysis, citizen reports,
 
 > **🎬 5-Minute Demo Script:** See [docs/DEMO.md](./docs/DEMO.md) for the SIH pitch walkthrough.
 
+## 🚀 One-Click Deploy (Free, 15 minutes)
+
+> **Live in 15 min** with Vercel (frontend) + Cyclic.sh (backend) + Neon (database) — all free tiers.
+
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ramnivasattanti2008-cloud/VOJAS&root-directory=frontend&env=VITE_API_BASE_URL,VITE_APP_NAME,VITE_ENABLE_RQ_DEVTOOLS&envDescription=Set%20VITE_API_BASE_URL%20to%20your%20backend%20URL%20(https%3A%2F%2Fyour-app.cyclic.app%2Fapi%2Fv1)&envLink=https://github.com/ramnivasattanti2008-cloud/VOJAS/blob/master/QUICK-DEPLOY.md)
+
+📄 **Full step-by-step guide:** [QUICK-DEPLOY.md](./QUICK-DEPLOY.md)
+
 ## Tech Stack
 
 | Layer | Technology |
