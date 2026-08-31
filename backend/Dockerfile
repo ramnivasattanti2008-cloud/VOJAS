@@ -67,5 +67,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 # Note: SEED_ON_BOOT requires tsx to be available (it is, via the
 # dev-dependency install in stage 1). If the seed script is ever
 # converted to a pre-compiled JS, remove the tsx requirement.
-# Seed runs from /app (WORKDIR) where scripts/seed.ts is copied
-CMD ["sh", "-c", "if [ \"$SEED_ON_BOOT\" = \"true\" ]; then npx --yes tsx scripts/seed.ts || echo 'seed failed'; fi; exec node dist/server.js"]
+# Seed runs from /app (WORKDIR) where scripts/seed.ts is copied.
+# The || exit 0 ensures the container still starts even if seeding fails
+# (so a transient DB issue doesn't break the live site).
+CMD ["sh", "-c", "if [ \"$SEED_ON_BOOT\" = \"true\" ]; then npx --yes tsx scripts/seed.ts || echo 'seed failed (non-fatal)'; fi; exec node dist/server.js"]
