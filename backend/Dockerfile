@@ -72,4 +72,4 @@ CMD ["sh", "-c", "npx prisma generate && npx prisma db push --skip-generate --ac
       echo '[seed] DB already populated — skipping'; \
     fi; \
   fi && \
-  exec node dist/src/app.js"]
+  exec node dist/server.js"]

@@ -52,7 +52,7 @@ jobs:
           PORT: 5000
         run: |
           npx prisma db push --skip-generate
-          node dist/src/app.js &
+          node dist/server.js &
           SERVER_PID=$!
           sleep 3
           curl -fsS http://localhost:5000/api/v1/health | tee /tmp/health.json
