@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError } from "@/services/api";
+import { ApiError } from "@/services/api";
 import {
-  type Project,
   type ProjectStatus,
   type ProjectSector,
   PROJECT_SECTORS,
   PROJECT_STATUSES,
 } from "@/types";
+import {
+  useProject,
+  useCreateProject,
+  useUpdateProject,
+  useDeleteProject,
+} from "@/hooks/useProjects";
 import { LoadingState, ErrorState } from "@/components/ui";
 import {
   ArrowLeft,
@@ -58,38 +63,37 @@ export default function ProjectFormPage() {
   const isEdit = Boolean(id);
 
   const [form, setForm] = useState<FormData>(EMPTY);
-  const [original, setOriginal] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
-  // For edit mode: load project
+  // React Query
+  const projectQuery = useProject(id);
+  const createMutation = useCreateProject();
+  const updateMutation = useUpdateProject(id ?? "");
+  const deleteMutation = useDeleteProject();
+
+  const project = projectQuery.data?.project ?? null;
+  const loading = projectQuery.isLoading;
+
+  // Populate form when project loads in edit mode
   useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    api.get<{ project: Project }>(`/projects/${id}`)
-      .then(({ project }) => {
-        setOriginal(project);
-        setForm({
-          name: project.name,
-          description: project.description ?? "",
-          status: project.status,
-          sector: project.sector,
-          district: project.district,
-          constituency: project.constituency ?? "",
-          state: project.state,
-          approvedAmount: String(project.approvedAmount),
-          spentAmount: String(project.spentAmount),
-          contractor: project.contractor ?? "",
-          startDate: project.startDate ? project.startDate.split("T")[0] : "",
-          expectedEndDate: project.expectedEndDate ? project.expectedEndDate.split("T")[0] : "",
-        });
-      })
-      .catch((err: ApiError) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id]);
+    if (!project) return;
+    setForm({
+      name: project.name,
+      description: project.description ?? "",
+      status: project.status,
+      sector: project.sector,
+      district: project.district,
+      constituency: project.constituency ?? "",
+      state: project.state,
+      approvedAmount: String(project.approvedAmount),
+      spentAmount: String(project.spentAmount),
+      contractor: project.contractor ?? "",
+      startDate: project.startDate ? project.startDate.split("T")[0] : "",
+      expectedEndDate: project.expectedEndDate ? project.expectedEndDate.split("T")[0] : "",
+    });
+  }, [project]);
 
   function update<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -148,13 +152,11 @@ export default function ProjectFormPage() {
     };
 
     try {
-      if (isEdit) {
-        const { project } = await api.put<{ project: Project }>(`/projects/${id}`, payload);
-        navigate(`/projects/${project.id}`);
-      } else {
-        const { project } = await api.post<{ project: Project }>(`/projects`, payload);
-        navigate(`/projects/${project.id}`);
-      }
+      const result = isEdit
+        ? await updateMutation.mutateAsync(payload)
+        : await createMutation.mutateAsync(payload);
+      const saved = result.project;
+      navigate(`/projects/${saved.id}`);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -179,11 +181,11 @@ export default function ProjectFormPage() {
 
   async function handleDelete() {
     if (!id) return;
-    if (!window.confirm(`Delete project "${original?.name}"?\n\nThis action cannot be undone.`)) return;
+    if (!window.confirm(`Delete project "${project?.name}"?\n\nThis action cannot be undone.`)) return;
 
     setSaving(true);
     try {
-      await api.delete(`/projects/${id}`);
+      await deleteMutation.mutateAsync(id);
       navigate("/projects");
     } catch (err) {
       if (err instanceof ApiError) setError(err.message);
@@ -193,7 +195,7 @@ export default function ProjectFormPage() {
   }
 
   if (loading) return <LoadingState message="Loading project..." />;
-  if (error && !form.name) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  if (projectQuery.error && !form.name) return <ErrorState message={projectQuery.error.message} onRetry={() => projectQuery.refetch()} />;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-[fadeIn_0.3s_ease-out]">

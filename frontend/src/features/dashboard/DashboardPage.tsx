@@ -258,7 +258,7 @@ function SystemStatus({ health }: { health: HealthStatus | null }) {
 
 // ── Quick Ratio Stats ──────────────────────────────────────────────────────
 function QuickStats({ reports, pendingReports, totalProjects, completedProjects, utilization }: {
-  reports: PaginatedReports | null;
+  reports: NonNullable<ReturnType<typeof useReports>["data"]> | undefined;
   pendingReports: number;
   totalProjects: number;
   completedProjects: number;
@@ -377,8 +377,8 @@ export default function DashboardPage() {
   const health    = healthQuery.data ?? null;
   const projects  = projectsQuery.data?.items ?? [];
   const schemeFin = finQuery.data ?? null;
-  const anomalies = anomaliesQuery.data?.items ?? [];
-  const reports   = reportsQuery.data ?? null;
+  const anomalies = anomaliesQuery.data ?? null;
+  const reports   = reportsQuery.data;
 
   // Is ANY query still loading?
   const loading =
@@ -403,7 +403,7 @@ export default function DashboardPage() {
     [projects]
   );
 
-  const topAnomalies = anomalies;
+  const topAnomalies = anomalies?.items ?? [];
 
   // Live feed: newest 3 reports + 3 anomalies, sorted by time
   const liveActivities: LiveActivity[] = useMemo(() => {
