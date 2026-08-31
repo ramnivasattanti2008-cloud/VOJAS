@@ -13,6 +13,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Swap SQLite → PostgreSQL provider BEFORE prisma generate (must match the actual schema)
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' ./prisma/schema.prisma && \
+    echo "Swapped prisma provider → postgresql"
+
 RUN npx prisma generate && npm run build
 
 # ── Stage 3: Production runtime ─────────────────────────────────────────────
@@ -35,8 +39,7 @@ COPY --from=builder /app/package.json  ./package.json
 # Copy prisma dir then swap schema.prisma → postgresql provider for prod.
 # (The committed schema.prisma is sqlite for local dev convenience.)
 COPY --from=builder /app/prisma       ./prisma
-RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' ./prisma/schema.prisma && \
-    echo "Swapped prisma provider → postgresql for production"
+# Schema was already swapped to postgresql in builder stage
 # Seed script is plain TS — copied for optional seeding at boot
 COPY --from=builder /app/scripts       ./scripts
 
