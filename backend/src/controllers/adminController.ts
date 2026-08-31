@@ -215,7 +215,7 @@ export const adminController = {
     }
     const bcrypt = (await import("bcryptjs")).default;
     const { config } = await import("../config/index.js");
-    const DEMO_PASSWORD = process.env.DEMO_PASSWORD;
+    const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "VojasDemo@123";
     const DEMO_USERS = [
       { name: "Anitha Krishnan", email: "admin@vojas.gov",   role: "ADMIN" },
       { name: "Ravi Shankar",    email: "officer@vojas.gov", role: "OFFICER" },

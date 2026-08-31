@@ -1,36 +1,52 @@
-# ── Stage 1: Install all dependencies (including devDeps for prisma + tsc) ──
+# ── Stage 1: Install dependencies ────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
+
 COPY package.json package-lock.json* ./
+# Include devDependencies because tsx (seed runner) is a devDependency.
 RUN npm install --include=dev
 
-# ── Stage 2: Build TypeScript ─────────────────────────────────────────────────
+# ── Stage 2: Build TypeScript ───────────────────────────────────────────
 FROM node:20-alpine AS builder
 WORKDIR /app
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# The committed schema.prisma is SQLite for local dev; swap to PostgreSQL for prod
+
+# Swap SQLite → PostgreSQL provider BEFORE prisma generate (must match the actual schema)
 RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' ./prisma/schema.prisma && \
-    echo "Swapped schema provider → postgresql"
+    echo "Swapped prisma provider → postgresql"
+
 RUN npx prisma generate && npm run build
 
-# ── Stage 3: Production runtime ────────────────────────────────────────────────
+# ── Stage 3: Production runtime ─────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
+
 ENV NODE_ENV=production
 ENV PORT=5000
-RUN addgroup -g 1001 -S nodejs && adduser -S nodeapp -u 1001
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
+# Security: non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser  -S nodeapp -u 1001
+
+# Install wget for HEALTHCHECK (Alpine base image lacks it)
+RUN apk add --no-cache wget
+
+COPY --from=builder /app/dist          ./dist
+COPY --from=builder /app/node_modules  ./node_modules
+COPY --from=builder /app/package.json  ./package.json
+# Copy prisma dir then swap schema.prisma → postgresql provider for prod.
+# (The committed schema.prisma is sqlite for local dev convenience.)
+COPY --from=builder /app/prisma       ./prisma
 
 RUN chown -R nodeapp:nodejs /app
+
 USER nodeapp
+
 EXPOSE 5000
 
-# Healthcheck: wait for the API to respond
+# Healthcheck — wait for the API to be reachable, not just the port
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/api/v1/health || exit 1
 
