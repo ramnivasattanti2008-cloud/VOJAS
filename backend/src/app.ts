@@ -37,7 +37,11 @@ app.use(
           "https://server.arcgisonline.com",
           "https://*.arcgisonline.com",
         ],
-        connectSrc: ["'self'"],
+        connectSrc: [
+          "'self'",
+          "https://vojas-backend.onrender.com",
+          "https://vojas-frontend.vercel.app",
+        ],
         fontSrc: ["'self'", "data:"],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
@@ -68,7 +72,12 @@ app.use(
 // ── CORS ───────────────────────────────────────────────────────────────────────
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: [
+      config.clientUrl,
+      "http://localhost:5173",
+      "http://localhost:4173",
+      "https://vojas-frontend.vercel.app",
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

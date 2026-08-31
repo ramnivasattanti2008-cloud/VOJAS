@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { tokenService } from "../services/tokenService.js";
+import { config } from "../config/index.js";
 
 export const authenticate = (
   req: Request,
@@ -26,13 +27,17 @@ export const authenticate = (
     const payload = tokenService.verify(token);
     (req as any).user = payload;
     next();
-  } catch (err) {
+  } catch (err: any) {
+    const message =
+      !config.isProduction && err?.message
+        ? `Invalid or expired token (${err.message})`
+        : "Invalid or expired token";
     return res.status(401).json({
       success: false,
       data: null,
       error: {
         code: "UNAUTHORIZED",
-        message: "Invalid or expired token",
+        message,
       },
       meta: { timestamp: new Date().toISOString() },
     });
