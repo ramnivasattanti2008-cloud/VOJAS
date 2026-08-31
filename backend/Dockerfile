@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 # Include devDependencies because tsx (seed runner) is a devDependency.
-RUN npm ci --ignore-scripts --include=dev
+RUN npm install --include=dev
 
 # ── Stage 2: Build TypeScript ───────────────────────────────────────────────
 FROM node:20-alpine AS builder
