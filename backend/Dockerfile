@@ -17,7 +17,7 @@ COPY . .
 RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' ./prisma/schema.prisma && \
     echo "Swapped prisma provider → postgresql"
 
-RUN npx prisma generate && npm run build
+RUN npx prisma generate && npm run build && npx tsc scripts/seed.ts --outDir scripts/dist --module nodenext --moduleResolution nodenext --esModuleInterop --target es2022 --skipLibCheck 2>/dev/null || echo "seed compile note"
 
 # ── Stage 3: Production runtime ─────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -45,6 +45,8 @@ COPY --from=builder /app/scripts       ./scripts
 
 # Install wget for HEALTHCHECK (Alpine base image lacks it)
 RUN apk add --no-cache wget
+# Install tsx globally for seed script (needed at runtime)
+RUN npm install -g tsx
 
 RUN chown -R nodeapp:nodejs /app
 
