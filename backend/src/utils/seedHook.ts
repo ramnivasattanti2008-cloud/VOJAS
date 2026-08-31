@@ -1,9 +1,10 @@
 import { prisma } from "../config/database.js";
-import { userService } from "../services/userService.js";
 import { seedRules } from "../services/anomalyService.js";
 import { aiService } from "../services/aiService.js";
 import { riskService } from "../services/riskService.js";
 import { logger } from "./logger.js";
+import { config } from "../config/index.js";
+import bcrypt from "bcryptjs";
 import type { ReportCategory, ReportSeverity, ReportStatus, ExpenditureCategory, PaymentStatus } from "@prisma/client";
 
 // Demo password is read from env (set in deployment env) so the value never lives in source.
@@ -82,82 +83,141 @@ const DEMO_ANOMALIES = [
 ];
 
 export async function seedDatabase(): Promise<void> {
-  // Idempotency: if any data already exists, skip.
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0) {
-    logger.info(`Database already seeded (${existingUsers} users) — skipping.`);
-    return;
-  }
+  // Idempotency strategy:
+  //   - Users: upsert by email — never duplicate. Always ensure the 4 demo accounts exist with the right roles.
+  //   - Projects, expenditures, reports, anomalies: only create if missing (matched by natural key).
+  //   - AI analyses + risk scores: re-apply if missing on existing rows.
+  // This makes the function safe to call on every boot — first time it builds a full demo dataset,
+  // subsequent boots it tops it up and never destroys data.
 
-  logger.info("Seeding demo users...");
+  logger.info("Ensuring demo users (upsert)...");
   const createdUsers: Record<string, string> = {};
   for (const u of DEMO_USERS) {
-    const user = await userService.create(u);
-    createdUsers[u.role] = user.id;
+    const hashed = await bcrypt.hash(u.password, config.bcrypt.rounds);
+    const existing = await prisma.user.findUnique({ where: { email: u.email.toLowerCase() } });
+    if (existing) {
+      createdUsers[u.role] = existing.id;
+      if (existing.role !== u.role) {
+        await prisma.user.update({ where: { id: existing.id }, data: { role: u.role, name: u.name } });
+        logger.info(`  ↺ Updated ${u.email}: ${existing.role} → ${u.role}`);
+      } else {
+        logger.info(`  ↺ ${u.email} already has correct role (${u.role})`);
+      }
+    } else {
+      const user = await prisma.user.create({
+        data: {
+          email: u.email.toLowerCase(),
+          password: hashed,
+          name: u.name,
+          role: u.role,
+        },
+      });
+      createdUsers[u.role] = user.id;
+      logger.info(`  ✓ Created ${u.email} (${u.role})`);
+    }
   }
 
-  logger.info("Seeding demo projects...");
-  for (const p of DEMO_PROJECTS) {
-    await prisma.project.create({ data: { ...p, createdById: createdUsers["OFFICER"] ?? null } });
+  // Also fix the legacy VIEWER admin@vojas.gov that got registered early
+  const legacyAdmin = await prisma.user.findUnique({ where: { email: "admin@vojas.gov" } });
+  if (legacyAdmin && legacyAdmin.role === "VIEWER") {
+    await prisma.user.update({ where: { id: legacyAdmin.id }, data: { role: "ADMIN", name: "Anitha Krishnan" } });
+    createdUsers["ADMIN"] = legacyAdmin.id;
+    logger.info("  ↺ Promoted legacy admin@vojas.gov VIEWER → ADMIN");
   }
 
-  logger.info("Seeding expenditures...");
-  const projects = await prisma.project.findMany({ select: { id: true } });
-  for (const exp of DEMO_EXPENDITURES) {
-    const projectId = projects[exp.projectIndex]?.id;
-    if (!projectId) continue;
-    await prisma.expenditure.create({
-      data: {
-        projectId, amount: exp.amount, category: exp.category, description: exp.description,
-        vendor: exp.vendor ?? null, invoiceNo: exp.invoiceNo ?? null, paidOn: exp.paidOn ?? null,
-        status: exp.status, notes: exp.notes ?? null, createdById: createdUsers["OFFICER"] ?? null,
-      },
-    });
+  // Projects: only create if zero projects exist (full demo is large; partial seeding is confusing)
+  const projectCount = await prisma.project.count();
+  if (projectCount === 0) {
+    logger.info("Seeding demo projects...");
+    for (const p of DEMO_PROJECTS) {
+      await prisma.project.create({ data: { ...p, createdById: createdUsers["OFFICER"] ?? null } });
+    }
+    logger.info(`  ✓ ${DEMO_PROJECTS.length} projects created`);
+  } else {
+    logger.info(`  ↺ Skipping projects (${projectCount} already exist)`);
   }
 
-  logger.info("Seeding reports...");
-  for (const r of DEMO_REPORTS) {
-    await prisma.report.create({
-      data: {
-        title: r.title, description: r.description, category: r.category, severity: r.severity, status: r.status,
-        reporterName: r.reporterName, reporterEmail: r.reporterEmail, reporterPhone: r.reporterPhone,
-        isAnonymous: r.isAnonymous, locationDesc: r.locationDesc,
-        assignedToId: ["UNDER_REVIEW", "RESOLVED"].includes(r.status) ? (createdUsers["OFFICER"] ?? null) : null,
-        resolution: (r as any).resolution ?? null,
-        resolvedAt: r.status === "RESOLVED" ? new Date() : null,
-        source: "WEB",
-      },
-    });
+  // Expenditures: only seed if none exist
+  const expCount = await prisma.expenditure.count();
+  if (expCount === 0) {
+    logger.info("Seeding expenditures...");
+    const projects = await prisma.project.findMany({ select: { id: true } });
+    for (const exp of DEMO_EXPENDITURES) {
+      const projectId = projects[exp.projectIndex]?.id;
+      if (!projectId) continue;
+      await prisma.expenditure.create({
+        data: {
+          projectId, amount: exp.amount, category: exp.category, description: exp.description,
+          vendor: exp.vendor ?? null, invoiceNo: exp.invoiceNo ?? null, paidOn: exp.paidOn ?? null,
+          status: exp.status, notes: exp.notes ?? null, createdById: createdUsers["OFFICER"] ?? null,
+        },
+      });
+    }
+    logger.info(`  ✓ ${DEMO_EXPENDITURES.length} expenditures created`);
+  } else {
+    logger.info(`  ↺ Skipping expenditures (${expCount} already exist)`);
   }
 
-  logger.info("Seeding detection rules and anomalies...");
-  await seedRules();
-  const allProjects = await prisma.project.findMany({ select: { id: true, name: true } });
-  const projectByName: Record<string, string> = {};
-  for (const p of allProjects) projectByName[p.name] = p.id;
-  const analyst = await prisma.user.findFirst({ where: { role: "ANALYST" } });
-  const admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-  for (const a of DEMO_ANOMALIES) {
-    const projectIds = Object.values(projectByName);
-    const projectId = projectIds[Math.floor(Math.random() * projectIds.length)];
-    await prisma.anomaly.create({
-      data: {
-        ...a,
-        status: Math.random() > 0.5 ? "OPEN" : "ACKNOWLEDGED",
-        projectId,
-        acknowledgedById: Math.random() > 0.5 ? analyst?.id : null,
-        acknowledgedAt: Math.random() > 0.5 ? new Date() : null,
-        resolvedById: a.category === "GEOGRAPHIC" ? admin?.id : null,
-        resolvedAt: a.category === "GEOGRAPHIC" ? new Date() : null,
-        resolution: a.category === "GEOGRAPHIC" ? "Location verified by field officer. No issue found." : null,
-      },
-    });
+  // Reports: only seed if none exist
+  const reportCount = await prisma.report.count();
+  if (reportCount === 0) {
+    logger.info("Seeding reports...");
+    for (const r of DEMO_REPORTS) {
+      await prisma.report.create({
+        data: {
+          title: r.title, description: r.description, category: r.category, severity: r.severity, status: r.status,
+          reporterName: r.reporterName, reporterEmail: r.reporterEmail, reporterPhone: r.reporterPhone,
+          isAnonymous: r.isAnonymous, locationDesc: r.locationDesc,
+          assignedToId: ["UNDER_REVIEW", "RESOLVED"].includes(r.status) ? (createdUsers["OFFICER"] ?? null) : null,
+          resolution: (r as any).resolution ?? null,
+          resolvedAt: r.status === "RESOLVED" ? new Date() : null,
+          source: "WEB",
+        },
+      });
+    }
+    logger.info(`  ✓ ${DEMO_REPORTS.length} reports created`);
+  } else {
+    logger.info(`  ↺ Skipping reports (${reportCount} already exist)`);
   }
 
-  logger.info("Generating AI explanations for anomalies...");
-  const allAnomalies = await prisma.anomaly.findMany({ include: { project: { select: { name: true } } } });
+  // Anomalies: only seed if none exist
+  const anomalyCount = await prisma.anomaly.count();
+  if (anomalyCount === 0) {
+    logger.info("Seeding detection rules and anomalies...");
+    await seedRules();
+    const allProjects = await prisma.project.findMany({ select: { id: true, name: true } });
+    const projectByName: Record<string, string> = {};
+    for (const p of allProjects) projectByName[p.name] = p.id;
+    const analyst = createdUsers["ANALYST"] ?? (await prisma.user.findFirst({ where: { role: "ANALYST" } }))?.id ?? null;
+    const admin = createdUsers["ADMIN"] ?? (await prisma.user.findFirst({ where: { role: "ADMIN" } }))?.id ?? null;
+    for (const a of DEMO_ANOMALIES) {
+      const projectIds = Object.values(projectByName);
+      const projectId = projectIds[Math.floor(Math.random() * projectIds.length)];
+      await prisma.anomaly.create({
+        data: {
+          ...a,
+          status: Math.random() > 0.5 ? "OPEN" : "ACKNOWLEDGED",
+          projectId,
+          acknowledgedById: Math.random() > 0.5 ? analyst : null,
+          acknowledgedAt: Math.random() > 0.5 ? new Date() : null,
+          resolvedById: a.category === "GEOGRAPHIC" ? admin : null,
+          resolvedAt: a.category === "GEOGRAPHIC" ? new Date() : null,
+          resolution: a.category === "GEOGRAPHIC" ? "Location verified by field officer. No issue found." : null,
+        },
+      });
+    }
+    logger.info(`  ✓ ${DEMO_ANOMALIES.length} anomalies created`);
+  } else {
+    logger.info(`  ↺ Skipping anomalies (${anomalyCount} already exist)`);
+  }
+
+  // AI explanations: fill in any missing
+  logger.info("Backfilling AI explanations where missing...");
+  const allAnomalies = await prisma.anomaly.findMany({
+    where: { aiExplanation: null },
+    include: { project: { select: { name: true } } },
+  });
   for (const a of allAnomalies) {
-    if (a.aiExplanation) continue;
     const explanation = aiService.explainAnomaly({
       title: a.title, description: a.description, category: a.category, severity: a.severity,
       riskScore: a.riskScore, ruleCode: a.ruleCode ?? undefined, evidence: a.evidence ?? undefined,
@@ -165,17 +225,26 @@ export async function seedDatabase(): Promise<void> {
     });
     await prisma.anomaly.update({ where: { id: a.id }, data: { aiExplanation: JSON.stringify(explanation), aiConfidence: explanation.confidence } });
   }
+  if (allAnomalies.length > 0) logger.info(`  ✓ Generated ${allAnomalies.length} AI explanations`);
 
-  logger.info("Analyzing reports with AI...");
-  const allReports = await prisma.report.findMany({ select: { id: true, title: true, description: true } });
+  logger.info("Backfilling AI report analyses where missing...");
+  const allReports = await prisma.report.findMany({ where: { aiAnalysis: null }, select: { id: true, title: true, description: true } });
   for (const r of allReports) {
     if (!r.description) continue;
     const analysis = aiService.analyzeReport(r.title, r.description);
     await prisma.report.update({ where: { id: r.id }, data: { aiAnalysis: JSON.stringify(analysis), aiAnalyzedAt: new Date() } });
   }
+  if (allReports.length > 0) logger.info(`  ✓ Generated ${allReports.length} AI report analyses`);
 
   logger.info("Calculating risk scores...");
   try { await riskService.recalculateAll(); } catch (err) { logger.warn(`Risk recalc failed: ${(err as Error).message}`); }
 
-  logger.info(`✅ Seed complete: ${DEMO_USERS.length} users, ${DEMO_PROJECTS.length} projects, ${DEMO_EXPENDITURES.length} expenditures, ${DEMO_REPORTS.length} reports, ${DEMO_ANOMALIES.length} anomalies.`);
+  const finalCounts = {
+    users: await prisma.user.count(),
+    projects: await prisma.project.count(),
+    expenditures: await prisma.expenditure.count(),
+    reports: await prisma.report.count(),
+    anomalies: await prisma.anomaly.count(),
+  };
+  logger.info(`✅ Seed complete. Final counts: ${JSON.stringify(finalCounts)}`);
 }
