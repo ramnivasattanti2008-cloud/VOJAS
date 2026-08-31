@@ -145,9 +145,9 @@ See [docs/DOCKER.md](./docs/DOCKER.md) for full deployment guide.
 | 9 | Anomaly Detection | ✅ |
 | 10 | Risk Scoring | ✅ |
 | 11 | AI Integration (Local explainer) | ✅ |
-| 12 | Layout/Theme Polish | ✅ |
+| 12 | Satellite & Geospatial | ✅ |
 | 13 | Analytics + PII Redaction | ✅ |
-| 14 | Spatial UI + Demo Tour | ✅ |
+| 14 | Advanced UI & Polish | ✅ |
 | 15 | Deployment + Security Hardening | ✅ |
 
 ## Safety Principle
