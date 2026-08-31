@@ -46,6 +46,8 @@ services:
         value: https://vojas-frontend.onrender.com
       - key: PORT
         value: 10000
+      - key: SEED_ON_BOOT
+        value: "true"
     autoDeploy: true
 
   # ── Frontend (static) ────────────────────────────────────────────────────
