@@ -34,8 +34,35 @@ import {
 import { ClusterLayer, AnomalyHeatmap, MapLayersControl, type LayerMode, type TileMode } from "./MapLayers";
 import { MapLegend } from "./MapLegend";
 import { BoundariesLayer } from "./BoundariesLayer";
+import { DistrictsLayer } from "./DistrictsLayer";
 
-// India center + bounds
+/** Zoom-aware districts wrapper — only renders DistrictsLayer when zoom >= 9 */
+function DistrictsBoundary({
+  showDistricts,
+  districtCounts,
+  highlightedState,
+}: {
+  showDistricts: boolean;
+  districtCounts?: Record<string, number>;
+  highlightedState: string;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on("zoom", onZoom);
+    return () => { map.off("zoom", onZoom); };
+  }, [map]);
+
+  if (!showDistricts || zoom < 9) return null;
+  return (
+    <DistrictsLayer
+      districtCounts={districtCounts}
+      highlightedState={highlightedState}
+    />
+  );
+}
 const INDIA_CENTER: [number, number] = [22.5937, 78.9629];
 const INDIA_ZOOM = 5;
 
@@ -109,6 +136,7 @@ export default function MapViewPage() {
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
   const [showBoundaries, setShowBoundaries] = useState(false);
+  const [showDistricts, setShowDistricts] = useState(false);
 
   // Per-project risk cache: projectId → riskLevel
   const riskCache = useRef<Map<string, RiskLevel>>(new Map());
@@ -519,7 +547,21 @@ export default function MapViewPage() {
             title="Toggle India state boundaries"
           >
             <Layers className="w-3 h-3" aria-hidden="true" />
-            {showBoundaries ? "Boundaries on" : "Boundaries"}
+            {showBoundaries ? "States on" : "States"}
+          </button>
+
+          <button
+            onClick={() => setShowDistricts((v) => !v)}
+            aria-pressed={showDistricts}
+            className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-md border transition-all ${
+              showDistricts
+                ? "bg-electric-500/15 border-electric-500/30 text-electric-400"
+                : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
+            }`}
+            title="Toggle India district boundaries (visible at zoom ≥ 9)"
+          >
+            <Layers className="w-3 h-3" aria-hidden="true" />
+            {showDistricts ? "Districts on" : "Districts"}
           </button>
         </div>
       </div>
@@ -580,6 +622,12 @@ export default function MapViewPage() {
                   }}
                 />
               )}
+
+              <DistrictsBoundary
+                showDistricts={showDistricts}
+                districtCounts={overview?.districtCounts}
+                highlightedState={stateFilter}
+              />
 
               {(layerMode === "markers" || layerMode === "both") && (
                 <ClusterLayer
@@ -696,7 +744,7 @@ export default function MapViewPage() {
 
       {/* Legend */}
       {!loading && !error && overview && overview.total > 0 && (
-        <MapLegend layerMode={layerMode} showBoundaries={showBoundaries} />
+        <MapLegend layerMode={layerMode} showBoundaries={showBoundaries} showDistricts={showDistricts} />
       )}
     </div>
   );

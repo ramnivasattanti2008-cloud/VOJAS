@@ -37,9 +37,10 @@ const SEVERITY_COLORS: Record<AnomalySeverity, string> = {
 interface MapLegendProps {
   layerMode: LayerMode;
   showBoundaries?: boolean;
+  showDistricts?: boolean;
 }
 
-export function MapLegend({ layerMode, showBoundaries }: MapLegendProps) {
+export function MapLegend({ layerMode, showBoundaries, showDistricts }: MapLegendProps) {
   const showHeatmapLegend = layerMode === "heatmap" || layerMode === "both";
 
   return (
@@ -127,6 +128,31 @@ export function MapLegend({ layerMode, showBoundaries }: MapLegendProps) {
             <div className="flex items-center gap-1.5">
               <Layers className="w-3 h-3 text-electric-400" />
               <span className="text-slate-400">Click a state to filter</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* District boundaries legend */}
+      {showDistricts && (
+        <div className="border-t border-white/5 pt-3 space-y-1.5">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">
+            District Boundaries (visible at zoom ≥ 9)
+          </p>
+          <div className="flex items-center gap-3 flex-wrap text-[10px]">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-4 h-3 rounded"
+                style={{ background: "linear-gradient(to right, hsl(220,68%,24%), hsl(110,68%,38%), hsl(40,68%,44%), hsl(0,68%,48%))" }}
+              />
+              <span className="text-slate-400">District project density</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-4 h-0.5 border-t-2"
+                style={{ borderColor: "#a5b4fc" }}
+              />
+              <span className="text-slate-400">Active state filter</span>
             </div>
           </div>
         </div>

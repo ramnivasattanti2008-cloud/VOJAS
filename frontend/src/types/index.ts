@@ -159,6 +159,8 @@ export interface MapMarker {
 export interface MapOverview {
   total: number;
   stateCounts?: Record<string, number>;
+  /** Keyed by canonical "STATE|DISTRICT" (uppercased) — see locationService.ts */
+  districtCounts?: Record<string, number>;
   markers: MapMarker[];
 }
 

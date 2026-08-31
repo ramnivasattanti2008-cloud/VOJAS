@@ -256,6 +256,8 @@ export const locationService = {
   async getMapData(filters?: { state?: string; status?: string }): Promise<{
     total: number;
     stateCounts: Record<string, number>;
+    /** Keyed by canonical "STATE|DISTRICT" (both uppercased) — matches india-districts.geojson */
+    districtCounts: Record<string, number>;
     markers: Array<{
       id: string;
       latitude: number;
@@ -293,7 +295,7 @@ export const locationService = {
     }
     const allForStateCount = await prisma.location.findMany({
       where: { isPrimary: true, ...stateWhere },
-      select: { project: { select: { state: true } } },
+      select: { project: { select: { state: true, district: true } } },
     });
     const stateCounts: Record<string, number> = {};
     for (const { project } of allForStateCount) {
@@ -302,9 +304,19 @@ export const locationService = {
       }
     }
 
+    // District-level counts (canonical key: "STATE|DISTRICT" — both uppercased)
+    const districtCounts: Record<string, number> = {};
+    for (const { project } of allForStateCount) {
+      if (project.state && project.district) {
+        const key = `${project.state.toUpperCase()}|${project.district.toUpperCase()}`;
+        districtCounts[key] = (districtCounts[key] ?? 0) + 1;
+      }
+    }
+
     return {
       total: items.length,
       stateCounts,
+      districtCounts,
       markers: items.map((l) => ({
         id: l.id,
         latitude: l.latitude,
