@@ -13,8 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npm run build 2>&1 || \
-    ( npx tsc --noEmit && echo "BUILD_SKIP=true" )
+RUN npx prisma generate && npm run build
 
 # ── Stage 3: Production runtime ─────────────────────────────────────────────
 FROM node:20-alpine AS runner
