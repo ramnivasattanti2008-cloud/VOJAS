@@ -17,7 +17,7 @@ COPY . .
 RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' ./prisma/schema.prisma && \
     echo "Swapped prisma provider → postgresql"
 
-RUN npx prisma generate && npm run build && npx tsc scripts/seed.ts --outDir scripts/dist --module nodenext --moduleResolution nodenext --esModuleInterop --target es2022 --skipLibCheck 2>/dev/null || echo "seed compile note"
+RUN npx prisma generate && npm run build
 
 # ── Stage 3: Production runtime ─────────────────────────────────────────────
 FROM node:20-alpine AS runner
@@ -67,4 +67,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 # Note: SEED_ON_BOOT requires tsx to be available (it is, via the
 # dev-dependency install in stage 1). If the seed script is ever
 # converted to a pre-compiled JS, remove the tsx requirement.
-CMD ["sh", "-c", "if [ \"$SEED_ON_BOOT\" = \"true\" ]; then npx tsx scripts/seed.ts || echo 'seed failed'; fi; exec node dist/server.js"]
+# Seed runs from /app (WORKDIR) where scripts/seed.ts is copied
+CMD ["sh", "-c", "if [ \"$SEED_ON_BOOT\" = \"true\" ]; then npx --yes tsx scripts/seed.ts || echo 'seed failed'; fi; exec node dist/server.js"]
