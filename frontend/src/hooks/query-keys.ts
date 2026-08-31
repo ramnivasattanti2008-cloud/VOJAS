@@ -44,4 +44,11 @@ export const qk = {
 
   // Analytics
   analyticsSummary: () => ["analytics", "summary"] as const,
+
+  // Map
+  mapOverview: (filters?: object) => ["map", "overview", filters ?? {}] as const,
+  projectLocations: (projectId: string) => ["map", "project-locations", projectId] as const,
+
+  // System
+  health: () => ["system", "health"] as const,
 } as const;

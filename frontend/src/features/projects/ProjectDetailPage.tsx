@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from "react-leaflet";
 import L from "leaflet";
-import { api, ApiError } from "@/services/api";
 import {
   type Project,
   type ProjectStatus,
   type ProjectSector,
-  type Location,
   type UserRole,
   PROJECT_SECTORS,
   PROJECT_STATUSES,
@@ -15,6 +13,8 @@ import {
   SECTOR_COLORS,
 } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/hooks/useProjects";
+import { useProjectLocations } from "@/hooks/useMap";
 import { LoadingState, ErrorState } from "@/components/ui";
 import FinancialTab from "./FinancialTab";
 import ProjectRiskTab from "./ProjectRiskTab";
@@ -118,28 +118,27 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [locationsLoading, setLocationsLoading] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
 
-  const refreshProject = () => {
-    if (!id) return;
-    api.get<{ project: Project }>(`/projects/${id}`)
-      .then(({ project }) => setProject(project))
-      .catch((err: ApiError) => setError(err.message));
-  };
+  // React Query hooks
+  const projectQuery = useProject(id);
+  const projectLocationsQuery = useProjectLocations(
+    (activeTab === "location" || activeTab === "site") ? id : undefined
+  );
+
+  const project = projectQuery.data?.project ?? null;
+  const locations = projectLocationsQuery.data?.locations ?? [];
+  const loading = projectQuery.isLoading;
+  const error = projectQuery.error?.message ?? null;
+  const locationsLoading = projectLocationsQuery.isLoading;
 
   const handleExportPDF = async () => {
     if (!id) return;
     setExportingPDF(true);
     try {
       const response = await fetch(`/api/v1/projects/${id}/report/pdf`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("vojas_token")}` },
       });
       if (!response.ok) throw new Error(`Export failed: ${response.statusText}`);
       const blob = await response.blob();
@@ -158,28 +157,8 @@ export default function ProjectDetailPage() {
     }
   };
 
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    api.get<{ project: Project }>(`/projects/${id}`)
-      .then(({ project }) => setProject(project))
-      .catch((err: ApiError) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  // Lazy-load locations when the Location or Site tab is opened
-  useEffect(() => {
-    if ((activeTab !== "location" && activeTab !== "site") || !id || locations.length > 0) return;
-    setLocationsLoading(true);
-    api.get<{ locations: Location[]; total: number }>(`/locations/project/${id}`)
-      .then(({ locations }) => setLocations(locations))
-      .catch((err) => console.error("Failed to load locations:", err))
-      .finally(() => setLocationsLoading(false));
-  }, [activeTab, id, locations.length]);
-
   if (loading) return <LoadingState message="Loading project details..." />;
-  if (error)   return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  if (error)   return <ErrorState message={error} onRetry={() => projectQuery.refetch()} />;
   if (!project) return <ErrorState message="Project not found" />;
 
   const statusStyle = STATUS_COLORS[project.status];
@@ -530,7 +509,7 @@ export default function ProjectDetailPage() {
             <FinancialTab
               project={project}
               userRole={(user?.role as UserRole) ?? "VIEWER"}
-              onProjectUpdate={refreshProject}
+              onProjectUpdate={() => projectQuery.refetch()}
             />
           </div>
         )}

@@ -1,15 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
-import { api } from "@/services/api";
-import { financialApi } from "@/services/financial-api";
-import { reportApi } from "@/services/report-api";
-import { anomalyApi } from "@/services/anomaly-api";
 import type { Project, HealthStatus } from "@/types";
 import type { SchemeFinancials } from "@/types/financial-types";
-import type { PaginatedAnomalies } from "@/services/anomaly-api";
-import type { PaginatedReports } from "@/types/report-types";
 import { LoadingState } from "@/components/ui";
+import { useHealth } from "@/hooks/useSystem";
+import { useProjects } from "@/hooks/useProjects";
+import { useSchemeFinancials } from "@/hooks/useFinancial";
+import { useAnomalies } from "@/hooks/useAnomalies";
+import { useReports } from "@/hooks/useReports";
 import { cn } from "@/lib/utils";
 import { SpatialDashboardMap } from "@/components/layout";
 import SpatialCommandScene from "@/components/dashboard/SpatialCommandScene";
@@ -368,39 +367,33 @@ function ProjectRow({ p, index }: { p: Project; index: number }) {
 
 // ── Main Component ──────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const [health,    setHealth]    = useState<HealthStatus | null>(null);
-  const [projects,  setProjects]  = useState<Project[]>([]);
-  const [schemeFin, setSchemeFin] = useState<SchemeFinancials | null>(null);
-  const [anomalies, setAnomalies] = useState<PaginatedAnomalies | null>(null);
-  const [reports,   setReports]   = useState<PaginatedReports | null>(null);
-  const [loading,   setLoading]   = useState(true);
+  // React Query: parallel data fetching with caching
+  const healthQuery   = useHealth();
+  const projectsQuery = useProjects({ limit: 50 });
+  const finQuery      = useSchemeFinancials();
+  const anomaliesQuery = useAnomalies({ status: "OPEN", limit: 8 });
+  const reportsQuery  = useReports({ status: "SUBMITTED", limit: 10 });
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    Promise.allSettled([
-      api.get<HealthStatus>("/health"),
-      api.get<{ items: Project[]; total: number }>("/projects?limit=50"),
-      financialApi.schemeFinancials(),
-      anomalyApi.list({ status: "OPEN", limit: 8 }),
-      reportApi.list({ status: "SUBMITTED", limit: 10 }),
-    ]).then(([h, prj, fin, anom, rpt]) => {
-      if (cancelled) return;
-      if (h.status === "fulfilled")   setHealth(h.value);
-      if (prj.status === "fulfilled")  setProjects(prj.value.items);
-      if (fin.status === "fulfilled") setSchemeFin(fin.value);
-      if (anom.status === "fulfilled") setAnomalies(anom.value);
-      if (rpt.status === "fulfilled") setReports(rpt.value);
-    }).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const health    = healthQuery.data ?? null;
+  const projects  = projectsQuery.data?.items ?? [];
+  const schemeFin = finQuery.data ?? null;
+  const anomalies = anomaliesQuery.data?.items ?? [];
+  const reports   = reportsQuery.data ?? null;
 
-  const pendingReports    = reports?.total ?? 0;
-  const totalProjects    = projects.length;
-  const activeProjects   = projects.filter(p => p.status === "IN_PROGRESS").length;
+  // Is ANY query still loading?
+  const loading =
+    healthQuery.isLoading ||
+    projectsQuery.isLoading ||
+    finQuery.isLoading ||
+    anomaliesQuery.isLoading ||
+    reportsQuery.isLoading;
+
+  const pendingReports     = reports?.total ?? 0;
+  const totalProjects     = projects.length;
+  const activeProjects    = projects.filter(p => p.status === "IN_PROGRESS").length;
   const completedProjects = projects.filter(p => ["COMPLETED", "VERIFIED"].includes(p.status)).length;
-  const totalBudget      = schemeFin?.totalBudget ?? 0;
-  const utilization      = schemeFin?.utilization ?? 0;
+  const totalBudget       = schemeFin?.totalBudget ?? 0;
+  const utilization       = schemeFin?.utilization ?? 0;
 
   const topProjects = useMemo(() =>
     [...projects]
@@ -410,7 +403,7 @@ export default function DashboardPage() {
     [projects]
   );
 
-  const topAnomalies = anomalies?.items ?? [];
+  const topAnomalies = anomalies;
 
   // Live feed: newest 3 reports + 3 anomalies, sorted by time
   const liveActivities: LiveActivity[] = useMemo(() => {

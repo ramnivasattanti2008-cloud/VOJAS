@@ -4,9 +4,7 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, ZoomControl, useMap } from "react-leaflet";
-import { api, ApiError } from "@/services/api";
 import {
-  type MapOverview,
   type MapMarker,
   type ProjectStatus,
   type Anomaly,
@@ -14,7 +12,8 @@ import {
   STATUS_COLORS,
   PROJECT_SECTORS,
 } from "@/types";
-import { anomalyApi } from "@/services/anomaly-api";
+import { useAnomalies } from "@/hooks/useAnomalies";
+import { useMapOverview } from "@/hooks/useMap";
 import { riskApi, type RiskLevel } from "@/services/risk-api";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
 import {
@@ -92,10 +91,6 @@ type EnrichedMarker = MapMarker & {
 
 export default function MapViewPage() {
   const navigate = useNavigate();
-  const [overview, setOverview] = useState<MapOverview | null>(null);
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Layer mode
   const [layerMode, setLayerMode] = useState<LayerMode>("markers");
@@ -121,32 +116,17 @@ export default function MapViewPage() {
   // Trigger recenter when filters change
   const [recenterToken, setRecenterToken] = useState(0);
 
-  const fetchOverview = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter) params.set("status", statusFilter);
-      if (stateFilter) params.set("state", stateFilter);
-      const [data, anomaliesData] = await Promise.all([
-        api.get<MapOverview>(`/locations/map/overview?${params.toString()}`),
-        // Open anomalies (limit 500 — same cap as the backend)
-        anomalyApi.list({ status: "OPEN", limit: 500 }).catch(() => ({ items: [] as Anomaly[] })),
-      ]);
-      setOverview(data);
-      setAnomalies(anomaliesData.items ?? []);
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError("Failed to load map data");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // React Query: server-state caching for map overview + open anomalies
+  const overviewQuery = useMapOverview({
+    status: (statusFilter || undefined) as ProjectStatus | undefined,
+    state: stateFilter || undefined,
+  });
+  const anomaliesQuery = useAnomalies({ status: "OPEN", limit: 500 });
 
-  useEffect(() => {
-    fetchOverview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, stateFilter]);
+  const overview = overviewQuery.data ?? null;
+  const anomalies = anomaliesQuery.data?.items ?? [];
+  const loading = overviewQuery.isLoading;
+  const error = overviewQuery.error?.message ?? null;
 
   // Lazy-fetch risk for a project; returns the cached or freshly-fetched level.
   const getProjectRisk = async (projectId: string): Promise<RiskLevel | undefined> => {
@@ -551,7 +531,7 @@ export default function MapViewPage() {
         </div>
       ) : error ? (
         <div className="glass rounded-xl" style={{ height: 560 }}>
-          <ErrorState message={error} onRetry={fetchOverview} />
+          <ErrorState message={error} onRetry={() => overviewQuery.refetch()} />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
