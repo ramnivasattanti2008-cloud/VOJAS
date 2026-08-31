@@ -71,10 +71,10 @@ If you set `SEED_ON_BOOT=true` in Step 3, demo users are created automatically o
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@vojas.sih.gov.in | Admin@1234 |
-| Officer | officer@vojas.sih.gov.in | Officer@1234 |
-| Reviewer | reviewer@vojas.sih.gov.in | Reviewer@1234 |
-| Analyst | analyst@vojas.sih.gov.in | Analyst@1234 |
+| Admin | admin@vojas.gov | VojasDemo2026 |
+| Officer | officer@vojas.gov | VojasDemo2026 |
+| Reviewer | reviewer@vojas.gov | VojasDemo2026 |
+| Analyst | analyst@vojas.gov | VojasDemo2026 |
 
 If `SEED_ON_BOOT=false`, seed manually:
 
@@ -196,7 +196,7 @@ Run through these checks after any deployment:
 - [ ] **Health endpoint**: `GET https://your-backend.com/api/v1/health`
   - Expected: `{"status":"ok","timestamp":"..."}`
 - [ ] **Login works**: Visit the frontend, log in with a demo account
-  - Email: `admin@vojas.sih.gov.in` / Password: `Admin@1234`
+  - Email: `admin@vojas.gov` / Password: `VojasDemo2026`
 - [ ] **Seed data present**: If `SEED_ON_BOOT=false`, run the seed script:
   ```bash
   docker compose exec backend npx tsx scripts/seed.ts
