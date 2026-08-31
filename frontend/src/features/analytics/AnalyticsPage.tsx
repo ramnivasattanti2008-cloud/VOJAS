@@ -12,15 +12,14 @@ import {
   ArrowRight,
   PieChart,
 } from "lucide-react";
-import {
-  analyticsApi,
-  type AnalyticsSummary,
-  type ProjectStatusCount,
-  type ProjectBySector,
-  type ReportCategoryCount,
-  type AnomalySeverityCount,
-  type RiskDistribution,
-  type TopRiskProject,
+import { useAnalyticsSummary } from "@/hooks/useAnalytics";
+import type {
+  ProjectStatusCount,
+  ProjectBySector,
+  ReportCategoryCount,
+  AnomalySeverityCount,
+  RiskDistribution,
+  TopRiskProject,
 } from "@/services/analytics-api";
 import { LoadingState, ErrorState } from "@/components/ui";
 import { BarChart, type BarChartItem } from "@/components/charts/BarChart";
@@ -116,24 +115,14 @@ function ChartCard({ title, sub, children, action }: {
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
-  const [data, setData] = useState<AnalyticsSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const analyticsQuery = useAnalyticsSummary();
+  const data = analyticsQuery.data ?? null;
+  const loading = analyticsQuery.isLoading;
+  const error = analyticsQuery.error?.message ?? null;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const summary = await analyticsApi.getSummary();
-      setData(summary);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load analytics");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+  // Keep useEffect/useCallback imports valid for any future local use
+  useEffect(() => {}, []);
+  useCallback(() => {}, []);
 
   if (loading) return <LoadingState message="Loading analytics..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -228,7 +217,7 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <button
-          onClick={load}
+          onClick={() => analyticsQuery.refetch()}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 text-xs transition-colors"
           title="Refresh analytics"
           aria-label="Refresh analytics data"

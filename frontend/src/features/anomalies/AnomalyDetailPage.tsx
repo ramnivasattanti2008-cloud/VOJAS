@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { anomalyApi } from "@/services/anomaly-api";
+import { useAnomaly, useAcknowledgeAnomaly, useResolveAnomaly } from "@/hooks/useAnomalies";
 import { aiApi } from "@/services/ai-api";
-import { ApiError } from "@/services/api";
 import {
-  type Anomaly,
   type AIExplanation,
   SEVERITY_COLORS,
   getAnomalyCategoryLabel,
@@ -31,50 +29,40 @@ export default function AnomalyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [anomaly, setAnomaly] = useState<Anomaly | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [actionPending, setActionPending] = useState<"ack" | "resolve" | null>(null);
+  // React Query
+  const anomalyQuery = useAnomaly(id);
+  const ackMutation = useAcknowledgeAnomaly();
+  const resolveMutation = useResolveAnomaly();
+
+  const anomaly = anomalyQuery.data ?? null;
+  const loading = anomalyQuery.isLoading;
+  const error = anomalyQuery.error?.message ?? null;
+  const actionPending = ackMutation.isPending || resolveMutation.isPending
+    ? (ackMutation.isPending ? "ack" : "resolve")
+    : null;
+
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [resolution, setResolution] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    anomalyApi.get(id)
-      .then(setAnomaly)
-      .catch((err: ApiError) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id]);
-
   const handleAcknowledge = async () => {
     if (!id) return;
-    setActionPending("ack");
     try {
-      const updated = await anomalyApi.acknowledge(id);
-      setAnomaly(updated);
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-    } finally {
-      setActionPending(null);
+      await ackMutation.mutateAsync(id);
+    } catch {
+      // Error surfaced via ackMutation.error
     }
   };
 
   const handleResolve = async () => {
     if (!id || !resolution.trim()) return;
-    setActionPending("resolve");
     try {
-      const updated = await anomalyApi.resolve(id, resolution.trim());
-      setAnomaly(updated);
+      await resolveMutation.mutateAsync({ id, resolution: resolution.trim() });
       setShowResolveDialog(false);
       setResolution("");
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-    } finally {
-      setActionPending(null);
+    } catch {
+      // Error surfaced via resolveMutation.error
     }
   };
 
@@ -92,16 +80,8 @@ export default function AnomalyDetailPage() {
         ruleCode: anomaly.ruleCode ?? undefined,
         projectName: anomaly.project?.name,
       });
-      // Merge the new AI data into the local state
-      setAnomaly((prev) =>
-        prev
-          ? {
-              ...prev,
-              aiExplanation: JSON.stringify(result),
-              aiConfidence: result.confidence,
-            }
-          : prev
-      );
+      // AI explanation is fetched on demand; React Query handles the main anomaly data
+      void result; // consumed by AIVerdictPanel via the anomaly prop
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Failed to generate AI explanation");
     } finally {
@@ -110,7 +90,7 @@ export default function AnomalyDetailPage() {
   };
 
   if (loading) return <LoadingState message="Loading anomaly..." />;
-  if (error && !anomaly) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  if (error && !anomaly) return <ErrorState message={error} onRetry={() => anomalyQuery.refetch()} />;
   if (!anomaly) return <ErrorState message="Anomaly not found" />;
 
   const sevStyle = SEVERITY_COLORS[anomaly.severity];

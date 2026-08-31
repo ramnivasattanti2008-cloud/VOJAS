@@ -1,17 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, ApiError } from "@/services/api";
 import {
   type Project,
   type ProjectStatus,
   type ProjectSector,
-  type PaginatedProjects,
-  type ProjectStats,
   PROJECT_SECTORS,
   PROJECT_STATUSES,
   STATUS_COLORS,
   SECTOR_COLORS,
 } from "@/types";
+import { useProjects, useProjectStats } from "@/hooks/useProjects";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
 import {
   FileText,
@@ -64,10 +62,6 @@ function isOverdue(p: Project): boolean {
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [stats, setStats] = useState<ProjectStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -75,41 +69,23 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "">("");
   const [sectorFilter, setSectorFilter] = useState<ProjectSector | "">("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
-  const fetchProjects = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      if (statusFilter) params.set("status", statusFilter);
-      if (sectorFilter) params.set("sector", sectorFilter);
-      params.set("page", String(page));
-      params.set("limit", String(PAGE_SIZE));
+  // React Query: server-state caching + automatic refetch + retry
+  const projectsQuery = useProjects({
+    search: search || undefined,
+    status: (statusFilter || undefined) as ProjectStatus | undefined,
+    sector: (sectorFilter || undefined) as ProjectSector | undefined,
+    page,
+    limit: PAGE_SIZE,
+  });
+  const statsQuery = useProjectStats();
 
-      const [list, statsData] = await Promise.all([
-        api.get<PaginatedProjects>(`/projects?${params.toString()}`),
-        api.get<{ stats: ProjectStats }>(`/projects/stats`).catch(() => null),
-      ]);
-
-      setProjects(list.items);
-      setTotalPages(list.totalPages);
-      setTotal(list.total);
-      if (statsData?.stats) setStats(statsData.stats);
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError("Failed to load projects");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, sectorFilter, search]);
+  const projects = projectsQuery.data?.items ?? [];
+  const totalPages = projectsQuery.data?.totalPages ?? 1;
+  const total = projectsQuery.data?.total ?? 0;
+  const stats = statsQuery.data?.stats ?? null;
+  const loading = projectsQuery.isLoading;
+  const error = projectsQuery.error?.message ?? null;
 
   const hasActiveFilters = statusFilter || sectorFilter || search;
 
@@ -254,7 +230,7 @@ export default function ProjectsPage() {
       {loading ? (
         <LoadingState message="Loading projects..." />
       ) : error ? (
-        <ErrorState message={error} onRetry={fetchProjects} />
+        <ErrorState message={error} onRetry={() => projectsQuery.refetch()} />
       ) : projects.length === 0 ? (
         <div className="glass rounded-xl">
           <EmptyState

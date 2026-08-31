@@ -1,7 +1,13 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, BellOff, CheckCheck, Filter, ExternalLink, AlertTriangle, FileText, ShieldAlert, TrendingUp } from "lucide-react";
-import { notificationApi, type NotificationItem, type NotificationType } from "@/services/notification-api";
+import {
+  useNotifications,
+  useUnreadNotificationCount,
+  useMarkRead,
+  useMarkAllRead,
+} from "@/hooks/useNotifications";
+import type { NotificationItem, NotificationType } from "@/services/notification-api";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
 import { timeAgo } from "@/lib/utils";
 
@@ -32,54 +38,29 @@ function resourceToPath(type: NotificationType, resourceId: string | null): stri
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showRead, setShowRead] = useState(true);
   const [filterType, setFilterType] = useState<NotificationType | "">("");
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await notificationApi.list({ limit: 100 });
-      setItems(res.items);
-      setUnreadCount(res.unreadCount);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to load notifications");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // React Query
+  const notificationsQuery = useNotifications({ limit: 100 });
+  const unreadCountQuery = useUnreadNotificationCount();
+  const markReadMutation = useMarkRead();
+  const markAllReadMutation = useMarkAllRead();
 
-  useEffect(() => {
-    fetch();
-    // Refresh unread badge every 30s
-    const t = setInterval(async () => {
-      try {
-        const { count } = await notificationApi.unreadCount();
-        setUnreadCount(count);
-      } catch {/* ignore */}
-    }, 30000);
-    return () => clearInterval(t);
-  }, [fetch]);
+  const items: NotificationItem[] = notificationsQuery.data?.items ?? [];
+  const unreadCount = unreadCountQuery.data?.count ?? notificationsQuery.data?.unreadCount ?? 0;
+  const loading = notificationsQuery.isLoading;
+  const error = notificationsQuery.error?.message ?? null;
 
   const handleMarkRead = async (ids: string[]) => {
     try {
-      const res = await notificationApi.markRead(ids);
-      setItems((prev) =>
-        prev.map((n) => (ids.includes(n.id) ? { ...n, isRead: true } : n))
-      );
-      setUnreadCount(res.unreadCount);
+      await markReadMutation.mutateAsync(ids);
     } catch {/* silent */}
   };
 
   const handleMarkAllRead = async () => {
     try {
-      await notificationApi.markAllRead();
-      setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
+      await markAllReadMutation.mutateAsync();
     } catch {/* silent */}
   };
 
@@ -186,7 +167,7 @@ export default function NotificationsPage() {
         </div>
       ) : error ? (
         <div className="glass rounded-xl p-8">
-          <ErrorState message={error} onRetry={fetch} />
+          <ErrorState message={error} onRetry={() => notificationsQuery.refetch()} />
         </div>
       ) : visible.length === 0 ? (
         <div className="glass rounded-xl p-8">

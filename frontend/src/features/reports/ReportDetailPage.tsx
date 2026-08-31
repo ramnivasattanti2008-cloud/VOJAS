@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -22,11 +22,15 @@ import {
   Lock,
   Eye,
 } from "lucide-react";
-import { reportApi } from "@/services/report-api";
+import {
+  useReport,
+  useTransitionReport,
+  useUploadReportAttachment,
+  useRemoveReportAttachment,
+} from "@/hooks/useReports";
 import { ApiError } from "@/services/report-api";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import type {
-  Report,
   ReportStatus,
   ReportAttachment,
 } from "@/types/report-types";
@@ -67,21 +71,27 @@ export default function ReportDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [report, setReport] = useState<Report | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // React Query
+  const reportQuery = useReport(id);
+  const transitionMutation = useTransitionReport();
+  const uploadMutation = useUploadReportAttachment(id ?? "");
+  const removeAttachmentMutation = useRemoveReportAttachment(id ?? "");
+
+  const report = reportQuery.data?.report ?? null;
+  const loading = reportQuery.isLoading;
+  const error = reportQuery.error?.message ?? null;
 
   // Status transition
   const [transitionOpen, setTransitionOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<ReportStatus | "">("");
   const [transitionNotes, setTransitionNotes] = useState("");
   const [transitionResolution, setTransitionResolution] = useState("");
-  const [transitioning, setTransitioning] = useState(false);
   const [transitionError, setTransitionError] = useState<string | null>(null);
+  const transitioning = transitionMutation.isPending;
 
   // Attachments
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const uploading = uploadMutation.isPending;
+  const uploadError = uploadMutation.error?.message ?? null;
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,49 +109,28 @@ export default function ReportDetailPage() {
     user?.role === "ADMIN" || user?.role === "OFFICER" || user?.role === "REVIEWER";
   const canUpload = !!user; // any authenticated user can upload
 
-  const fetchReport = async () => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await reportApi.get(id);
-      setReport(data.report);
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError("Failed to load report");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReport();
-  }, [id]);
-
   const availableTransitions = report
     ? STATUS_TRANSITIONS[report.status] ?? []
     : [];
 
   async function handleTransition() {
-    if (!selectedStatus || !report) return;
-    setTransitioning(true);
+    if (!selectedStatus || !report || !id) return;
     setTransitionError(null);
     try {
-      const payload: Parameters<typeof reportApi.transition>[1] = {
-        toStatus: selectedStatus,
-        notes: transitionNotes.trim() || undefined,
-        resolution: transitionResolution.trim() || undefined,
-      };
-      const result = await reportApi.transition(report.id, payload);
-      setReport(result.report);
+      await transitionMutation.mutateAsync({
+        id,
+        payload: {
+          toStatus: selectedStatus,
+          notes: transitionNotes.trim() || undefined,
+          resolution: transitionResolution.trim() || undefined,
+        },
+      });
       setTransitionOpen(false);
       setSelectedStatus("");
       setTransitionNotes("");
       setTransitionResolution("");
-    } catch (err: any) {
-      setTransitionError(err?.message || "Transition failed");
-    } finally {
-      setTransitioning(false);
+    } catch (err) {
+      setTransitionError(err instanceof Error ? err.message : "Transition failed");
     }
   }
 
@@ -149,34 +138,23 @@ export default function ReportDetailPage() {
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !report) return;
-    setUploading(true);
-    setUploadError(null);
+    if (!file || !id) return;
     try {
-      const result = await reportApi.uploadAttachment(report.id, file);
-      setReport({
-        ...report,
-        attachments: [...(report.attachments ?? []), result.attachment],
-      });
+      await uploadMutation.mutateAsync(file);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Upload failed";
-      setUploadError(msg);
+      setToast(`Upload failed: ${msg}`);
     } finally {
-      setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
   async function handleDeleteAttachment(attachment: ReportAttachment) {
-    if (!report) return;
+    if (!id) return;
     if (!window.confirm(`Delete "${attachment.originalName}"?`)) return;
     setDeletingAttachmentId(attachment.id);
     try {
-      await reportApi.removeAttachment(report.id, attachment.id);
-      setReport({
-        ...report,
-        attachments: (report.attachments ?? []).filter((a) => a.id !== attachment.id),
-      });
+      await removeAttachmentMutation.mutateAsync(attachment.id);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "Delete failed";
       setToast(`Delete failed: ${msg}`);
@@ -197,6 +175,7 @@ export default function ReportDetailPage() {
     setLoadingOriginal(true);
     setOriginalError(null);
     try {
+      const { reportApi } = await import("@/services/report-api");
       const result = await reportApi.getOriginal(report.id, trimmed);
       setOriginalData(result.report);
       setShowOriginalModal(false);
@@ -214,7 +193,7 @@ export default function ReportDetailPage() {
   }
 
   if (loading) return <LoadingState message="Loading report..." />;
-  if (error) return <ErrorState message={error} onRetry={fetchReport} />;
+  if (error) return <ErrorState message={error} onRetry={() => reportQuery.refetch()} />;
   if (!report) return null;
 
   const sev = getSeverityStyle(report.severity);

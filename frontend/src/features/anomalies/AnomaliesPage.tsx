@@ -1,9 +1,7 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { anomalyApi } from "@/services/anomaly-api";
-import { ApiError } from "@/services/api";
+import { useAnomalies, useAnomalyStats, useScanAnomalies } from "@/hooks/useAnomalies";
 import {
-  type Anomaly,
   type AnomalyStatus,
   type AnomalySeverity,
   type AnomalyCategory,
@@ -30,10 +28,6 @@ import {
 
 export default function AnomaliesPage() {
   const navigate = useNavigate();
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
   const [scanToast, setScanToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -43,53 +37,29 @@ export default function AnomaliesPage() {
   const [severityFilter, setSeverityFilter] = useState<AnomalySeverity | "">("");
   const [categoryFilter, setCategoryFilter] = useState<AnomalyCategory | "">("");
 
-  // Stats
-  const [stats, setStats] = useState<{
-    open: number;
-    critical: number;
-    high: number;
-    total: number;
-  } | null>(null);
+  // React Query: server-state caching + automatic refetch + retry
+  const anomaliesQuery = useAnomalies({
+    status: (statusFilter || undefined) as AnomalyStatus | undefined,
+    severity: (severityFilter || undefined) as AnomalySeverity | undefined,
+    category: (categoryFilter || undefined) as AnomalyCategory | undefined,
+    page: 1,
+    limit: 50,
+  });
+  const statsQuery = useAnomalyStats();
+  const scanMutation = useScanAnomalies();
 
-  const fetchAnomalies = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await anomalyApi.list({
-        status: statusFilter || undefined,
-        severity: severityFilter || undefined,
-        category: categoryFilter || undefined,
-        page: 1,
-        limit: 50,
-      });
-      setAnomalies(data.items);
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError("Failed to load anomalies");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const data = await anomalyApi.stats();
-      setStats({
-        open: data.open,
-        critical: data.critical,
-        high: data.high,
-        total: data.total,
-      });
-    } catch (err) {
-      // Stats are optional
-    }
-  };
-
-  useEffect(() => {
-    fetchAnomalies();
-    fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, severityFilter, categoryFilter]);
+  const anomalies = anomaliesQuery.data?.items ?? [];
+  const stats = statsQuery.data
+    ? {
+        open: statsQuery.data.open,
+        critical: statsQuery.data.critical,
+        high: statsQuery.data.high,
+        total: statsQuery.data.total,
+      }
+    : null;
+  const loading = anomaliesQuery.isLoading;
+  const error = anomaliesQuery.error?.message ?? null;
+  const scanning = scanMutation.isPending;
 
   // Apply client-side search
   const filtered = useMemo(() => {
@@ -114,19 +84,14 @@ export default function AnomaliesPage() {
   const hasActiveFilters = statusFilter || severityFilter || categoryFilter || search;
 
   const handleScan = async () => {
-    setScanning(true);
     try {
-      const result = await anomalyApi.scan();
-      await fetchAnomalies();
-      await fetchStats();
+      const result = await scanMutation.mutateAsync();
       // Show ARIA-friendly inline toast (announced via role="status")
       setScanToast(`Scan complete: ${result.newAnomalies} new anomalies detected (${result.totalAnomalies} total)`);
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setScanToast(null), 6000);
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-    } finally {
-      setScanning(false);
+    } catch {
+      // Error surfaced via scanMutation.error if needed
     }
   };
 
@@ -293,7 +258,7 @@ export default function AnomaliesPage() {
       {loading ? (
         <LoadingState message="Loading anomalies..." />
       ) : error ? (
-        <ErrorState message={error} onRetry={fetchAnomalies} />
+        <ErrorState message={error} onRetry={() => anomaliesQuery.refetch()} />
       ) : filtered.length === 0 ? (
         <div className="glass rounded-xl">
           <EmptyState

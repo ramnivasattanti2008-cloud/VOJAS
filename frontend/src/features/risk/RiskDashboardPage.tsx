@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShieldAlert,
@@ -16,9 +16,10 @@ import {
   FileText,
   Sparkles,
 } from "lucide-react";
-import { riskApi, type ProjectRisk, type RiskLevel, type RiskStats } from "@/services/risk-api";
+import { useRiskList, useRiskStats, useRecalculateAllRisk } from "@/hooks/useRisk";
+import { useAnomalies } from "@/hooks/useAnomalies";
 import { aiApi, type AIExplanation } from "@/services/ai-api";
-import { anomalyApi } from "@/services/anomaly-api";
+import type { RiskLevel, RiskStats } from "@/services/risk-api";
 import type { Anomaly } from "@/types";
 
 const RISK_COLORS: Record<RiskLevel, { bg: string; text: string; border: string; dot: string }> = {
@@ -93,17 +94,10 @@ function BreakdownRow({ label, score, max, icon: Icon, colorClass }: {
 
 export default function RiskDashboardPage() {
   const navigate = useNavigate();
-  const [risks, setRisks] = useState<ProjectRisk[]>([]);
-  const [stats, setStats] = useState<RiskStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filterLevel, setFilterLevel] = useState<RiskLevel | "ALL">("ALL");
   const [sortBy, setSortBy] = useState<"overallScore" | "riskLevel" | "updatedAt">("overallScore");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [recalculating, setRecalculating] = useState(false);
   const [expandedRisk, setExpandedRisk] = useState<string | null>(null);
 
   // AI explanation state (Phase 11)
@@ -111,19 +105,34 @@ export default function RiskDashboardPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [expandedAnomaly, setExpandedAnomaly] = useState<string | null>(null);
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
-  const [anomaliesLoading, setAnomaliesLoading] = useState(false);
+  const [anomaliesProjectId, setAnomaliesProjectId] = useState<string | null>(null);
 
-  const loadAnomalies = useCallback(async (projectId: string) => {
-    setAnomaliesLoading(true);
-    try {
-      const res = await anomalyApi.list({ projectId, limit: 50 });
-      setAnomalies(res.items);
-    } catch {
-      setAnomalies([]);
-    } finally {
-      setAnomaliesLoading(false);
-    }
+  // React Query
+  const risksQuery = useRiskList({
+    riskLevel: filterLevel === "ALL" ? undefined : filterLevel,
+    sortBy,
+    sortOrder,
+    page,
+    limit: 20,
+  });
+  const statsQuery = useRiskStats();
+  const recalculateMutation = useRecalculateAllRisk();
+  const anomaliesQuery = useAnomalies(
+    anomaliesProjectId ? { projectId: anomaliesProjectId, limit: 50 } : {}
+  );
+
+  const risks = risksQuery.data?.items ?? [];
+  const totalPages = risksQuery.data?.totalPages ?? 1;
+  const total = risksQuery.data?.total ?? 0;
+  const stats: RiskStats | null = statsQuery.data ?? null;
+  const loading = risksQuery.isLoading;
+  const error = risksQuery.error?.message ?? null;
+  const recalculating = recalculateMutation.isPending;
+  const anomalies: Anomaly[] = anomaliesQuery.data?.items ?? [];
+  const anomaliesLoading = anomaliesQuery.isFetching;
+
+  const loadAnomalies = useCallback((projectId: string) => {
+    setAnomaliesProjectId(projectId);
   }, []);
 
   const generateAIExplanation = useCallback(
@@ -150,46 +159,11 @@ export default function RiskDashboardPage() {
     []
   );
 
-  const loadRisks = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await riskApi.list({
-        riskLevel: filterLevel === "ALL" ? undefined : filterLevel,
-        sortBy,
-        sortOrder,
-        page,
-        limit: 20,
-      });
-      setRisks(res.items);
-      setTotalPages(res.totalPages);
-      setTotal(res.total);
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to load risk data");
-    } finally {
-      setLoading(false);
-    }
-  }, [filterLevel, sortBy, sortOrder, page]);
-
-  const loadStats = useCallback(async () => {
-    try {
-      const s = await riskApi.stats();
-      setStats(s);
-    } catch { /* silent */ }
-  }, []);
-
-  useEffect(() => { loadRisks(); }, [loadRisks]);
-  useEffect(() => { loadStats(); }, [loadStats]);
-
   const handleRecalculate = async () => {
     if (recalculating) return;
-    setRecalculating(true);
     try {
-      await riskApi.recalculateAll();
-      await loadRisks();
-      await loadStats();
+      await recalculateMutation.mutateAsync();
     } catch { /* silent */ }
-    finally { setRecalculating(false); }
   };
 
   const toggleSort = (col: typeof sortBy) => {

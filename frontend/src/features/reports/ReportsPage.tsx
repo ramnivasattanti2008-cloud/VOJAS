@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -10,11 +10,8 @@ import {
   ShieldAlert,
   UserCheck,
 } from "lucide-react";
-import { reportApi } from "@/services/report-api";
-import { ApiError } from "@/services/report-api";
+import { useReports, useReportStats } from "@/hooks/useReports";
 import type {
-  Report,
-  ReportStats,
   ReportStatus,
   ReportCategory,
   ReportSeverity,
@@ -92,10 +89,6 @@ function StatTile({
 
 export default function ReportsPage() {
   const navigate = useNavigate();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [stats, setStats] = useState<ReportStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -104,43 +97,24 @@ export default function ReportsPage() {
   const [categoryFilter, setCategoryFilter] = useState<ReportCategory | "">("");
   const [severityFilter, setSeverityFilter] = useState<ReportSeverity | "">("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
-  const fetchReports = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const filters = {
-        ...(search && { search }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(categoryFilter && { category: categoryFilter }),
-        ...(severityFilter && { severity: severityFilter }),
-        page,
-        limit: PAGE_SIZE,
-      };
-      const [listData, statsData] = await Promise.all([
-        reportApi.list(filters).catch(() => null),
-        reportApi.stats().catch(() => null),
-      ]);
-      if (listData) {
-        setReports(listData.items);
-        setTotalPages(listData.totalPages);
-        setTotal(listData.total);
-      }
-      if (statsData?.stats) setStats(statsData.stats);
-    } catch (err) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError("Failed to load reports");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // React Query
+  const reportsQuery = useReports({
+    search: search || undefined,
+    status: (statusFilter || undefined) as ReportStatus | undefined,
+    category: (categoryFilter || undefined) as ReportCategory | undefined,
+    severity: (severityFilter || undefined) as ReportSeverity | undefined,
+    page,
+    limit: PAGE_SIZE,
+  });
+  const statsQuery = useReportStats();
 
-  useEffect(() => {
-    fetchReports();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, categoryFilter, severityFilter, search]);
+  const reports = reportsQuery.data?.items ?? [];
+  const totalPages = reportsQuery.data?.totalPages ?? 1;
+  const total = reportsQuery.data?.total ?? 0;
+  const stats = statsQuery.data?.stats ?? null;
+  const loading = reportsQuery.isLoading;
+  const error = reportsQuery.error?.message ?? null;
 
   const hasActiveFilters = statusFilter || categoryFilter || severityFilter || search;
 
@@ -298,7 +272,7 @@ export default function ReportsPage() {
       {loading ? (
         <LoadingState message="Loading reports..." />
       ) : error ? (
-        <ErrorState message={error} onRetry={fetchReports} />
+        <ErrorState message={error} onRetry={() => reportsQuery.refetch()} />
       ) : reports.length === 0 ? (
         <div className="glass rounded-xl">
           <EmptyState
