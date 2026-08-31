@@ -14,6 +14,7 @@ import adminRoutes from "./admin.js";
 import aiRoutes from "./ai.js";
 import notificationRoutes from "./notifications.js";
 import documentRoutes from "./documents.js";
+import adminSeedRoutes from "./adminSeed.js";
 
 const router = Router();
 
@@ -29,6 +30,7 @@ router.use("/financials", financialRouter);
 router.use("/anomalies", anomalyRoutes);
 router.use("/risk", riskRoutes);
 router.use("/analytics", analyticsRoutes);
+router.use("/admin", adminSeedRoutes);
 router.use("/admin", adminRoutes);
 router.use("/ai", aiRoutes);
 router.use("/notifications", notificationRoutes);
