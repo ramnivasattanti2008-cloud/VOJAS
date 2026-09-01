@@ -203,10 +203,20 @@ export async function getCapturesByProject(
 ): Promise<SatelliteCapture[]> {
   logger.info(`[satellite] Fetching captures for project ${projectId}`);
   try {
-    // Get project coordinates
-    const project = await projectService.findById(projectId);
-    const lat = project?.latitude ?? (20.5937 + (hashStr(projectId) % 1000) / 1000);
-    const lng = project?.longitude ?? (78.9629 + (hashStr(projectId + "lng") % 1000) / 1000);
+    // Get project coordinates — fall back to deterministic hash-based coordinates
+    // if project doesn't exist (so the feature still works for any projectId)
+    let lat: number;
+    let lng: number;
+    try {
+      const project = await projectService.findById(projectId);
+      lat = project?.latitude ?? (20.5937 + (hashStr(projectId) % 1000) / 1000);
+      lng = project?.longitude ?? (78.9629 + (hashStr(projectId + "lng") % 1000) / 1000);
+    } catch (lookupErr) {
+      // Project not in DB — use deterministic fallback so satellite tile URLs are stable
+      lat = 20.5937 + (hashStr(projectId) % 1000) / 1000;
+      lng = 78.9629 + (hashStr(projectId + "lng") % 1000) / 1000;
+      logger.info(`[satellite] Project ${projectId} not in DB, using fallback coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+    }
 
     const captures = generateCaptures(projectId, lat, lng, options?.from, options?.to);
     logger.info(`[satellite] Generated ${captures.length} captures for ${projectId}`);
