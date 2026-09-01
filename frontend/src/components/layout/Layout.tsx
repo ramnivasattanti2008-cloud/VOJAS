@@ -168,11 +168,12 @@ function NavLink({
 // ── User dropdown ─────────────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  ADMIN:   { bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30" },
-  OFFICER: { bg: "bg-electric-500/15", text: "text-electric-400", border: "border-electric-500/30" },
-  ANALYST: { bg: "bg-saffron-500/15", text: "text-saffron-400", border: "border-saffron-500/30" },
-  REVIEWER:{ bg: "bg-blue-500/15",   text: "text-blue-400",   border: "border-blue-500/30" },
-  VIEWER:  { bg: "bg-slate-500/15",  text: "text-slate-400",   border: "border-slate-500/30" },
+  ADMIN:   { bg: "bg-red-500/15",      text: "text-red-400",      border: "border-red-500/30" },
+  OFFICER: { bg: "bg-electric-500/15", text: "text-electric-400",  border: "border-electric-500/30" },
+  ANALYST: { bg: "bg-saffron-500/15", text: "text-saffron-400",   border: "border-saffron-500/30" },
+  REVIEWER:{ bg: "bg-blue-500/15",     text: "text-blue-400",      border: "border-blue-500/30" },
+  VIEWER:  { bg: "bg-emerald-500/15", text: "text-emerald-400",   border: "border-emerald-500/30" },
+  MP:      { bg: "bg-saffron-500/15", text: "text-saffron-400",   border: "border-saffron-500/30" },
 };
 
 const AVATAR_BG: Record<string, string> = {
@@ -180,7 +181,8 @@ const AVATAR_BG: Record<string, string> = {
   OFFICER: "bg-electric-500/20",
   ANALYST: "bg-saffron-500/20",
   REVIEWER:"bg-blue-500/20",
-  VIEWER:  "bg-slate-500/20",
+  VIEWER:  "bg-emerald-500/20",
+  MP:      "bg-saffron-500/20",
 };
 
 // ── User dropdown ─────────────────────────────────────────────────────────────
