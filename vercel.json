@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/dist/server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/dist/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/dist/index.html"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "JWT_SECRET": "@vojas-jwt-secret",
+    "JWT_EXPIRES_IN": "7d",
+    "BCRYPT_ROUNDS": "10",
+    "CLIENT_BASE_URL": "@vojas-client-url",
+    "SEED_ON_BOOT": "false",
+    "DATABASE_URL": "@neon-connection-string"
+  },
+  "regions": ["iad1"],
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/dist/index.html"
+    }
+  ]
+}

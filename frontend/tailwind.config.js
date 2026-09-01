@@ -90,6 +90,7 @@ export default {
         "ping-slow":      "ping 2s cubic-bezier(0, 0, 0.2, 1) infinite",
         "bounce-in":      "bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
         "blur-in":        "blurIn 0.5s ease-out",
+        "marquee":        "marquee 30s linear infinite",
       },
       keyframes: {
         fadeIn: {
@@ -135,6 +136,10 @@ export default {
         blurIn: {
           from: { opacity: "0", filter: "blur(12px)" },
           to:   { opacity: "1", filter: "blur(0px)" },
+        },
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to:   { transform: "translateX(-50%)" },
         },
       },
       backdropBlur: {

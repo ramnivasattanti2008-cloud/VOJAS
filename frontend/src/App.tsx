@@ -18,6 +18,8 @@ const MapViewPage        = lazy(() => import("@/features/map/MapViewPage"));
 const ReportsPage        = lazy(() => import("@/features/reports/ReportsPage"));
 const ReportDetailPage   = lazy(() => import("@/features/reports/ReportDetailPage"));
 const CitizenReportPage  = lazy(() => import("@/features/reports/CitizenReportPage"));
+const MPListPage         = lazy(() => import("@/features/mps/MPListPage"));
+const VendorListPage     = lazy(() => import("@/features/vendors/VendorListPage"));
 const AnomaliesPage      = lazy(() => import("@/features/anomalies/AnomaliesPage"));
 const AnomalyDetailPage  = lazy(() => import("@/features/anomalies/AnomalyDetailPage"));
 const RiskDashboardPage  = lazy(() => import("@/features/risk/RiskDashboardPage"));
@@ -169,6 +171,26 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout user={user}><RiskDashboardPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* MPs — open-data registry */}
+        <Route
+          path="/mps"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><MPListPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Vendors — open-data registry */}
+        <Route
+          path="/vendors"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><VendorListPage /></Layout>
             </ProtectedRoute>
           }
         />

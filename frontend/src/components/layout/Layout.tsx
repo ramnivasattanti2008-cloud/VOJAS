@@ -20,6 +20,7 @@ import {
   Moon,
   ChevronRight as Chevron,
   BellRing,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -44,6 +45,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Map View",     path: "/map",           icon: Map             },
   { label: "Risk",         path: "/risk",          icon: ShieldAlert     },
   { label: "Anomalies",    path: "/anomalies",     icon: AlertTriangle   },
+  { label: "MPs",          path: "/mps",           icon: Users           },
+  { label: "Vendors",      path: "/vendors",       icon: Building2       },
   { label: "Reports",      path: "/reports",       icon: FileText        },
   { label: "Alerts",       path: "/notifications", icon: BellRing        },
   { label: "Citizens",     path: "/citizens",      icon: Users           },

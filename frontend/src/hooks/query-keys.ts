@@ -51,4 +51,13 @@ export const qk = {
 
   // System
   health: () => ["system", "health"] as const,
+
+  // MPs (open-data)
+  mps: (filters?: object) => ["mps", "list", filters ?? {}] as const,
+  mp: (id: string) => ["mps", "detail", id] as const,
+
+  // Vendors (open-data)
+  vendors: (filters?: object) => ["vendors", "list", filters ?? {}] as const,
+  vendor: (id: string) => ["vendors", "detail", id] as const,
+  topVendors: (limit: number) => ["vendors", "top", limit] as const,
 } as const;

@@ -23,7 +23,7 @@ export interface HealthStatus {
   timestamp: string;
 }
 
-export type UserRole = "ADMIN" | "OFFICER" | "REVIEWER" | "ANALYST" | "VIEWER";
+export type UserRole = "ADMIN" | "OFFICER" | "REVIEWER" | "ANALYST" | "VIEWER" | "MP";
 
 export interface User {
   id: string;
@@ -352,4 +352,131 @@ export interface AIExplanation {
   confidence: number;
   contributingFactors: { factor: string; weight: number }[];
   recommendation: string;
+}
+
+// ── Open-Data Types (Vonter / dataful / opencity / LGD) ─────────────────────
+
+export type House = "LOK_SABHA" | "RAJYA_SABHA";
+export type LokSabhaTerm = "FIFTEENTH" | "SIXTEENTH" | "SEVENTEENTH" | "EIGHTEENTH";
+export type IdaApproval = "PENDING" | "APPROVED" | "REJECTED";
+
+/** MP master record — sourced from MPLADS portal / open data */
+export interface MP {
+  id: string;
+  name: string;
+  house: House;
+  state: string;
+  constituency: string;
+  term: LokSabhaTerm;
+  termStart: string | null;
+  termEnd: string | null;
+  party: string | null;
+  lgdCode: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Vendor master — deduplicated across all MPLADS data sources */
+export interface Vendor {
+  id: string;
+  name: string;
+  nameNormalized: string;
+  udyamRegNo: string | null;
+  district: string | null;
+  state: string | null;
+  totalPaid: number;
+  projectCount: number;
+  constituencyCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** LGD master reference — canonical Indian administrative geography */
+export interface LGDLocation {
+  id: string;
+  lgdCode: string;
+  entityType: "STATE" | "DISTRICT" | "BLOCK" | "VILLAGE" | "GP" | "ULB";
+  name: string;
+  nameCanonical: string;
+  parentCode: string | null;
+  stateName: string | null;
+  districtName: string | null;
+  blockName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Extended Project (with open-data fields) ─────────────────────────────────
+
+export type ProjectOpenDataSource =
+  | "MPLADS_PORTAL"
+  | "VONTER"
+  | "DATAFUL"
+  | "OPENCITY"
+  | "MANUAL";
+
+export interface ProjectOpenDataFields {
+  mpId: string | null;
+  mpName: string | null;
+  house: House | null;
+  term: LokSabhaTerm | null;
+  implementingAgency: string | null;
+  idaApproval: IdaApproval | null;
+  recommendedDate: string | null;
+  lgdDistrictCode: string | null;
+  lgdStateCode: string | null;
+  source: ProjectOpenDataSource | null;
+  sourceWorkId: string | null;
+  sourceRef: string | null; // JSON string
+}
+
+/** Full Project type — includes open-data fields */
+export type FullProject = Project & Partial<ProjectOpenDataFields>;
+
+/** Paginated MP list */
+export interface PaginatedMPs {
+  items: MP[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/** Paginated Vendor list */
+export interface PaginatedVendors {
+  items: Vendor[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+export const HOUSE_LABELS: Record<House, string> = {
+  LOK_SABHA: "Lok Sabha",
+  RAJYA_SABHA: "Rajya Sabha",
+};
+
+export const TERM_LABELS: Record<LokSabhaTerm, string> = {
+  FIFTEENTH: "15th Lok Sabha (2009–2014)",
+  SIXTEENTH: "16th Lok Sabha (2014–2019)",
+  SEVENTEENTH: "17th Lok Sabha (2019–2024)",
+  EIGHTEENTH: "18th Lok Sabha (2024–2029)",
+};
+
+export const IDA_APPROVAL_LABELS: Record<IdaApproval, string> = {
+  PENDING: "Action Pending",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+};
+
+export function getTermLabel(term: LokSabhaTerm): string {
+  return TERM_LABELS[term] ?? term;
+}
+
+export function getHouseLabel(house: House): string {
+  return HOUSE_LABELS[house] ?? house;
 }

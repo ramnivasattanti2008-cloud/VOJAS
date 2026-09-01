@@ -13,7 +13,13 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx scripts/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "ingest:lgd": "tsx ../scripts/ingest/lgd.ts",
+    "ingest:vonter": "tsx ../scripts/ingest/vonter.ts",
+    "ingest:dataful": "tsx ../scripts/ingest/dataful.ts",
+    "ingest:opencity": "tsx ../scripts/ingest/opencity.ts",
+    "ingest:normalize": "tsx ../scripts/ingest/normalize.ts",
+    "ingest:all": "npm run ingest:lgd && npm run ingest:vonter && npm run ingest:opencity && npm run ingest:dataful && npm run ingest:normalize"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

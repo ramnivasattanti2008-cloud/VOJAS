@@ -92,6 +92,69 @@ const DEFAULT_RULES = [
     severity: "LOW" as AnomalySeverity,
     priority: 60,
   },
+  {
+    code: "VENDOR_CONCENTRATION",
+    name: "Vendor Concentration",
+    description:
+      "Flags projects where the same vendor received payments across more than 5 distinct constituencies — strong indicator of cartel / shell vendor activity.",
+    category: "FINANCIAL" as AnomalyCategory,
+    severity: "HIGH" as AnomalySeverity,
+    priority: 85,
+  },
+  {
+    code: "MP_VOLUME_OUTLIER",
+    name: "MP Project Volume Outlier",
+    description:
+      "Flags MPs whose total sanctioned amount in a single Lok Sabha term exceeds 2× the term median — possible budget concentration / favouritism.",
+    category: "FINANCIAL" as AnomalyCategory,
+    severity: "MEDIUM" as AnomalySeverity,
+    priority: 75,
+  },
+  {
+    code: "GHOST_PROJECT",
+    name: "Ghost Project",
+    description:
+      "Flags APPROVED or IN_PROGRESS projects with no expenditures after 12+ months since recommended date — possible paper-only recommendations.",
+    category: "COMPLIANCE" as AnomalyCategory,
+    severity: "HIGH" as AnomalySeverity,
+    priority: 88,
+  },
+  {
+    code: "PAYMENT_TO_OLD_WORK",
+    name: "Payment to Old Work",
+    description:
+      "Flags expenditures paid more than 2 years after the project's recommended date — possible post-hoc fabrication.",
+    category: "TIMELINE" as AnomalyCategory,
+    severity: "MEDIUM" as AnomalySeverity,
+    priority: 65,
+  },
+  {
+    code: "COST_OUTLIER_BY_STATE",
+    name: "Cost Outlier (State Benchmark)",
+    description:
+      "Flags projects whose sanctioned amount exceeds 3× the state-level median for the same sector — state-wide benchmarking independent of constituency.",
+    category: "COST_OUTLIER" as AnomalyCategory,
+    severity: "HIGH" as AnomalySeverity,
+    priority: 82,
+  },
+  {
+    code: "DISTRICT_UNDERSERVED",
+    name: "District Underserved",
+    description:
+      "Flags districts with fewer than 2 sanctioned projects in the latest Lok Sabha term — possible geographic bias in fund allocation.",
+    category: "GEOGRAPHIC" as AnomalyCategory,
+    severity: "LOW" as AnomalySeverity,
+    priority: 50,
+  },
+  {
+    code: "FAILED_PAYMENT_STALE",
+    name: "Failed Payment Stale",
+    description:
+      "Flags expenditures with FAIL payment status older than 90 days without a retry — possible silent loss of public funds.",
+    category: "FINANCIAL" as AnomalyCategory,
+    severity: "MEDIUM" as AnomalySeverity,
+    priority: 70,
+  },
 ] as const;
 
 // ─── Seed default rules ───────────────────────────────────────────────────────
@@ -379,6 +442,319 @@ async function ruleUnverifiedLocations(): Promise<FoundAnomaly[]> {
   return anomalies;
 }
 
+// Rule 7: VENDOR_CONCENTRATION
+// One vendor paid across >5 distinct constituencies ⇒ likely shell/cartel.
+async function ruleVendorConcentration(): Promise<FoundAnomaly[]> {
+  const vendors = await prisma.vendor.findMany({
+    where: { constituencyCount: { gt: 5 } },
+    include: {
+      expenditures: {
+        select: {
+          amount: true,
+          project: { select: { id: true, name: true, constituency: true, state: true } },
+        },
+        take: 500,
+      },
+    },
+  });
+  const anomalies: FoundAnomaly[] = [];
+  for (const v of vendors) {
+    const projects = v.expenditures
+      .map((e) => e.project)
+      .filter((p): p is NonNullable<typeof p> => !!p);
+    const uniqueProjects = new Set(projects.map((p) => p.id));
+    if (uniqueProjects.size === 0) continue;
+    // Flag the highest-value project of this vendor as the anchor
+    const topExp = v.expenditures.reduce(
+      (max, e) => (e.amount > max.amount ? e : max),
+      v.expenditures[0],
+    );
+    const topProject = topExp?.project;
+    if (!topProject) continue;
+    anomalies.push({
+      projectId: topProject.id,
+      ruleCode: "VENDOR_CONCENTRATION",
+      title: `Vendor concentration: ${v.name}`,
+      description: `Vendor "${v.name}" received payments across ${v.constituencyCount} distinct constituencies and ${uniqueProjects.size} projects. Concentration of this kind is a known indicator of shell-vendor or cartel activity.`,
+      category: "FINANCIAL",
+      severity: "HIGH",
+      riskScore: Math.min(95, 60 + v.constituencyCount * 2),
+      evidence: {
+        vendorId: v.id,
+        vendorName: v.name,
+        constituencyCount: v.constituencyCount,
+        projectCount: uniqueProjects.size,
+        totalPaid: v.totalPaid,
+      },
+    });
+  }
+  return anomalies;
+}
+
+// Rule 8: MP_VOLUME_OUTLIER
+// One MP with >2× the term-median sanctioned total.
+async function ruleMPVolumeOutlier(): Promise<FoundAnomaly[]> {
+  const projects = await prisma.project.findMany({
+    where: { mpId: { not: null } },
+    select: { id: true, name: true, mpId: true, approvedAmount: true, term: true, mpName: true },
+  });
+  const anomalies: FoundAnomaly[] = [];
+  const byMP: Record<string, typeof projects> = {};
+  for (const p of projects) {
+    if (!p.mpId) continue;
+    const key = p.term ? `${p.mpId}::${p.term}` : p.mpId;
+    if (!byMP[key]) byMP[key] = [];
+    byMP[key].push(p);
+  }
+  for (const [key, list] of Object.entries(byMP)) {
+    if (list.length < 3) continue;
+    const total = list.reduce((s, p) => s + p.approvedAmount, 0);
+    // Compare against all-MP median in same term
+    const term = list[0].term;
+    const allInTerm = projects.filter((p) => p.term === term);
+    if (allInTerm.length < 3) continue;
+    const totalsByMP: Record<string, number> = {};
+    for (const p of allInTerm) {
+      if (!p.mpId) continue;
+      totalsByMP[p.mpId] = (totalsByMP[p.mpId] ?? 0) + p.approvedAmount;
+    }
+    const sortedTotals = Object.values(totalsByMP).sort((a, b) => a - b);
+    const median =
+      sortedTotals.length % 2 === 0
+        ? (sortedTotals[sortedTotals.length / 2 - 1] + sortedTotals[sortedTotals.length / 2]) / 2
+        : sortedTotals[Math.floor(sortedTotals.length / 2)];
+    if (total > median * 2) {
+      const top = list.reduce((a, b) => (b.approvedAmount > a.approvedAmount ? b : a));
+      anomalies.push({
+        projectId: top.id,
+        ruleCode: "MP_VOLUME_OUTLIER",
+        title: `MP volume outlier: ${top.mpName ?? key}`,
+        description: `MP "${top.mpName ?? key}" has total sanctioned ₹${total.toLocaleString("en-IN")} across ${list.length} projects in ${term ?? "this term"}, more than 2× the term median (₹${median.toLocaleString("en-IN")}).`,
+        category: "FINANCIAL",
+        severity: "MEDIUM",
+        riskScore: Math.min(85, 50 + Math.round((total / median - 2) * 10)),
+        evidence: {
+          mpId: top.mpId,
+          mpName: top.mpName,
+          term,
+          projectCount: list.length,
+          totalSanctioned: total,
+          termMedian: median,
+          deviationRatio: Math.round((total / median) * 100) / 100,
+        },
+      });
+    }
+  }
+  return anomalies;
+}
+
+// Rule 9: GHOST_PROJECT
+// APPROVED/IN_PROGRESS with no expenditures 12+ months after recommended date.
+async function ruleGhostProjects(): Promise<FoundAnomaly[]> {
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  const projects = await prisma.project.findMany({
+    where: {
+      status: { in: ["APPROVED", "IN_PROGRESS"] },
+      recommendedDate: { lt: twelveMonthsAgo },
+    },
+    include: {
+      expenditures: { select: { id: true, amount: true, paidOn: true } },
+    },
+  });
+  const anomalies: FoundAnomaly[] = [];
+  for (const p of projects) {
+    if (p.expenditures.length > 0) continue;
+    const monthsSince =
+      Math.floor((Date.now() - new Date(p.recommendedDate!).getTime()) / (30 * 24 * 60 * 60 * 1000));
+    anomalies.push({
+      projectId: p.id,
+      ruleCode: "GHOST_PROJECT",
+      title: `Ghost project: ${p.name}`,
+      description: `Project has been ${p.status} for ${monthsSince} months (since ${p.recommendedDate!.toISOString().slice(0, 10)}) with zero recorded expenditures — possible paper-only recommendation.`,
+      category: "COMPLIANCE",
+      severity: "HIGH",
+      riskScore: Math.min(90, 50 + monthsSince),
+      evidence: {
+        status: p.status,
+        recommendedDate: p.recommendedDate,
+        monthsSinceRecommended: monthsSince,
+        expenditureCount: 0,
+      },
+    });
+  }
+  return anomalies;
+}
+
+// Rule 10: PAYMENT_TO_OLD_WORK
+// Expenditure paid >2 years after recommended date.
+async function rulePaymentToOldWork(): Promise<FoundAnomaly[]> {
+  const expenditures = await prisma.expenditure.findMany({
+    where: {
+      paidOn: { not: null },
+      project: { recommendedDate: { not: null } },
+    },
+    include: {
+      project: { select: { id: true, name: true, recommendedDate: true } },
+    },
+  });
+  const anomalies: FoundAnomaly[] = [];
+  const twoYearsMs = 2 * 365 * 24 * 60 * 60 * 1000;
+  for (const e of expenditures) {
+    const recDate = e.project?.recommendedDate;
+    if (!recDate || !e.paidOn) continue;
+    const gap = new Date(e.paidOn).getTime() - new Date(recDate).getTime();
+    if (gap > twoYearsMs) {
+      const years = Math.round((gap / (365 * 24 * 60 * 60 * 1000)) * 10) / 10;
+      anomalies.push({
+        projectId: e.project!.id,
+        ruleCode: "PAYMENT_TO_OLD_WORK",
+        title: `Late payment: ${e.project!.name}`,
+        description: `Expenditure of ₹${e.amount.toLocaleString("en-IN")} was paid ${years} years after the project was recommended — possible post-hoc fabrication.`,
+        category: "TIMELINE",
+        severity: "MEDIUM",
+        riskScore: Math.min(80, 40 + Math.round(years * 10)),
+        evidence: {
+          expenditureId: e.id,
+          amount: e.amount,
+          paidOn: e.paidOn,
+          recommendedDate: recDate,
+          yearsBetween: years,
+        },
+      });
+    }
+  }
+  return anomalies;
+}
+
+// Rule 11: COST_OUTLIER_BY_STATE
+// Sanctioned amount > 3× the state median for the same sector.
+async function ruleCostOutlierByState(): Promise<FoundAnomaly[]> {
+  const projects = await prisma.project.findMany({
+    where: { approvedAmount: { gt: 0 } },
+    select: { id: true, name: true, state: true, sector: true, approvedAmount: true },
+  });
+  const anomalies: FoundAnomaly[] = [];
+  const groups: Record<string, typeof projects> = {};
+  for (const p of projects) {
+    const key = `${p.state}::${p.sector}`;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  }
+  for (const [, group] of Object.entries(groups)) {
+    if (group.length < 5) continue;
+    const amounts = group.map((p) => p.approvedAmount).sort((a, b) => a - b);
+    const median =
+      amounts.length % 2 === 0
+        ? (amounts[amounts.length / 2 - 1] + amounts[amounts.length / 2]) / 2
+        : amounts[Math.floor(amounts.length / 2)];
+    const threshold = median * 3;
+    for (const p of group) {
+      if (p.approvedAmount > threshold) {
+        anomalies.push({
+          projectId: p.id,
+          ruleCode: "COST_OUTLIER_BY_STATE",
+          title: `State cost outlier: ${p.name}`,
+          description: `Sanctioned ₹${p.approvedAmount.toLocaleString("en-IN")} is more than 3× the state-sector median (₹${median.toLocaleString("en-IN")}) for ${p.sector} in ${p.state}.`,
+          category: "COST_OUTLIER",
+          severity: "HIGH",
+          riskScore: Math.min(90, 60 + Math.round((p.approvedAmount / median - 3) * 5)),
+          evidence: {
+            state: p.state,
+            sector: p.sector,
+            stateSectorMedian: median,
+            projectCount: group.length,
+            deviationRatio: Math.round((p.approvedAmount / median) * 100) / 100,
+          },
+        });
+      }
+    }
+  }
+  return anomalies;
+}
+
+// Rule 12: DISTRICT_UNDERSERVED
+// Districts with <2 sanctioned projects in the latest term.
+async function ruleDistrictUnderserved(): Promise<FoundAnomaly[]> {
+  const latestTerm = await prisma.project.findFirst({
+    orderBy: { recommendedDate: "desc" },
+    select: { term: true },
+  });
+  if (!latestTerm?.term) return [];
+  const projects = await prisma.project.findMany({
+    where: { term: latestTerm.term, status: { not: "CANCELLED" } },
+    select: { id: true, name: true, district: true, state: true, term: true },
+  });
+  const anomalies: FoundAnomaly[] = [];
+  const byDistrict: Record<string, typeof projects> = {};
+  for (const p of projects) {
+    const key = `${p.state}::${p.district}`;
+    if (!byDistrict[key]) byDistrict[key] = [];
+    byDistrict[key].push(p);
+  }
+  for (const [key, list] of Object.entries(byDistrict)) {
+    if (list.length >= 2) continue;
+    // Flag the lone project, if any
+    const target = list[0];
+    anomalies.push({
+      projectId: target.id,
+      ruleCode: "DISTRICT_UNDERSERVED",
+      title: `Underserved district: ${target.district}, ${target.state}`,
+      description: `District ${target.district} (${target.state}) has only ${list.length} project(s) in the latest Lok Sabha term (${latestTerm.term}) — well below peers. May indicate geographic bias in fund allocation.`,
+      category: "GEOGRAPHIC",
+      severity: "LOW",
+      riskScore: 25,
+      evidence: {
+        district: target.district,
+        state: target.state,
+        term: latestTerm.term,
+        projectCount: list.length,
+      },
+    });
+  }
+  return anomalies;
+}
+
+// Rule 13: FAILED_PAYMENT_STALE
+// FAILED payment status older than 90 days without a retry.
+async function ruleFailedPaymentStale(): Promise<FoundAnomaly[]> {
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const expenditures = await prisma.expenditure.findMany({
+    where: {
+      paidOn: { lt: ninetyDaysAgo },
+      paymentStatus: { not: null },
+    },
+    include: { project: { select: { id: true, name: true } } },
+  });
+  const anomalies: FoundAnomaly[] = [];
+  for (const e of expenditures) {
+    if (!e.project) continue;
+    // Filter in code for "contains fail" since SQLite has no mode-insensitive
+    if (!e.paymentStatus?.toLowerCase().includes("fail")) continue;
+    const daysOld = Math.floor(
+      (Date.now() - new Date(e.paidOn!).getTime()) / (24 * 60 * 60 * 1000),
+    );
+    anomalies.push({
+      projectId: e.project.id,
+      ruleCode: "FAILED_PAYMENT_STALE",
+      title: `Stale failed payment: ${e.project.name}`,
+      description: `Expenditure of ₹${e.amount.toLocaleString("en-IN")} has been in FAILED state for ${daysOld} days with no recorded retry — possible silent loss of public funds.`,
+      category: "FINANCIAL",
+      severity: "MEDIUM",
+      riskScore: Math.min(80, 40 + Math.round(daysOld / 10)),
+      evidence: {
+        expenditureId: e.id,
+        amount: e.amount,
+        paidOn: e.paidOn,
+        paymentStatus: e.paymentStatus,
+        daysStale: daysOld,
+      },
+    });
+  }
+  return anomalies;
+}
+
 // ─── Main scan function ────────────────────────────────────────────────────────
 
 export async function runAnomalyScan(): Promise<{
@@ -400,6 +776,13 @@ export async function runAnomalyScan(): Promise<{
     BUDGET_OVERRUN: ruleBudgetOverruns,
     STALLED_PROJECT: ruleStalledProjects,
     UNVERIFIED_LOCATION: ruleUnverifiedLocations,
+    VENDOR_CONCENTRATION: ruleVendorConcentration,
+    MP_VOLUME_OUTLIER: ruleMPVolumeOutlier,
+    GHOST_PROJECT: ruleGhostProjects,
+    PAYMENT_TO_OLD_WORK: rulePaymentToOldWork,
+    COST_OUTLIER_BY_STATE: ruleCostOutlierByState,
+    DISTRICT_UNDERSERVED: ruleDistrictUnderserved,
+    FAILED_PAYMENT_STALE: ruleFailedPaymentStale,
   };
 
   const allFound: FoundAnomaly[] = [];

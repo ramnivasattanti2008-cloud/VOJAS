@@ -1,8 +1,16 @@
 // Automated Render deploy + seed orchestration
 const https = require('https');
 
-const TOKEN = 'rnd_rlVLrdFr0moSx29zgBek4BxdIBpR';
-const SERVICE_ID = 'srv-daaocqek1f9s73b1l520';
+// SECURITY: read API key from env var (NEVER hardcode in source).
+// Set RENDER_API_KEY in your shell before running this script.
+// To get a key: https://dashboard.render.com/account/tokens
+const TOKEN = process.env.RENDER_API_KEY;
+const SERVICE_ID = process.env.RENDER_SERVICE_ID || 'srv-daaocqek1f9s73b1l520';
+if (!TOKEN) {
+  console.error('ERROR: Set RENDER_API_KEY environment variable before running this script.');
+  console.error('Get a token at https://dashboard.render.com/account/tokens');
+  process.exit(1);
+}
 const BASE = 'api.render.com';
 
 function req(path, method, body) {

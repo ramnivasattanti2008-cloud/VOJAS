@@ -15,6 +15,8 @@ import aiRoutes from "./ai.js";
 import notificationRoutes from "./notifications.js";
 import documentRoutes from "./documents.js";
 import adminSeedRoutes from "./adminSeed.js";
+import mpRoutes from "./mps.js";
+import vendorRoutes from "./vendors.js";
 
 const router = Router();
 
@@ -37,5 +39,7 @@ router.use("/internal", adminSeedRoutes);
 router.use("/ai", aiRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/documents", documentRoutes);
+router.use("/mps", mpRoutes);
+router.use("/vendors", vendorRoutes);
 
 export default router;
