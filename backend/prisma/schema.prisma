@@ -84,6 +84,9 @@ enum Role {
   ANALYST
   VIEWER
   MP
+  CONTRACTOR
+  CITIZEN
+  FIELD_OFFICER
 }
 
 enum ProjectStatus {
@@ -175,6 +178,14 @@ model Project {
   anomalies    Anomaly[]
   risk         ProjectRisk?
   documents    Document[]
+
+  // Phase 16+ relations
+  inspections  FieldInspection[]
+  cases        Case[]
+  projectHistory ProjectHistory[]
+  accountabilityChain AccountabilityChain[]
+  referrals    Referral[]
+  packages     EvidencePackage[]
 
   // Open-data dedup: unique per source so upsert is fast
   @@unique([source, sourceWorkId])
@@ -344,6 +355,8 @@ model Report {
   assignedTo  User?              @relation("AssignedReports", fields: [assignedToId], references: [id])
   statusLogs  ReportStatusLog[]
   attachments ReportAttachment[]
+  asset       Asset?             @relation(fields: [assetId], references: [id])
+  assetId     String?
 }
 
 // Status change audit trail for each report
@@ -600,4 +613,818 @@ model ProjectRisk {
 
   @@index([overallScore])
   @@index([riskLevel])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 16+ — Public Asset Health (roads, bridges, buildings, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AssetType {
+  ROAD
+  BRIDGE
+  PUBLIC_BUILDING
+  DRAINAGE
+  WATER_INFRASTRUCTURE
+  STREETLIGHT
+  OTHER
+}
+
+enum AssetStatus {
+  OPERATIONAL
+  DEGRADED
+  CRITICAL
+  REPAIRED
+  UNDER_MAINTENANCE
+  DECOMMISSIONED
+}
+
+model Asset {
+  id          String      @id @default(uuid())
+  name        String
+  type        AssetType
+  status      AssetStatus @default(OPERATIONAL)
+  district    String
+  state       String
+  latitude    Float?
+  longitude   Float?
+  address     String?
+  landmark    String?
+  description String?
+  lastInspectedAt DateTime?
+  healthScore Int        @default(100) // 0-100
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  inspections   AssetInspection[]
+  problems      AssetProblem[]
+  citizenReports Report[]
+  history       AssetHistory[]
+  fieldInspections FieldInspection[]
+
+  @@index([type, district])
+  @@index([status])
+  @@index([district, state])
+}
+
+model AssetInspection {
+  id         String   @id @default(uuid())
+  assetId   String
+  inspectorId String?
+  locationDesc String?
+  latitude   Float?
+  longitude  Float?
+  condition  String   // e.g. "Good", "Fair", "Poor", "Critical"
+  notes      String?
+  photos     String?  // JSON: [{ url, caption }]
+  checklist  String?  // JSON: { structural: bool, safety: bool, ... }
+  result     String?  // "VERIFIED", "PARTIAL", "MORE_INFO", "NOT_VERIFIED", "REQUIRES_INVESTIGATION"
+  inspectedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  asset    Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([inspectedAt])
+}
+
+model AssetProblem {
+  id         String   @id @default(uuid())
+  assetId   String
+  title      String
+  description String?
+  severity   String   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  status     String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  reportedBy String?
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, status])
+}
+
+model AssetHistory {
+  id        String   @id @default(uuid())
+  assetId   String
+  event     String   // e.g. "STATUS_CHANGE", "INSPECTION", "REPAIR", "CONSTRUCTION"
+  detail    String?
+  evidence  String?  // JSON array of URLs
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 17 — Development Requests (citizen-initiated)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DevelopmentRequestStatus {
+  SUBMITTED
+  REVIEWING
+  APPROVED
+  IMPLEMENTED
+  REJECTED
+  MERGED
+}
+
+model DevelopmentRequest {
+  id            String                   @id @default(uuid())
+  title         String
+  description   String
+  sector        ProjectSector
+  requestType   String   // e.g. "ROAD", "SCHOOL", "HOSPITAL", "BRIDGE"
+  district      String
+  state         String
+  latitude      Float?
+  longitude     Float?
+  address       String?
+  supportingEvidence String? // JSON: [{ type, url }]
+  status        DevelopmentRequestStatus @default(SUBMITTED)
+  priority      Int      @default(50) // 0-100
+  submittedBy   String?
+  submittedAt   DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  supports      DevelopmentRequestSupport[]
+  groupId       String?  // for grouping similar requests
+  mergedIntoId  String?
+  resolvedAt    DateTime?
+  resolution    String?
+
+  @@index([district, sector])
+  @@index([status])
+  @@index([groupId])
+}
+
+model DevelopmentRequestSupport {
+  id              String @id @default(uuid())
+  requestId       String
+  supporterName   String?
+  supporterEmail  String?
+  isAnonymous     Boolean @default(true)
+  createdAt       DateTime @default(now())
+
+  request DevelopmentRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 18 — Development Priority (administrative indicator)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DevelopmentPriority {
+  id              String   @id @default(uuid())
+  district        String
+  state           String
+  sector          ProjectSector
+  priorityScore   Int      @default(50) // 0-100 composite score
+  factors         String?  // JSON: [{ code, label, value, detail }]
+  citizenRequestCount Int  @default(0)
+  populationGap   String?  // JSON: { metric, value }
+  infrastructureGap String? // JSON: { type, severity }
+  safetyConcernCount Int  @default(0)
+  distanceToFacility Float? // km
+  computedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([district, sector])
+  @@index([priorityScore])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 23 — Field Verification / Inspections
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum InspectionResult {
+  VERIFIED
+  PARTIALLY_VERIFIED
+  MORE_INFO_REQUIRED
+  NOT_VERIFIED
+  REQUIRES_INVESTIGATION
+}
+
+model FieldInspection {
+  id              String           @id @default(uuid())
+  projectId      String?
+  assetId        String?
+  assigneeId     String?
+  locationDesc   String?
+  latitude       Float?
+  longitude      Float?
+  scheduledDate  DateTime?
+  completedDate  DateTime?
+  result         InspectionResult?
+  checklist      String? // JSON: { structural, safety, quality, environmental }
+  photos         String? // JSON: [{ url, caption, timestamp }]
+  notes          String?
+  evidenceUrls   String? // JSON: string[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  asset    Asset?   @relation(fields: [assetId], references: [id])
+  project  Project? @relation(fields: [projectId], references: [id])
+
+  @@index([assigneeId])
+  @@index([projectId])
+  @@index([result])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 24 — Case Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CaseType {
+  ANOMALY_INVESTIGATION
+  CITIZEN_COMPLAINT
+  PROCUREMENT_IRREGULARITY
+  ENVIRONMENTAL_VIOLATION
+  FINANCIAL_MISCONDUCT
+  VERIFICATION_REQUIRED
+  REFERRAL_INCOMING
+  OTHER
+}
+
+enum CaseStatus {
+  OPEN
+  ASSIGNED
+  UNDER_INVESTIGATION
+  ESCALATED
+  CLOSED
+  REOPENED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Case {
+  id           String       @id @default(uuid())
+  title        String
+  description  String
+  type         CaseType
+  priority     CasePriority @default(MEDIUM)
+  status       CaseStatus  @default(OPEN)
+  projectId   String?
+  reportId    String?
+  anomalyId   String?
+  assignedToId String?
+  closedAt    DateTime?
+  resolution  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  project    Project? @relation(fields: [projectId], references: [id])
+  statusLogs CaseStatusLog[]
+  evidence   CaseEvidence[]
+  referrals  Referral[]
+  packages   EvidencePackage[]
+
+  @@index([status, priority])
+  @@index([assignedToId])
+  @@index([type])
+}
+
+model CaseStatusLog {
+  id         String     @id @default(uuid())
+  caseId    String
+  fromStatus CaseStatus?
+  toStatus  CaseStatus
+  changedById String?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+}
+
+model CaseEvidence {
+  id          String   @id @default(uuid())
+  caseId     String
+  type       String   // "DOCUMENT", "PHOTO", "VIDEO", "FINANCIAL", "AI_FINDING"
+  title      String
+  description String?
+  url        String?
+  source     String?  // "CITIZEN", "CONTRACTOR", "FIELD_INSPECTION", "AI", "DOCUMENT"
+  strength   String?  // "STRONG", "MODERATE", "WEAK"
+  addedById  String?
+  createdAt  DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 40 — Procurement / Vendor Network Analysis
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ProcurementRelationship {
+  id            String   @id @default(uuid())
+  vendorId     String
+  projectId    String
+  tenderNo     String?
+  contractNo   String?
+  contractValue Float?
+  contractDate DateTime?
+  relationshipType String? // SOLE, JOINT_VENTURE, SUB_CONTRACTOR
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([vendorId, projectId])
+  @@index([vendorId])
+  @@index([projectId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 41 — Legislative / Guideline Audit
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Guideline {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  category    String   // "MPLAD_RULES", "FINANCIAL_CODE", "ENVIRONMENTAL_LAW", "PROCUREMENT_RULES", etc.
+  referenceNo String?  // e.g. "Rule 5(3)", "Section 12"
+  issuingBody String?  // e.g. "MoSPI", "Ministry of Finance"
+  url         String?  // link to official document
+  content     String?  // full text (for AI retrieval)
+  sector      ProjectSector?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([sector])
+}
+
+model GuidelineCheck {
+  id              String   @id @default(uuid())
+  projectId       String
+  guidelineId     String
+  isCompliant     Boolean?
+  nonComplianceNote String?
+  checkedById     String?
+  checkedAt       DateTime @default(now())
+
+  @@unique([projectId, guidelineId])
+  @@index([projectId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 42 — Data Quality Engine
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DataQualityIssueStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model DataQualityIssue {
+  id           String                @id @default(uuid())
+  entity       String               // "PROJECT", "REPORT", "VENDOR", "DOCUMENT"
+  entityId    String
+  issueType   String               // "MISSING_DATA", "DUPLICATE", "STALE_DATA", "INVALID_LOCATION", "CONFLICTING_INFO"
+  description String
+  severity    String               @default("MEDIUM") // LOW, MEDIUM, HIGH
+  status      DataQualityIssueStatus @default(OPEN)
+  resolvedById String?
+  resolution  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([entity, entityId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 43 — Data Source Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DataSourceStatus {
+  ACTIVE
+  STALE
+  UNAVAILABLE
+  DEPRECATED
+}
+
+model DataSource {
+  id            String         @id @default(uuid())
+  sourceName   String
+  datasetName  String
+  department   String?
+  officialUrl  String?
+  lastFetched  DateTime?
+  lastUpdated  DateTime?
+  format       String?        // "CSV", "JSON", "XML", "API", "MANUAL"
+  apiAvailable Boolean        @default(false)
+  downloadAvailable Boolean   @default(false)
+  status       DataSourceStatus @default(ACTIVE)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 45 — Data Freshness Tracking
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DataFreshness {
+  id           String   @id @default(uuid())
+  sourceName  String
+  datasetName String
+  lastUpdated DateTime?
+  status      String   @default("FRESH") // FRESH, AGING, STALE, UNAVAILABLE
+  thresholdDays Int    @default(7)
+  checkedAt   DateTime @default(now())
+
+  @@unique([sourceName, datasetName])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 48 — Project Digital History (lifecycle timeline)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ProjectHistory {
+  id          String   @id @default(uuid())
+  projectId   String
+  event       String   // "APPROVAL", "FUND_RELEASE", "WORK_START", "PROGRESS_UPDATE", "CITIZEN_REPORT", "INSPECTION", "VERIFICATION", "PAYMENT", "COMPLETION"
+  description String
+  evidenceUrls String?  // JSON: string[]
+  actor       String?  // "SYSTEM", "USER", "AI", "CONTRACTOR", "CITIZEN"
+  actorName   String?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 49 — Accountability Chain (lifecycle record)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AccountabilityChain {
+  id          String   @id @default(uuid())
+  projectId   String
+  stage       String   // "PUBLIC_NEED", "PROJECT_REQUEST", "PROJECT_APPROVAL", "BUDGET_ALLOCATION", "FUNDS_RELEASED", "CONTRACTOR_ASSIGNED", "WORK_STARTED", "PROGRESS_UPDATES", "CITIZEN_MONITORING", "AI_ANALYSIS", "RISK_DETECTION", "EVIDENCE_COLLECTION", "VERIFICATION", "MILESTONE_APPROVAL", "PAYMENT_ELIGIBILITY", "AUTHORIZED_PAYMENT", "COMPLETION", "FINAL_VERIFICATION", "PUBLIC_STATUS", "CITIZEN_FEEDBACK", "RESOLUTION", "ACCOUNTABILITY"
+  status      String   @default("PENDING") // PENDING, COMPLETED, SKIPPED, DELAYED
+  completedAt DateTime?
+  evidenceUrls String?  // JSON: string[]
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([stage])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 50 — Authority Referral
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ReferralAuthority {
+  ANTI_CORRUPTION
+  POLICE
+  VIGILANCE
+  COMPTROLLER
+  LOKAYUKTA
+  OTHER
+}
+
+enum ReferralStatus {
+  SUBMITTED
+  ACKNOWLEDGED
+  UNDER_REVIEW
+  CLOSED
+  ESCALATED
+}
+
+model Referral {
+  id           String           @id @default(uuid())
+  caseId      String?
+  projectId   String?
+  reportId    String?
+  authority   ReferralAuthority
+  referenceNo String?
+  status      ReferralStatus   @default(SUBMITTED)
+  summary     String
+  evidenceSummary String?
+  submittedById String?
+  submittedAt  DateTime @default(now())
+  closedAt    DateTime?
+  outcome     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id])
+  case    Case?   @relation(fields: [caseId], references: [id])
+
+  @@index([authority, status])
+  @@index([projectId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 51 — Evidence Package Generation
+// ─────────────────────────────────────────────────────────────────────────────
+
+model EvidencePackage {
+  id          String   @id @default(uuid())
+  caseId     String?
+  projectId  String?
+  title      String
+  generatedById String?
+  content    String?  // JSON: full package structure
+  pdfUrl     String?
+  generatedAt DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id])
+  case    Case?   @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@index([projectId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 52 — Police / Safety Reports
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SafetyReport {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  type        String   // "EMERGENCY", "INFRASTRUCTURE_HAZARD", "FLOOD_RISK", "FIRE_RISK", "CRIME_TREND"
+  severity    String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  district    String
+  state       String
+  latitude    Float?
+  longitude   Float?
+  status      String   @default("OPEN") // OPEN, UNDER_REVIEW, RESOLVED, CLOSED
+  reportedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([district, status])
+  @@index([type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 56 — Location Drill-Down
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StateSummary {
+  id           String   @id @default(uuid())
+  state        String   @unique
+  projectCount Int      @default(0)
+  totalSanctioned Float @default(0)
+  totalSpent  Float     @default(0)
+  avgRiskScore Float    @default(0)
+  highRiskCount Int     @default(0)
+  updatedAt   DateTime  @updatedAt
+}
+
+model DistrictSummary {
+  id           String   @id @default(uuid())
+  state       String
+  district     String
+  projectCount Int      @default(0)
+  totalSanctioned Float @default(0)
+  totalSpent  Float     @default(0)
+  avgRiskScore Float    @default(0)
+  highRiskCount Int     @default(0)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([state, district])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 57 — Global Search Index
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SearchableType {
+  PROJECT
+  REPORT
+  VENDOR
+  MP
+  ASSET
+  ANOMALY
+  CASE
+  DOCUMENT
+  GUIDELINE
+}
+
+model SearchIndex {
+  id          String         @id @default(uuid())
+  entityType  SearchableType
+  entityId   String
+  title       String
+  content     String?        // searchable text
+  metadata    String?        // JSON: { sector, district, state, ... }
+  weight      Int            @default(1)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([title])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 62 — Dynamic Policy / Risk Thresholds (admin-configurable)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PolicyConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique // e.g. "RISK_THRESHOLD_HIGH", "ANOMALY_WEIGHT_CRITICAL"
+  value       String   // JSON value
+  description String?
+  category    String   // "RISK", "ANOMALY", "ALERT", "NOTIFICATION"
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 65 — Whistleblower System
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WhistleblowerReport {
+  id           String   @id @default(uuid())
+  category     String   // "CORRUPTION", "BRIBE", "FRAUD", "MISUSE", "CONFLICT_OF_INTEREST"
+  title        String
+  description  String
+  encryptedData String?  // encrypted evidence chunks
+  source       String   @default("WEB") // WEB, MOBILE, API
+  ipAddress    String?
+  status       String   @default("RECEIVED") // RECEIVED, UNDER_REVIEW, ESCALATED, CLOSED
+  reviewedById String?
+  reviewedAt   DateTime?
+  resolution   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([category])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 27-35 — Contractor Portal Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ContractorProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  companyName    String?
+  gstin          String?  // GST Identification Number
+  udyamRegNo     String?
+  pan            String?
+  contactPerson  String?
+  contactEmail   String?
+  contactPhone   String?
+  address        String?
+  district       String?
+  state          String?
+  verified       Boolean  @default(false)
+  verifiedById   String?
+  verifiedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ContractorProject {
+  id            String   @id @default(uuid())
+  contractorId  String
+  projectId    String
+  role          String   @default("PRIMARY") // PRIMARY, SUB_CONTRACTOR, JOINT_VENTURE
+  contractValue Float?
+  startDate     DateTime?
+  endDate       DateTime?
+  status        String   @default("ACTIVE") // ACTIVE, COMPLETED, TERMINATED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([contractorId, projectId])
+  @@index([contractorId])
+}
+
+model ContractorMilestone {
+  id             String   @id @default(uuid())
+  contractorProjectId String
+  title         String
+  description   String?
+  dueDate       DateTime?
+  completedDate DateTime?
+  status        String   @default("PENDING") // PENDING, IN_PROGRESS, SUBMITTED, VERIFIED, PAID
+  amount        Float?
+  paymentStatus String?  // SUBMITTED_RECEIVED, VERIFICATION_PENDING, ADDITIONAL_INFO, VERIFIED, PROCESSING, COMPLETED
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  documents ContractorDocument[]
+
+  @@index([contractorProjectId, status])
+}
+
+model ContractorDocument {
+  id             String   @id @default(uuid())
+  milestoneId    String?
+  contractorId   String
+  type           String   // "COMPLETION_CERT", "INVOICE", "QUALITY_REPORT", "PHOTO_EVIDENCE", "WORK_ORDER", "OTHER"
+  title          String
+  filename       String
+  originalName   String
+  mimeType       String
+  size           Int
+  url            String
+  status         String   @default("PENDING") // PENDING, APPROVED, REJECTED, EXPIRED
+  notes          String?
+  expiryDate     DateTime?
+  uploadedAt     DateTime @default(now())
+  verifiedAt     DateTime?
+  verifiedById   String?
+
+  milestone ContractorMilestone? @relation(fields: [milestoneId], references: [id])
+
+  @@index([contractorId, status])
+}
+
+model ContractorWorkDiary {
+  id             String   @id @default(uuid())
+  contractorProjectId String
+  date           DateTime
+  workCompleted  String
+  siteConditions String?
+  materials      String?  // JSON: [{ type, quantity, unit }]
+  activities     String?  // JSON: [{ description, hours, workers }]
+  progressPhotos String?  // JSON: [{ url, caption }]
+  issues         String?
+  createdAt      DateTime @default(now())
+
+  @@index([contractorProjectId, date])
+}
+
+model ContractorDefect {
+  id             String   @id @default(uuid())
+  contractorProjectId String
+  title          String
+  description    String
+  reportedBy     String?  // "OFFICER", "INSPECTOR", "CITIZEN"
+  severity       String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status         String   @default("OPEN") // OPEN, UNDER_CORRECTION, REINSPECTION, CLOSED
+  contractorResponse String?
+  respondedAt    DateTime?
+  reinspectedAt  DateTime?
+  closedAt       DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([contractorProjectId, status])
+}
+
+model ContractorPayment {
+  id                   String   @id @default(uuid())
+  contractorProjectId  String
+  milestoneId          String?
+  amount               Float
+  invoiceNo            String?
+  invoiceDate          DateTime?
+  description          String?
+  status               String   @default("SUBMITTED_RECEIVED") // SUBMITTED_RECEIVED, VERIFICATION_PENDING, ADDITIONAL_INFO_REQUIRED, VERIFIED, PROCESSING, COMPLETED
+  submittedAt          DateTime @default(now())
+  verifiedAt           DateTime?
+  verifiedById         String?
+  paymentDate          DateTime?
+  transactionRef       String?
+  notes                String?
+
+  @@index([contractorProjectId, status])
+}
+
+model ContractorResponse {
+  id             String   @id @default(uuid())
+  contractorId   String
+  anomalyId     String?
+  caseId        String?
+  title         String
+  description   String
+  evidenceUrls  String?  // JSON: string[]
+  submittedAt   DateTime @default(now())
+  reviewedById  String?
+  reviewedAt    DateTime?
+  reviewNote    String?
+  status        String   @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, ACCEPTED, REJECTED
+
+  @@index([contractorId])
+  @@index([anomalyId])
 }
