@@ -104,7 +104,6 @@ export interface SchemeFinancials {
   byCategory: CategoryBreakdown[];
   byStatus: StatusBreakdown[];
   topProjects: ProjectBreakdown[];
-  projects: ProjectBreakdown[];
 }
 
 // ── UI Helpers ────────────────────────────────────────────────────────────────

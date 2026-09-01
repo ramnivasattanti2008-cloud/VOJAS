@@ -256,12 +256,20 @@ export const expenditureService = {
 
   // ── Scheme-wide financial overview ───────────────────────────────────────
   async getSchemeFinancials() {
-    const [projects, expenditures, byCategory, byStatus] = await Promise.all([
-      prisma.project.findMany({
-        select: { id: true, name: true, district: true, state: true, status: true, approvedAmount: true, spentAmount: true },
+    // Use SQL aggregates only — no full table scans
+    const [
+      projectAgg,
+      expenditureAgg,
+      byCategory,
+      byStatus,
+      topProjects,
+    ] = await Promise.all([
+      prisma.project.aggregate({
+        _count: { _all: true },
+        _sum: { approvedAmount: true, spentAmount: true },
       }),
-      prisma.expenditure.findMany({
-        select: { amount: true, category: true, status: true, projectId: true },
+      prisma.expenditure.aggregate({
+        _count: { _all: true },
       }),
       prisma.expenditure.groupBy({
         by: ["category"],
@@ -273,57 +281,72 @@ export const expenditureService = {
         _sum: { amount: true },
         _count: true,
       }),
+      // Top 10 projects by committed spend — single SQL with groupBy + join
+      prisma.$queryRaw<Array<{
+        projectId: string;
+        name: string;
+        district: string | null;
+        state: string | null;
+        status: string;
+        approved: number;
+        spent: number;
+        committed: number;
+      }>>`
+        SELECT
+          p.id AS projectId,
+          p.name,
+          p.district,
+          p.state,
+          p.status,
+          p.approvedAmount AS approved,
+          COALESCE(SUM(CASE WHEN e.status = 'PAID' THEN e.amount ELSE 0 END), 0) AS spent,
+          COALESCE(SUM(CASE WHEN e.status IN ('PAID','AUTHORIZED') THEN e.amount ELSE 0 END), 0) AS committed
+        FROM Project p
+        LEFT JOIN Expenditure e ON e.projectId = p.id
+        GROUP BY p.id
+        ORDER BY committed DESC
+        LIMIT 10
+      `,
     ]);
 
-    const totalBudget = projects.reduce((s, p) => s + p.approvedAmount, 0);
-    const totalRecordedSpent = projects.reduce((s, p) => s + p.spentAmount, 0);
-
+    // Sum across status groups for fast totals
     let totalSpent = 0;      // PAID
     let totalAuthorized = 0; // AUTHORIZED
     let totalPending = 0;    // PENDING
-
-    for (const e of expenditures) {
-      if (e.status === "PAID")       totalSpent      += e.amount;
-      if (e.status === "AUTHORIZED") totalAuthorized += e.amount;
-      if (e.status === "PENDING")    totalPending    += e.amount;
+    for (const s of byStatus) {
+      if (s.status === "PAID")       totalSpent      += s._sum.amount ?? 0;
+      if (s.status === "AUTHORIZED") totalAuthorized += s._sum.amount ?? 0;
+      if (s.status === "PENDING")    totalPending    += s._sum.amount ?? 0;
     }
 
-    const projectBreakdown = projects.map((p) => {
-      const projExp = expenditures.filter((e) => e.projectId === p.id);
-      const spent = projExp.filter((e) => e.status === "PAID").reduce((s, e) => s + e.amount, 0);
-      const committed = projExp.filter((e) => e.status === "PAID" || e.status === "AUTHORIZED").reduce((s, e) => s + e.amount, 0);
-      return {
-        projectId:     p.id,
-        name:          p.name,
-        district:      p.district,
-        state:         p.state,
-        status:        p.status,
-        approved:      p.approvedAmount,
-        spent,
-        committed,
-        remaining:     Math.max(0, p.approvedAmount - committed),
-        utilization:   p.approvedAmount > 0 ? Math.round((committed / p.approvedAmount) * 1000) / 10 : 0,
-        expenditureCount: projExp.length,
-      };
-    });
+    const totalBudget = projectAgg._sum.approvedAmount ?? 0;
+    const totalRecordedSpent = projectAgg._sum.spentAmount ?? 0;
 
     return {
-      projectCount:      projects.length,
+      projectCount:      projectAgg._count._all,
       totalBudget,
       totalRecordedSpent,
       totalSpent,
       totalAuthorized,
       totalPending,
       committed:           totalSpent + totalAuthorized,
-      remaining:           totalBudget - (totalSpent + totalAuthorized),
+      remaining:           Math.max(0, totalBudget - (totalSpent + totalAuthorized)),
       utilization:         totalBudget > 0 ? Math.round(((totalSpent + totalAuthorized) / totalBudget) * 1000) / 10 : 0,
-      expenditureCount:   expenditures.length,
+      expenditureCount:   expenditureAgg._count._all,
       byCategory: byCategory.map((c) => ({ category: c.category, count: c._count, total: c._sum.amount ?? 0 })),
       byStatus:   byStatus.map((s) => ({ status: s.status, count: s._count, total: s._sum.amount ?? 0 })),
-      topProjects: projectBreakdown
-        .sort((a, b) => b.committed - a.committed)
-        .slice(0, 10),
-      projects: projectBreakdown,
+      topProjects: topProjects.map((p) => ({
+        projectId: p.projectId,
+        name: p.name,
+        district: p.district,
+        state: p.state,
+        status: p.status,
+        approved: p.approved ?? 0,
+        spent: p.spent,
+        committed: p.committed,
+        remaining: Math.max(0, (p.approved ?? 0) - p.committed),
+        utilization: (p.approved ?? 0) > 0 ? Math.round((p.committed / (p.approved ?? 1)) * 1000) / 10 : 0,
+      })),
     };
   },
 };

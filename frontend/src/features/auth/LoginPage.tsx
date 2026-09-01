@@ -137,7 +137,7 @@ export default function LoginPage() {
 
   const fillCredentials = (user: string) => {
     setEmail(user);
-    setPassword("VojasDemo2026");
+    setPassword("admin123");
   };
 
   return (
@@ -367,7 +367,7 @@ export default function LoginPage() {
               </button>
             ))}
           </div>
-          <p className="text-center text-[9px] text-slate-700 mt-2">Password: <span className="font-mono text-slate-600">VojasDemo2026</span></p>
+          <p className="text-center text-[9px] text-slate-700 mt-2">Password: <span className="font-mono text-slate-600">admin123</span></p>
         </motion.div>
 
         {/* Footer */}
