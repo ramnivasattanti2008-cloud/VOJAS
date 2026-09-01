@@ -234,7 +234,7 @@ export default function NotificationCenter() {
             ) : (
               <ul role="list" aria-label="Notification items" className="divide-y divide-white/5">
                 {items.map((n) => {
-                  const Icon = TYPE_ICONS[n.type] ?? Bell;
+                  const Icon = (TYPE_ICONS[n.type] ?? Bell) as React.ComponentType<{ className?: string }>;
                   const color = TYPE_COLORS[n.type] ?? "text-slate-400 bg-slate-500/10 border-slate-500/20";
                   return (
                     <li key={n.id}>

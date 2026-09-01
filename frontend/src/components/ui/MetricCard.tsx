@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { motion, type Variants } from "framer-motion";
 import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
@@ -155,6 +155,7 @@ export default function MetricCard({
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const styles = ACCENT[accent];
+  const TypedIcon = Icon as ComponentType<{ className?: string }>;
 
   useEffect(() => {
     const el = ref.current;
@@ -178,6 +179,8 @@ export default function MetricCard({
     : (deltaIsUp === upIsGood)
       ? "text-green-400 bg-green-500/10 border-green-500/20"
       : "text-red-400 bg-red-500/10 border-red-500/20";
+  const iconClass: string = cn("w-5 h-5 transition-transform group-hover:scale-110 duration-300", styles.icon);
+  const chipClass: string = cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", deltaColor);
 
   return (
     <motion.div
@@ -189,7 +192,7 @@ export default function MetricCard({
         "hover:-translate-y-1 hover:shadow-xl",
         styles.ring,
         compact ? "p-4" : "p-5"
-      )}
+      ) as string}
     >
       {/* Top accent line that appears on viewport entry */}
       <div
@@ -203,11 +206,11 @@ export default function MetricCard({
 
       {/* Header row: icon + delta chip */}
       <div className="flex items-center justify-between mb-3">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-colors ring-1 ring-white/5", styles.bg)}>
-          <Icon className={cn("w-5 h-5 transition-transform group-hover:scale-110 duration-300", styles.icon)} />
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-colors ring-1 ring-white/5", styles.bg) as string}>
+          <TypedIcon className={iconClass} />
         </div>
         {delta && (
-          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", deltaColor)}>
+          <span className={chipClass}>
             {delta}
           </span>
         )}

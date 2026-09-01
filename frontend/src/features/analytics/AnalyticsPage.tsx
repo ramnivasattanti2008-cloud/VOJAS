@@ -92,6 +92,7 @@ function StatTile({ label, value, sub, icon: Icon, accent, glow }: {
   label: string; value: string | number; sub?: string;
   icon: React.ElementType; accent: string; glow?: string;
 }) {
+  const IconTyped = Icon as React.ComponentType<{ className?: string }>;
   return (
     <motion.div
       variants={fadeUp}
@@ -103,7 +104,7 @@ function StatTile({ label, value, sub, icon: Icon, accent, glow }: {
         <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">{label}</span>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent.replace("from-", "bg-").replace(" to-", "-")}`}
           style={{ background: `${accent.includes("electric") ? "rgba(6,182,212,0.15)" : accent.includes("saffron") ? "rgba(251,146,60,0.15)" : accent.includes("red") ? "rgba(239,68,68,0.15)" : accent.includes("green") ? "rgba(16,185,129,0.15)" : "rgba(59,130,246,0.15)"}` }}>
-          <Icon className={`w-4 h-4 ${accent.includes("electric") ? "text-electric-400" : accent.includes("saffron") ? "text-saffron-400" : accent.includes("red") ? "text-red-400" : accent.includes("green") ? "text-green-400" : "text-blue-400"}`} />
+          <IconTyped className={`w-4 h-4 ${accent.includes("electric") ? "text-electric-400" : accent.includes("saffron") ? "text-saffron-400" : accent.includes("red") ? "text-red-400" : accent.includes("green") ? "text-green-400" : "text-blue-400"}`} />
         </div>
       </div>
       <p className={`text-2xl font-bold tabular-nums ${accent.includes("electric") ? "text-electric-300" : accent.includes("saffron") ? "text-saffron-300" : accent.includes("red") ? "text-red-300" : accent.includes("green") ? "text-green-300" : "text-white"}`}
@@ -273,7 +274,7 @@ export default function AnalyticsPage() {
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
         {SUB_ANALYTICS.map((s) => {
-          const Icon = s.icon;
+          const Icon = s.icon as React.ComponentType<{ className?: string }>;
           const accentBar = s.accent === "saffron"
             ? "from-saffron-500 to-saffron-400"
             : "from-electric-500 to-electric-400";
@@ -286,7 +287,7 @@ export default function AnalyticsPage() {
                 <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${accentBar} opacity-60`} />
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <Icon className={s.accent === "saffron" ? "w-4 h-4 text-saffron-400" : "w-4 h-4 text-electric-400"} />
+                    <Icon className={(s.accent === "saffron" ? "w-4 h-4 text-saffron-400" : "w-4 h-4 text-electric-400") as string} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">

@@ -12,6 +12,7 @@ import {
   UserCheck,
   Filter,
   ChevronLeft,
+  type LucideIcon,
 } from "lucide-react";
 import { useReports, useReportStats } from "@/hooks/useReports";
 import type {
@@ -78,7 +79,7 @@ function StatTile({
 }: {
   label: string;
   value: number;
-  icon: React.ElementType;
+  icon: LucideIcon;
   accent: string;
   subtext?: string;
   glowColor?: string;

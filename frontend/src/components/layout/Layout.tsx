@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Shield,
@@ -125,7 +125,10 @@ function NavLink({
 }) {
   const { pathname } = useLocation();
   const active = isActiveNav(item.path, { pathname });
-  const Icon = item.icon;
+  const Icon = item.icon as ComponentType<{ className?: string }>;
+  const iconClass: string = `w-4.5 h-4.5 shrink-0 ${
+    active ? "text-electric-400" : "text-slate-500 group-hover:text-slate-300"
+  }`;
 
   return (
     <Link
@@ -139,12 +142,10 @@ function NavLink({
           ? "bg-electric-500/15 text-electric-400 border border-electric-500/20"
           : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
         }
-      `}
+      ` as string}
     >
       <Icon
-        className={`w-4.5 h-4.5 shrink-0 ${
-          active ? "text-electric-400" : "text-slate-500 group-hover:text-slate-300"
-        }`}
+        className={iconClass}
       />
       {!collapsed && <span className="font-medium">{item.label}</span>}
       {!collapsed && (badge ?? 0) > 0 && (

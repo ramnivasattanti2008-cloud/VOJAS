@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -280,7 +280,8 @@ function ResultItem({
   onHover: () => void;
   onSelect: () => void;
 }) {
-  const Icon = result.icon;
+  const Icon = result.icon as ComponentType<{ className?: string }>;
+  const iconClass: string = cn("w-4 h-4", TYPE_COLORS[result.type]);
   return (
     <button
       role="option"
@@ -301,7 +302,7 @@ function ResultItem({
           selected ? "bg-electric-500/15" : ""
         )}
       >
-        <Icon className={cn("w-4 h-4", TYPE_COLORS[result.type])} aria-hidden="true" />
+        <Icon className={iconClass} aria-hidden="true" />
       </div>
       <div className="flex-1 min-w-0">
         <p className={cn(

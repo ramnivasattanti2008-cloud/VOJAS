@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import type { LucideIcon } from "lucide-react";
 import { useCountUp } from "@/hooks/useCountUp";
 
 export type AccentColor = "electric" | "saffron" | "green" | "blue";
@@ -6,7 +7,7 @@ export type AccentColor = "electric" | "saffron" | "green" | "blue";
 interface StatCardProps {
   label: string;
   value: number;
-  icon: React.ElementType;
+  icon: LucideIcon;
   accent: AccentColor;
   subtext: string;
   prefix?: string;
@@ -121,6 +122,7 @@ export default function StatCard({
   const count = useCountUp(value, 1400);
   const [entered, setEntered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const TypedIcon = Icon as ComponentType<{ className?: string }>;
 
   // Intersection observer — trigger animation when card enters viewport
   useEffect(() => {
@@ -150,7 +152,7 @@ export default function StatCard({
       <div
         className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-colors ${styles.bg}`}
       >
-        <Icon className={`w-5 h-5 ${styles.icon}`} />
+        <TypedIcon className={`w-5 h-5 ${styles.icon}`} />
       </div>
 
       {/* Animated value */}

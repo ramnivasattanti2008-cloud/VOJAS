@@ -16,6 +16,7 @@ import {
   ArrowUpDown,
   FileText,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { useRiskList, useRiskStats, useRecalculateAllRisk } from "@/hooks/useRisk";
 import { useAnomalies } from "@/hooks/useAnomalies";
@@ -64,7 +65,7 @@ function RiskBadge({ level }: { level: RiskLevel }) {
 }
 
 function StatCard({ icon: Icon, label, value, sub, color, gradient, index }: {
-  icon: React.ElementType;
+  icon: LucideIcon;
   label: string;
   value: string | number;
   sub?: string;
@@ -96,7 +97,7 @@ function BreakdownRow({ label, score, max, icon: Icon, colorClass }: {
   label: string;
   score: number;
   max: number;
-  icon: React.ElementType;
+  icon: LucideIcon;
   colorClass: string;
 }) {
   return (

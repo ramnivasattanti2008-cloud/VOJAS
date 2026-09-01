@@ -44,6 +44,7 @@ import {
   ShieldAlert,
   Image as ImageIcon,
   FolderOpen,
+  type LucideIcon,
 } from "lucide-react";
 
 function formatINR(amount: number): string {
@@ -73,7 +74,7 @@ function getProgress(p: Project) {
 
 // Tab definitions
 type Tab = "overview" | "site" | "risk" | "financial" | "timeline" | "location" | "documents";
-const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
+const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
   { key: "overview",   label: "Overview",    icon: FileText },
   { key: "site",       label: "Site",        icon: ImageIcon },
   { key: "risk",       label: "Risk",        icon: ShieldAlert },
@@ -84,7 +85,7 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 // ── Field Row ───────────────────────────────────────────────────────────────
-function FieldRow({ label, value, icon: Icon }: { label: string; value?: string | null; icon?: React.ElementType }) {
+function FieldRow({ label, value, icon: Icon }: { label: string; value?: string | null; icon?: LucideIcon }) {
   if (!value) return null;
   return (
     <div className="flex items-start gap-3 py-3 border-b border-white/5 last:border-0">

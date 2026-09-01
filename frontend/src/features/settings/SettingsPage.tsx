@@ -12,6 +12,7 @@ import {
   XCircle,
   RefreshCw,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { adminApi, type AdminUser, type SystemStats, type AnomalyRule, type AuditLog } from "@/services/admin-api";
 import { LoadingState, ErrorState, InlineToast } from "@/components/ui";
@@ -20,7 +21,7 @@ import { LoadingState, ErrorState, InlineToast } from "@/components/ui";
 
 type Tab = "overview" | "users" | "rules" | "audit";
 
-const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
+const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
   { key: "overview", label: "Overview",         icon: BarChart3 },
   { key: "users",   label: "Users",            icon: Users },
   { key: "rules",   label: "Anomaly Rules",    icon: AlertTriangle },
@@ -67,7 +68,7 @@ function SeverityBadge({ severity }: { severity: string }) {
 // ── Stat tile ─────────────────────────────────────────────────────────────────
 
 function StatTile({ label, value, icon: Icon, accent }: {
-  label: string; value: string | number; icon: React.ElementType; accent: string;
+  label: string; value: string | number; icon: LucideIcon; accent: string;
 }) {
   return (
     <div className="bg-white/[0.03] border border-white/5 rounded-xl p-5 hover:border-white/10 transition-colors">
