@@ -56,7 +56,7 @@ async function main() {
 
   // ── Pass 1: count rows + collect stats ──
   let totalRows = 0;
-  for (const _row of parseCSV(CSV_PATH, ";")) totalRows++;
+  for await (const _row of parseCSV(CSV_PATH, ";")) totalRows++;
   const dataRows = totalRows - 1; // subtract header
   console.log(`   rows: ${dataRows.toLocaleString()}`);
 
@@ -64,7 +64,7 @@ async function main() {
     console.log(`\n   (dry run — no DB writes)`);
     // Read first 3 rows for sanity
     let i = 0;
-    for (const row of parseCSV(CSV_PATH, ";")) {
+    for await (const row of parseCSV(CSV_PATH, ";")) {
       if (i > 3) break;
       if (i === 0) {
         console.log(`   columns: ${row.join(" | ")}`);
@@ -118,7 +118,7 @@ async function main() {
 
   let batchPromise: Promise<unknown> | null = null;
 
-  for (const row of parseCSV(CSV_PATH, ";")) {
+  for await (const row of parseCSV(CSV_PATH, ";")) {
     lineNum++;
     if (lineNum === 1) continue; // header
 

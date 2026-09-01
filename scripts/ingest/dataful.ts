@@ -71,7 +71,7 @@ async function main() {
 
   // ── Detect delimiter & columns ──
   let firstRow: string[] | null = null;
-  for (const r of parseCSV(LOCAL_PATH, ",")) {
+  for await (const r of parseCSV(LOCAL_PATH, ",")) {
     firstRow = r;
     break;
   }
@@ -102,7 +102,7 @@ async function main() {
   if (DRY_RUN) {
     console.log(`\n   (dry run — no DB writes)`);
     let i = 0;
-    for (const r of parseCSV(LOCAL_PATH, ",")) {
+    for await (const r of parseCSV(LOCAL_PATH, ",")) {
       if (i > 3) break;
       console.log(`   sample[${i}]: MP=${r[iMP]} | amount=${r[iAmount]} (₹${croreToRupees(r[iAmount]).toLocaleString()})`);
       i++;
@@ -112,7 +112,7 @@ async function main() {
 
   // ── Count rows ──
   let totalRows = 0;
-  for (const _ of parseCSV(LOCAL_PATH, ",")) totalRows++;
+  for await (const _ of parseCSV(LOCAL_PATH, ",")) totalRows++;
   const dataRows = totalRows - 1;
   console.log(`   rows: ${dataRows.toLocaleString()}`);
 
@@ -158,7 +158,7 @@ async function main() {
     expBuffer.length = 0;
   }
 
-  for (const row of parseCSV(LOCAL_PATH, ",")) {
+  for await (const row of parseCSV(LOCAL_PATH, ",")) {
     lineNum++;
     if (lineNum === 1) continue;
 

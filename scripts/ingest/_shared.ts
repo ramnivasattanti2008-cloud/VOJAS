@@ -7,13 +7,18 @@
  * (source + sourceWorkId, vendor.nameNormalized + state, etc.).
  */
 import { createReadStream, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-export const INGEST_DIR = `${process.cwd()}/scripts/ingest`;
-export const DATA_DIR = `${INGEST_DIR}/data`;
+// Resolve paths relative to THIS file's location, not the caller's cwd.
+// This way the scripts work whether invoked from project root, backend/, or elsewhere.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+export const INGEST_DIR = __dirname;
+export const DATA_DIR = resolve(__dirname, "data");
 
 export const ROUPEES_PER_CRORE = 10_000_000;
 export const LOK_SABHA_TERMS = {

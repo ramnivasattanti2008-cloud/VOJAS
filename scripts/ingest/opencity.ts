@@ -96,7 +96,7 @@ async function ingestTerm(
 
   // Detect columns
   let firstRow: string[] | null = null;
-  for (const r of parseCSV(localPath, ",")) {
+  for await (const r of parseCSV(localPath, ",")) {
     firstRow = r;
     break;
   }
@@ -120,7 +120,7 @@ async function ingestTerm(
 
   if (DRY_RUN) {
     let i = 0;
-    for (const r of parseCSV(localPath, ",")) {
+    for await (const r of parseCSV(localPath, ",")) {
       if (i > 3) break;
       console.log(`   sample[${i}]: MP=${r[iMP]} | state=${r[iState]}`);
       i++;
@@ -130,7 +130,7 @@ async function ingestTerm(
 
   // Count rows
   let totalRows = 0;
-  for (const _ of parseCSV(localPath, ",")) totalRows++;
+  for await (const _ of parseCSV(localPath, ",")) totalRows++;
   const dataRows = totalRows - 1;
   console.log(`   rows: ${dataRows.toLocaleString()}`);
 
@@ -166,7 +166,7 @@ async function ingestTerm(
     expBuffer.length = 0;
   }
 
-  for (const row of parseCSV(localPath, ",")) {
+  for await (const row of parseCSV(localPath, ",")) {
     lineNum++;
     if (lineNum === 1) continue;
 
