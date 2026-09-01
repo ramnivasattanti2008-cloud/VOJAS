@@ -32,6 +32,19 @@ const LongitudinalPage   = lazy(() => import("@/features/analytics/LongitudinalP
 const SettingsPage       = lazy(() => import("@/features/settings/SettingsPage"));
 const NotificationsPage  = lazy(() => import("@/features/notifications/NotificationsPage"));
 
+// Phase 16+ — extended feature set
+const AssetsPage                 = lazy(() => import("@/features/assets/AssetsPage"));
+const RequestsPage               = lazy(() => import("@/features/development-requests/RequestsPage"));
+const InspectionsPage            = lazy(() => import("@/features/inspections/InspectionsPage"));
+const CasesPage                  = lazy(() => import("@/features/cases/CasesPage"));
+const ContractorDashboard        = lazy(() => import("@/features/contractor/ContractorDashboard"));
+const PriorityPage               = lazy(() => import("@/features/priority/PriorityPage"));
+const WhistleblowerSubmitPage    = lazy(() => import("@/features/whistleblower/WhistleblowerSubmitPage"));
+const WhistleblowerQueuePage     = lazy(() => import("@/features/whistleblower/WhistleblowerQueuePage"));
+const AdminDataSourcesPage       = lazy(() => import("@/features/admin/AdminDataSourcesPage"));
+const AdminGuidelinesPage        = lazy(() => import("@/features/admin/AdminGuidelinesPage"));
+const DataQualityPage            = lazy(() => import("@/features/admin/DataQualityPage"));
+
 // ── Suspense fallback for lazy chunks ────────────────────────────────────────
 
 function PageLoader() {
@@ -262,6 +275,98 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout user={user}><SettingsPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 16+ — Public Assets, Development Requests, Inspections, Cases */}
+        <Route
+          path="/assets"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><AssetsPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/development-requests"
+          element={
+            <Layout user={user}><RequestsPage /></Layout>
+          }
+        />
+        <Route
+          path="/inspections"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><InspectionsPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cases"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><CasesPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 18: Development Priority */}
+        <Route
+          path="/priority"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><PriorityPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 27-35: Contractor Portal */}
+        <Route
+          path="/contractor"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><ContractorDashboard /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 65: Whistleblower */}
+        <Route
+          path="/whistleblower"
+          element={<WhistleblowerSubmitPage />}
+        />
+        <Route
+          path="/whistleblower/queue"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><WhistleblowerQueuePage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Phase 41-43: Admin */}
+        <Route
+          path="/admin/data-sources"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><AdminDataSourcesPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/guidelines"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><AdminGuidelinesPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/data-quality"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><DataQualityPage /></Layout>
             </ProtectedRoute>
           }
         />

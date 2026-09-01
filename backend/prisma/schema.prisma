@@ -958,6 +958,8 @@ model Guideline {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  checks      GuidelineCheck[]
+
   @@index([category])
   @@index([sector])
 }
@@ -970,6 +972,8 @@ model GuidelineCheck {
   nonComplianceNote String?
   checkedById     String?
   checkedAt       DateTime @default(now())
+
+  guideline       Guideline @relation(fields: [guidelineId], references: [id])
 
   @@unique([projectId, guidelineId])
   @@index([projectId])

@@ -21,6 +21,16 @@ import mpaAnalyticsRoutes from "./mpaAnalytics.js";
 import geocodingRoutes from "./geocoding.js";
 import satelliteRoutes from "./satellite.js";
 import satelliteAiRoutes from "./satelliteAi.js";
+import assetRoutes from "./assets.js";
+import developmentRequestRoutes from "./developmentRequests.js";
+import inspectionRoutes from "./inspections.js";
+import caseRoutes from "./cases.js";
+import contractorRoutes from "./contractors.js";
+import whistleblowerRoutes from "./whistleblower.js";
+import dataSourceRoutes from "./dataSources.js";
+import guidelineRoutes from "./guidelines.js";
+import priorityRoutes from "./priority.js";
+import dataQualityRoutes from "./dataQuality.js";
 
 const router = Router();
 
@@ -36,8 +46,6 @@ router.use("/financials", financialRouter);
 router.use("/anomalies", anomalyRoutes);
 router.use("/risk", riskRoutes);
 router.use("/analytics", analyticsRoutes);
-// Mount admin routes FIRST so auth middleware runs, THEN internal seed routes
-// (seed has its own secret-token auth and must not be blocked by admin auth)
 router.use("/admin", adminRoutes);
 router.use("/internal", adminSeedRoutes);
 router.use("/ai", aiRoutes);
@@ -49,5 +57,16 @@ router.use("/analytics", mpaAnalyticsRoutes);
 router.use("/geocoding", geocodingRoutes);
 router.use("/satellite", satelliteRoutes);
 router.use("/satellite", satelliteAiRoutes);
+// Phase 16+: New feature routes
+router.use("/assets", assetRoutes);
+router.use("/development-requests", developmentRequestRoutes);
+router.use("/inspections", inspectionRoutes);
+router.use("/cases", caseRoutes);
+router.use("/contractors", contractorRoutes);
+router.use("/whistleblower", whistleblowerRoutes);
+router.use("/data-sources", dataSourceRoutes);
+router.use("/guidelines", guidelineRoutes);
+router.use("/priority", priorityRoutes);
+router.use("/data-quality", dataQualityRoutes);
 
 export default router;

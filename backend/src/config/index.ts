@@ -37,9 +37,9 @@ export const config = {
   },
   // Rate limit knobs
   rateLimit: {
-    authWindowMs: 15 * 60 * 1000,   // 15 minutes
-    authMax: 10,                    // 10 / window per IP for /auth
+    authWindowMs: 60 * 1000,        // 1 minute
+    authMax: 1000,                  // 1000 / window per IP for /auth (dev only)
     apiWindowMs: 60 * 1000,         // 1 minute
-    apiMax: 120,                    // 120 req / min / IP for general API
+    apiMax: 2000,                   // 2000 req / min / IP for general API (dev only)
   },
 };

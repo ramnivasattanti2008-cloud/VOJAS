@@ -20,6 +20,14 @@ import {
   ChevronRight as Chevron,
   BellRing,
   Building2,
+  TrendingUp,
+  ClipboardCheck,
+  Hammer,
+  Briefcase,
+  Shield,
+  Database,
+  Scale,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -50,6 +58,16 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Reports",      path: "/reports",       icon: FileText        },
   { label: "Alerts",       path: "/notifications", icon: BellRing        },
   { label: "Citizens",     path: "/citizens",      icon: Users           },
+  { label: "Assets",       path: "/assets",        icon: Hammer          },
+  { label: "Requests",     path: "/development-requests", icon: FileText   },
+  { label: "Inspections",  path: "/inspections",   icon: ClipboardCheck  },
+  { label: "Cases",        path: "/cases",         icon: Scale           },
+  { label: "Priority",     path: "/priority",      icon: TrendingUp      },
+  { label: "Contractor",   path: "/contractor",    icon: Briefcase, roles: ["CONTRACTOR", "ADMIN"] },
+  { label: "Whistleblower", path: "/whistleblower/queue", icon: Shield, roles: ["ADMIN", "REVIEWER", "OFFICER"] },
+  { label: "Data Sources", path: "/admin/data-sources", icon: Database, roles: ["ADMIN"] },
+  { label: "Guidelines",   path: "/admin/guidelines", icon: Scale, roles: ["ADMIN"] },
+  { label: "Data Quality", path: "/admin/data-quality", icon: Activity, roles: ["ADMIN", "ANALYST"] },
   { label: "Analytics",    path: "/analytics",     icon: BarChart3, roles: ["ADMIN", "ANALYST"] },
   { label: "Settings",     path: "/settings",      icon: Settings, roles: ["ADMIN"]            },
 ];

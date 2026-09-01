@@ -23,7 +23,7 @@ export interface HealthStatus {
   timestamp: string;
 }
 
-export type UserRole = "ADMIN" | "OFFICER" | "REVIEWER" | "ANALYST" | "VIEWER" | "MP";
+export type UserRole = "ADMIN" | "OFFICER" | "REVIEWER" | "ANALYST" | "VIEWER" | "MP" | "CONTRACTOR" | "CITIZEN" | "FIELD_OFFICER";
 
 export interface User {
   id: string;
