@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, type ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Shield,
   LayoutDashboard,
   Map,
   AlertTriangle,
@@ -29,6 +28,7 @@ import type { UserRole } from "@/types";
 import PageTransition from "./PageTransition";
 import NotificationCenter from "./NotificationCenter";
 import { DemoTour } from "../DemoTour";
+import { LogoMark } from "../brand/Logo";
 
 // ── Route metadata ─────────────────────────────────────────────────────────────
 
@@ -331,13 +331,16 @@ export default function Layout({ children, user }: { children: React.ReactNode; 
       `}>
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 h-14 border-b border-navy-200 dark:border-white/5 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-electric-500 flex items-center justify-center shrink-0">
-            <Shield className="w-4 h-4 text-white" />
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 rounded-lg bg-electric-500/20 blur-md" />
+            <div className="relative">
+              <LogoMark size="sm" className="w-8 h-8" />
+            </div>
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <h1 className="text-sm font-bold text-navy-900 dark:text-white tracking-widest">VOJAS</h1>
-              <p className="text-[10px] text-slate-500 tracking-widest uppercase">Accountability</p>
+              <h1 className="text-sm font-bold text-navy-900 dark:text-white tracking-[0.2em]">VOJAS</h1>
+              <p className="text-[9px] text-slate-500 tracking-[0.2em] uppercase font-medium">Intelligence</p>
             </div>
           )}
         </div>
