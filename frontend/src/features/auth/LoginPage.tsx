@@ -342,7 +342,7 @@ export default function LoginPage() {
               { role: 'ADMIN',   user: 'admin@vojas.gov' },
               { role: 'OFFICER', user: 'officer@vojas.gov' },
               { role: 'ANALYST', user: 'analyst@vojas.gov' },
-              { role: 'MP',      user: 'mp@vojas.gov' },
+              { role: 'REVIEWER', user: 'reviewer@vojas.gov' },
             ].map(({ role, user }) => (
               <button
                 key={user}
