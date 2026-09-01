@@ -155,51 +155,90 @@ async function main() {
   const prisma = await getPrisma();
   let created = 0;
   let updated = 0;
+  let skipped = 0;
 
-  for (const e of entities) {
-    if (!e.lgdCode || !e.name) continue;
+  // Bulk lookup: which lgdCodes already exist?
+  const valid = entities.filter((e) => e.lgdCode && e.name);
+  const codes = valid.map((e) => e.lgdCode);
+  const existing = await prisma.lGDLocation.findMany({
+    where: { lgdCode: { in: codes } },
+    select: { lgdCode: true },
+  });
+  const existingSet = new Set(existing.map((e) => e.lgdCode));
+  const toCreate = valid.filter((e) => !existingSet.has(e.lgdCode));
+  const toUpdate = valid.filter((e) => existingSet.has(e.lgdCode));
+
+  // Bulk create
+  if (toCreate.length > 0) {
+    // SQLite: createMany does NOT support skipDuplicates. Bulk insert; on P2002 fall back to per-row.
     try {
-      const existing = await prisma.lGDLocation.findUnique({ where: { lgdCode: e.lgdCode } });
-      if (existing) {
-        await prisma.lGDLocation.update({
-          where: { lgdCode: e.lgdCode },
-          data: {
-            name: e.name,
-            nameCanonical: e.nameCanonical,
-            parentCode: e.parentCode,
-            stateName: e.stateName,
-            districtName: e.districtName,
-            blockName: e.blockName,
-            latitude: e.latitude ?? undefined,
-            longitude: e.longitude ?? undefined,
-          },
-        });
-        updated++;
-      } else {
-        await prisma.lGDLocation.create({
-          data: {
-            lgdCode: e.lgdCode,
-            entityType: e.entityType,
-            name: e.name,
-            nameCanonical: e.nameCanonical,
-            parentCode: e.parentCode,
-            stateName: e.stateName,
-            districtName: e.districtName,
-            blockName: e.blockName,
-            latitude: e.latitude ?? undefined,
-            longitude: e.longitude ?? undefined,
-          },
-        });
-        created++;
+      await prisma.lGDLocation.createMany({
+        data: toCreate.map((e) => ({
+          lgdCode: e.lgdCode,
+          entityType: e.entityType,
+          name: e.name,
+          nameCanonical: e.nameCanonical,
+          parentCode: e.parentCode,
+          stateName: e.stateName,
+          districtName: e.districtName,
+          blockName: e.blockName,
+          latitude: e.latitude ?? undefined,
+          longitude: e.longitude ?? undefined,
+        })),
+      });
+      created += toCreate.length;
+    } catch (e: any) {
+      // Partial failure (duplicate key) — insert one-by-one to isolate bad rows
+      for (const e2 of toCreate) {
+        try {
+          await prisma.lGDLocation.create({
+            data: {
+              lgdCode: e2.lgdCode,
+              entityType: e2.entityType,
+              name: e2.name,
+              nameCanonical: e2.nameCanonical,
+              parentCode: e2.parentCode,
+              stateName: e2.stateName,
+              districtName: e2.districtName,
+              blockName: e2.blockName,
+              latitude: e2.latitude ?? undefined,
+              longitude: e2.longitude ?? undefined,
+            },
+          });
+          created++;
+        } catch {
+          skipped++;
+        }
       }
+    }
+  }
+
+  // Update existing
+  for (const e of toUpdate) {
+    try {
+      await prisma.lGDLocation.update({
+        where: { lgdCode: e.lgdCode },
+        data: {
+          name: e.name,
+          nameCanonical: e.nameCanonical,
+          parentCode: e.parentCode,
+          stateName: e.stateName,
+          districtName: e.districtName,
+          blockName: e.blockName,
+          latitude: e.latitude ?? undefined,
+          longitude: e.longitude ?? undefined,
+        },
+      });
+      updated++;
     } catch {
-      // skip duplicates
+      skipped++;
     }
   }
 
   console.log(`\n✅ Done.`);
   console.log(`   created: ${created.toLocaleString()}`);
   console.log(`   updated: ${updated.toLocaleString()}`);
+  console.log(`   skipped: ${skipped.toLocaleString()}`);
 
   // Stats
   const byType = await prisma.lGDLocation.groupBy({

@@ -17,7 +17,6 @@
  */
 import {
   DATA_DIR,
-  batch,
   croreToRupees,
   downloadWithRetry,
   ensureDir,
@@ -149,20 +148,44 @@ async function ingestTerm(
 
   async function flush() {
     if (!expBuffer.length) return;
-    await batch(expBuffer, BATCH_SIZE, async (chunk) => {
-      for (const e of chunk) {
-        try {
-          await prisma.expenditure.upsert({
-            where: { source_sourceTxnId: { source: e.source, sourceTxnId: e.sourceTxnId } },
-            update: e,
-            create: e,
-          });
-          expendituresCreated++;
-        } catch {
-          skipped++;
+    // Bulk lookup existing txnIds
+    const ids = expBuffer.map((e) => e.sourceTxnId);
+    const existing = await prisma.expenditure.findMany({
+      where: { source: "OPENCITY", sourceTxnId: { in: ids } },
+      select: { sourceTxnId: true, id: true },
+    });
+    const existingIds = new Map(existing.map((e) => [e.sourceTxnId, e.id]));
+    const toCreate = expBuffer.filter((e) => !existingIds.has(e.sourceTxnId));
+    const toUpdate = expBuffer.filter((e) => existingIds.has(e.sourceTxnId));
+
+    if (toCreate.length > 0) {
+      try {
+        await prisma.expenditure.createMany({ data: toCreate });
+        expendituresCreated += toCreate.length;
+      } catch (err: any) {
+        // Partial dup fail — per-row fallback
+        for (const e of toCreate) {
+          try {
+            await prisma.expenditure.create({ data: e });
+            expendituresCreated++;
+          } catch (e2: any) {
+            skipped++;
+          }
         }
       }
-    });
+    }
+
+    for (const e of toUpdate) {
+      try {
+        await prisma.expenditure.update({
+          where: { id: existingIds.get(e.sourceTxnId)! },
+          data: e,
+        });
+        expendituresCreated++;
+      } catch {
+        skipped++;
+      }
+    }
     expBuffer.length = 0;
   }
 

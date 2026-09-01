@@ -165,6 +165,10 @@ model Project {
   anomalies    Anomaly[]
   risk         ProjectRisk?
   documents    Document[]
+
+  // Open-data dedup: unique per source so upsert is fast
+  @@unique([source, sourceWorkId])
+  @@index([source, sourceWorkId])
 }
 
 // ── Project Documents (Phase 8) ───────────────────────────────────────────────
