@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAnomalies, useAnomalyStats, useScanAnomalies } from "@/hooks/useAnomalies";
 import {
   type AnomalyStatus,
@@ -11,7 +12,10 @@ import {
   getStatusLabel,
   getRiskLabel,
 } from "@/types";
-import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
+import { LoadingState, ErrorState } from "@/components/ui";
+import PageHeader from "@/components/ui/PageHeader";
+import { fadeUp, staggerContainer, EASE } from "@/components/ui/Animations";
+import EmptyState from "@/components/ui/Empty";
 import {
   AlertTriangle,
   Search,
@@ -24,6 +28,8 @@ import {
   RefreshCw,
   Sparkles,
   CheckCircle2,
+  Scan,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function AnomaliesPage() {
@@ -31,13 +37,11 @@ export default function AnomaliesPage() {
   const [scanToast, setScanToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AnomalyStatus | "">("");
   const [severityFilter, setSeverityFilter] = useState<AnomalySeverity | "">("");
   const [categoryFilter, setCategoryFilter] = useState<AnomalyCategory | "">("");
 
-  // React Query: server-state caching + automatic refetch + retry
   const anomaliesQuery = useAnomalies({
     status: (statusFilter || undefined) as AnomalyStatus | undefined,
     severity: (severityFilter || undefined) as AnomalySeverity | undefined,
@@ -61,7 +65,6 @@ export default function AnomaliesPage() {
   const error = anomaliesQuery.error?.message ?? null;
   const scanning = scanMutation.isPending;
 
-  // Apply client-side search
   const filtered = useMemo(() => {
     if (!search.trim()) return anomalies;
     const q = search.trim().toLowerCase();
@@ -86,16 +89,12 @@ export default function AnomaliesPage() {
   const handleScan = async () => {
     try {
       const result = await scanMutation.mutateAsync();
-      // Show ARIA-friendly inline toast (announced via role="status")
       setScanToast(`Scan complete: ${result.newAnomalies} new anomalies detected (${result.totalAnomalies} total)`);
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setScanToast(null), 6000);
-    } catch {
-      // Error surfaced via scanMutation.error if needed
-    }
+    } catch { /* handled by error state */ }
   };
 
-  // Cleanup toast timer on unmount
   useEffect(() => {
     return () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -103,77 +102,125 @@ export default function AnomaliesPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <AlertTriangle className="w-6 h-6 text-electric-400" />
-            Anomaly Detection
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            AI-flagged patterns requiring human verification — anomalies indicate risk, not fraud
-          </p>
-        </div>
-        <button
-          onClick={handleScan}
-          disabled={scanning}
-          aria-label={scanning ? "Running anomaly scan" : "Run anomaly scan"}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-600 hover:from-electric-400 hover:to-electric-500 disabled:from-electric-500/50 disabled:to-electric-600/50 text-white text-sm font-semibold rounded-lg shadow-lg shadow-electric-500/20 hover:shadow-electric-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {scanning ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Scanning...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              Run Scan
-            </>
-          )}
-        </button>
-      </div>
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Page header */}
+      <motion.div variants={fadeUp}>
+        <PageHeader
+          title="Anomaly"
+          gradientWord="Detection"
+          accent="saffron"
+          icon={AlertTriangle}
+          subtitle="AI-flagged patterns requiring human verification"
+          breadcrumbs={[
+            { label: "Dashboard", href: "/" },
+            { label: "Anomaly Detection" },
+          ]}
+          actions={
+            <button
+              onClick={handleScan}
+              disabled={scanning}
+              aria-label={scanning ? "Running anomaly scan" : "Run anomaly scan"}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-saffron-500 to-orange-400 hover:from-orange-400 hover:to-saffron-400 disabled:from-saffron-500/50 text-navy-900 text-sm font-bold rounded-lg shadow-lg shadow-saffron-500/30 hover:shadow-saffron-500/50 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+            >
+              {scanning ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-navy-900/30 border-t-navy-900 rounded-full animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Run Scan
+                </>
+              )}
+            </button>
+          }
+        />
+      </motion.div>
 
-      {/* Accessible toast — announced via aria-live */}
+      {/* Accessible toast */}
       {scanToast && (
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: -8, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.97 }}
           role="status"
           aria-live="polite"
-          className="glass rounded-xl p-4 flex items-center gap-3 border border-emerald-500/30 bg-emerald-500/5"
+          className="glass rounded-xl p-4 flex items-center gap-3 border border-green-500/30 bg-green-500/5"
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <p className="text-sm text-emerald-300">{scanToast}</p>
-        </div>
+          <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
+          <p className="text-sm text-green-300">{scanToast}</p>
+        </motion.div>
       )}
 
-      {/* Stats row */}
+      {/* Stats row — dramatic 4-up with glow */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="glass rounded-xl p-4">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Open</p>
-            <p className="text-2xl font-bold text-white mt-1">{stats.open}</p>
-          </div>
-          <div className="glass rounded-xl p-4">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Critical</p>
-            <p className="text-2xl font-bold text-red-400 mt-1 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-              {stats.critical}
-            </p>
-          </div>
-          <div className="glass rounded-xl p-4">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">High</p>
-            <p className="text-2xl font-bold text-orange-400 mt-1">{stats.high}</p>
-          </div>
-          <div className="glass rounded-xl p-4">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Total</p>
-            <p className="text-2xl font-bold text-electric-400 mt-1">{stats.total}</p>
-          </div>
-        </div>
+        <motion.div variants={fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Open",         value: stats.open,     accent: "amber" as const,  icon: AlertTriangle, sub: "needs review", delta: stats.open > 0 ? "+" : undefined },
+            { label: "Critical",     value: stats.critical, accent: "red"    as const,  icon: ShieldCheck,   sub: "immediate action", pulse: stats.critical > 0 },
+            { label: "High Risk",     value: stats.high,     accent: "saffron" as const, icon: AlertTriangle, sub: "priority", },
+            { label: "Total",        value: stats.total,    accent: "electric" as const, icon: Scan,          sub: "all time", },
+          ].map((s, i) => {
+            const Icon = s.icon;
+            return (
+              <motion.div
+                key={s.label}
+                variants={fadeUp}
+                custom={i}
+                whileHover={{ y: -3, scale: 1.02 }}
+                className={`glass rounded-2xl p-5 border ring-1 ${
+                  s.accent === "red" ? "ring-red-500/20 top-accent top-accent-red" :
+                  s.accent === "amber" ? "ring-saffron-500/20 top-accent top-accent-saffron" :
+                  s.accent === "electric" ? "ring-electric-500/20 top-accent top-accent-electric" :
+                  "ring-saffron-500/20 top-accent top-accent-saffron"
+                } transition-all cursor-default group overflow-hidden relative`}
+              >
+                <div className={`absolute top-0 left-0 right-0 h-0.5 ${
+                  s.accent === "red" ? "bg-gradient-to-r from-red-500 to-red-400" :
+                  s.accent === "amber" ? "bg-gradient-to-r from-saffron-500 to-saffron-400" :
+                  s.accent === "electric" ? "bg-gradient-to-r from-electric-500 to-electric-400" :
+                  "bg-gradient-to-r from-orange-500 to-orange-400"
+                }`} />
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                    s.accent === "red" ? "bg-red-500/15 text-red-400" :
+                    s.accent === "amber" ? "bg-saffron-500/15 text-saffron-400" :
+                    s.accent === "electric" ? "bg-electric-500/15 text-electric-400" :
+                    "bg-orange-500/15 text-orange-400"
+                  }`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  {s.pulse && (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                    </span>
+                  )}
+                </div>
+                <p className={`text-3xl font-bold leading-none tabular-nums ${
+                  s.accent === "red" ? "text-red-400" :
+                  s.accent === "amber" ? "text-saffron-400" :
+                  s.accent === "electric" ? "text-electric-400" :
+                  "text-orange-400"
+                }`} style={{ textShadow: "0 0 24px currentColor" }}>
+                  {s.value}
+                </p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1.5 font-semibold">{s.label}</p>
+                <p className="text-[9px] text-slate-600 mt-0.5">{s.sub}</p>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       )}
 
       {/* Filters */}
-      <div className="glass rounded-xl p-4 space-y-3">
+      <motion.div variants={fadeUp} className="glass rounded-xl p-4 space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
           <form
             onSubmit={(e) => e.preventDefault()}
@@ -231,7 +278,7 @@ export default function AnomaliesPage() {
         {/* Severity quick-filter chips */}
         <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by severity">
           <Filter className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Severity:</span>
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1 font-semibold">Severity:</span>
           {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as AnomalySeverity[]).map((s) => {
             const isActive = severityFilter === s;
             const style = SEVERITY_COLORS[s];
@@ -242,7 +289,7 @@ export default function AnomaliesPage() {
                 aria-pressed={isActive}
                 className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-all ${
                   isActive
-                    ? `${style.bg} ${style.text} border-current`
+                    ? `${style.bg} ${style.text} border-current shadow-sm`
                     : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
                 }`}
               >
@@ -252,7 +299,7 @@ export default function AnomaliesPage() {
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       {/* Content */}
       {loading ? (
@@ -260,39 +307,45 @@ export default function AnomaliesPage() {
       ) : error ? (
         <ErrorState message={error} onRetry={() => anomaliesQuery.refetch()} />
       ) : filtered.length === 0 ? (
-        <div className="glass rounded-xl">
+        <motion.div variants={fadeUp} className="glass rounded-xl">
           <EmptyState
-            icon={<CheckCircle2 className="w-7 h-7 text-green-400" />}
+            icon={CheckCircle2}
             title={hasActiveFilters ? "No anomalies match your filters" : "No anomalies detected"}
             description={
               hasActiveFilters
                 ? "Try adjusting your filters or run a fresh scan."
                 : "All projects are within expected parameters. Run a scan to check the latest data."
             }
-            action={hasActiveFilters ? (
-              <button onClick={clearFilters} className="text-xs text-electric-400 hover:text-electric-300">
-                Clear filters
-              </button>
-            ) : (
-              <button
-                onClick={handleScan}
-                disabled={scanning}
-                className="flex items-center gap-2 px-3 py-1.5 bg-electric-500/10 border border-electric-500/30 text-electric-400 text-xs rounded-md hover:bg-electric-500/20 transition-colors"
-              >
-                <RefreshCw className={`w-3 h-3 ${scanning ? "animate-spin" : ""}`} />
-                Run scan
-              </button>
-            )}
+            accent="green"
+            action={
+              hasActiveFilters ? (
+                <button onClick={clearFilters} className="text-xs text-electric-400 hover:text-electric-300">
+                  Clear filters
+                </button>
+              ) : (
+                <button
+                  onClick={handleScan}
+                  disabled={scanning}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-electric-500/10 border border-electric-500/30 text-electric-400 text-xs rounded-md hover:bg-electric-500/20 transition-colors"
+                >
+                  <RefreshCw className={`w-3 h-3 ${scanning ? "animate-spin" : ""}`} />
+                  Run scan
+                </button>
+              )
+            }
           />
-        </div>
+        </motion.div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((a) => {
+          {filtered.map((a, i) => {
             const sevStyle = SEVERITY_COLORS[a.severity];
             const risk = getRiskLabel(a.riskScore);
             return (
-              <div
+              <motion.div
                 key={a.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04, duration: 0.4, ease: EASE }}
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate(`/anomalies/${a.id}`)}
@@ -302,46 +355,44 @@ export default function AnomaliesPage() {
                     navigate(`/anomalies/${a.id}`);
                   }
                 }}
-                className="glass rounded-xl p-5 hover:border-white/15 hover:-translate-y-0.5 transition-all cursor-pointer group"
+                className="glass rounded-xl p-5 hover:border-white/15 hover:-translate-y-0.5 transition-all cursor-pointer group relative overflow-hidden"
                 aria-label={`View anomaly: ${a.title}`}
               >
-                <div className="flex items-start justify-between gap-3 mb-2.5">
+                {/* Severity accent bar */}
+                <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${a.severity === "CRITICAL" ? "bg-red-500" : a.severity === "HIGH" ? "bg-orange-500" : a.severity === "MEDIUM" ? "bg-saffron-500" : "bg-blue-500"}`} />
+
+                <div className="flex items-start justify-between gap-3 mb-2.5 pl-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Severity badge */}
                     <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border border-white/5 ${sevStyle.bg} ${sevStyle.text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${sevStyle.dot}`} />
                       {a.severity}
                     </div>
-                    {/* Category badge */}
                     <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-white/5 text-slate-300 uppercase tracking-wider">
                       {getAnomalyCategoryLabel(a.category)}
                     </span>
-                    {/* Status */}
                     {a.status !== "OPEN" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-blue-500/10 text-blue-400 uppercase tracking-wider">
+                      <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-blue-500/10 text-blue-400 uppercase tracking-wider border border-blue-500/20">
                         {getStatusLabel(a.status)}
                       </span>
                     )}
                   </div>
-                  {/* Risk score */}
-                  <div className="text-right shrink-0">
+                  <div className="text-right shrink-0 pr-2">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Risk</p>
-                    <p className={`text-base font-bold ${risk.color} leading-none`}>{a.riskScore}</p>
+                    <p className={`text-lg font-bold leading-none tabular-nums ${risk.color}`} style={{ textShadow: "0 0 12px currentColor" }}>
+                      {a.riskScore}
+                    </p>
                   </div>
                 </div>
 
-                {/* Title */}
-                <h3 className="text-sm font-semibold text-white group-hover:text-electric-300 transition-colors leading-snug">
+                <h3 className="text-sm font-semibold text-white pl-2 group-hover:text-electric-300 transition-colors leading-snug">
                   {a.title}
                 </h3>
 
-                {/* Description */}
-                <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed pl-2">
                   {a.description}
                 </p>
 
-                {/* Meta footer */}
-                <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-600 flex-wrap gap-2">
+                <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-600 flex-wrap gap-2 pl-2">
                   <div className="flex items-center gap-3">
                     {a.project && (
                       <div className="flex items-center gap-1.5">
@@ -368,14 +419,14 @@ export default function AnomaliesPage() {
                     <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
       )}
 
       {/* Trust note */}
-      <div className="glass rounded-xl p-4 flex items-start gap-3 text-xs text-slate-400">
+      <motion.div variants={fadeUp} className="glass rounded-xl p-4 flex items-start gap-3 text-xs text-slate-400">
         <Shield className="w-4 h-4 text-electric-400 shrink-0 mt-0.5" />
         <div>
           <p className="text-slate-300 font-medium mb-0.5">About anomaly detection</p>
@@ -385,7 +436,7 @@ export default function AnomaliesPage() {
             Each anomaly has a risk score (0-100) and a clear evidence trail.
           </p>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

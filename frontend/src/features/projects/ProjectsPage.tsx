@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   type Project,
   type ProjectStatus,
@@ -11,6 +12,9 @@ import {
 } from "@/types";
 import { useProjects, useProjectStats } from "@/hooks/useProjects";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
+import PageHeader from "@/components/ui/PageHeader";
+import SectionTitle from "@/components/ui/SectionTitle";
+import { fadeUp, staggerContainer, EASE } from "@/components/ui/Animations";
 import {
   FileText,
   Search,
@@ -22,11 +26,11 @@ import {
   ChevronRight,
   Inbox,
   Plus,
+  BarChart3,
 } from "lucide-react";
 
 const PAGE_SIZE = 12;
 
-// Compact utility — formats ₹ in Indian style
 function formatINR(amount: number): string {
   if (amount >= 1_00_00_000) {
     return `₹${(amount / 1_00_00_000).toFixed(2)} Cr`;
@@ -48,7 +52,6 @@ function getStatusLabel(value: ProjectStatus): string {
   return PROJECT_STATUSES.find((s) => s.value === value)?.label ?? value;
 }
 
-// Compute progress % (spent / approved) safely
 function getProgress(p: Project): number {
   if (p.approvedAmount <= 0) return 0;
   return Math.min(100, Math.round((p.spentAmount / p.approvedAmount) * 100));
@@ -63,14 +66,12 @@ function isOverdue(p: Project): boolean {
 export default function ProjectsPage() {
   const navigate = useNavigate();
 
-  // Filters
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "">("");
   const [sectorFilter, setSectorFilter] = useState<ProjectSector | "">("");
   const [page, setPage] = useState(1);
 
-  // React Query: server-state caching + automatic refetch + retry
   const projectsQuery = useProjects({
     search: search || undefined,
     status: (statusFilter || undefined) as ProjectStatus | undefined,
@@ -98,42 +99,43 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <FileText className="w-6 h-6 text-electric-400" />
-            Projects
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            MPLAD Scheme project registry — {total} project{total === 1 ? "" : "s"}
-          </p>
-        </div>
-        {stats && (
-          <div className="flex items-center gap-2 text-xs text-slate-400 glass rounded-xl px-4 py-2">
-            <IndianRupee className="w-3.5 h-3.5 text-saffron-400" />
-            <span>
-              <span className="text-white font-medium">{formatINR(stats.totalSpent)}</span>
-              {" / "}
-              <span className="text-slate-500">{formatINR(stats.totalBudget)}</span> budget used
-            </span>
-          </div>
-        )}
-
-        <button
-          onClick={() => navigate("/projects/new")}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-600 hover:from-electric-400 hover:to-electric-500 text-white text-sm font-semibold rounded-lg shadow-lg shadow-electric-500/20 hover:shadow-electric-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0"
-        >
-          <Plus className="w-4 h-4" />
-          New Project
-        </button>
-      </div>
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Page header */}
+      <motion.div variants={fadeUp}>
+        <PageHeader
+          title="Projects"
+          gradientWord="Projects"
+          accent="electric"
+          icon={FileText}
+          subtitle={`MPLAD Scheme project registry · ${total} project${total === 1 ? "" : "s"} · ${stats ? formatINR(stats.totalSpent) : "—"} deployed`}
+          breadcrumbs={[
+            { label: "Dashboard", href: "/" },
+            { label: "Projects" },
+          ]}
+          actions={
+            stats ? (
+              <div className="flex items-center gap-2 text-xs text-slate-400 glass rounded-xl px-4 py-2 ring-1 ring-white/5">
+                <IndianRupee className="w-3.5 h-3.5 text-saffron-400" />
+                <span>
+                  <span className="text-white font-medium">{formatINR(stats.totalSpent)}</span>
+                  {" / "}
+                  <span className="text-slate-500">{formatINR(stats.totalBudget)}</span>
+                </span>
+                <span className="text-slate-600 ml-1">budget used</span>
+              </div>
+            ) : undefined
+          }
+        />
+      </motion.div>
 
       {/* Filter bar */}
-      <div className="glass rounded-xl p-4 space-y-3">
+      <motion.div variants={fadeUp} className="glass rounded-xl p-4 space-y-3 top-accent top-accent-electric">
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Search */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -156,7 +158,6 @@ export default function ProjectsPage() {
             />
           </form>
 
-          {/* Status filter */}
           <select
             id="status-filter"
             value={statusFilter}
@@ -170,7 +171,6 @@ export default function ProjectsPage() {
             ))}
           </select>
 
-          {/* Sector filter */}
           <select
             id="sector-filter"
             value={sectorFilter}
@@ -193,12 +193,20 @@ export default function ProjectsPage() {
               Clear
             </button>
           )}
+
+          <button
+            onClick={() => navigate("/projects/new")}
+            className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-navy-900 text-sm font-bold rounded-lg shadow-lg shadow-electric-500/30 hover:shadow-electric-500/50 transition-all hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <Plus className="w-4 h-4" />
+            New Project
+          </button>
         </div>
 
         {/* Status quick-filter chips */}
         <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by status">
           <Filter className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Quick:</span>
+          <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1 font-semibold">Quick:</span>
           {PROJECT_STATUSES.map((s) => {
             const isActive = statusFilter === s.value;
             const count = stats?.byStatus[s.value] ?? 0;
@@ -209,14 +217,14 @@ export default function ProjectsPage() {
                 aria-pressed={isActive}
                 className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-all ${
                   isActive
-                    ? "bg-electric-500/15 border-electric-500/30 text-electric-400"
+                    ? "bg-electric-500/15 border-electric-500/30 text-electric-400 shadow-sm shadow-electric-500/20"
                     : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLORS[s.value].dot}`} />
                 {s.label}
                 {stats && (
-                  <span className={`text-[10px] ${isActive ? "text-electric-300" : "text-slate-500"}`}>
+                  <span className={`text-[10px] font-mono ${isActive ? "text-electric-300" : "text-slate-500"}`}>
                     {count}
                   </span>
                 )}
@@ -224,7 +232,7 @@ export default function ProjectsPage() {
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       {/* Content */}
       {loading ? (
@@ -232,7 +240,7 @@ export default function ProjectsPage() {
       ) : error ? (
         <ErrorState message={error} onRetry={() => projectsQuery.refetch()} />
       ) : projects.length === 0 ? (
-        <div className="glass rounded-xl">
+        <motion.div variants={fadeUp} className="glass rounded-xl">
           <EmptyState
             icon={<Inbox className="w-7 h-7" />}
             title="No projects found"
@@ -243,19 +251,39 @@ export default function ProjectsPage() {
               </button>
             ) : undefined}
           />
-        </div>
+        </motion.div>
       ) : (
         <>
+          <motion.div
+            variants={fadeUp}
+            className="flex items-center justify-between"
+          >
+            <SectionTitle
+              icon={BarChart3}
+              title="Results"
+              badge={total}
+              badgeVariant="electric"
+            />
+            <span className="text-[10px] text-slate-600 font-mono">
+              {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+            </span>
+          </motion.div>
+
           {/* Project grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {projects.map((project) => {
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+            variants={staggerContainer}
+          >
+            {projects.map((project, i) => {
               const statusStyle = STATUS_COLORS[project.status];
               const sectorClass = SECTOR_COLORS[project.sector];
               const progress = getProgress(project);
               const overdue = isOverdue(project);
               return (
-                <div
+                <motion.div
                   key={project.id}
+                  variants={fadeUp}
+                  custom={i}
                   role="button"
                   tabIndex={0}
                   onClick={() => navigate(`/projects/${project.id}`)}
@@ -265,9 +293,14 @@ export default function ProjectsPage() {
                       navigate(`/projects/${project.id}`);
                     }
                   }}
-                  className="glass rounded-xl p-5 hover:border-white/10 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-electric-500/5 cursor-pointer group"
+                  className="glass rounded-xl p-5 hover:border-white/10 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-electric-500/10 cursor-pointer group relative overflow-hidden"
                   aria-label={`View project: ${project.name}`}
                 >
+                  {/* Top accent line that fills in */}
+                  <div
+                    className={`absolute top-0 left-0 right-0 h-0.5 origin-left transition-transform duration-700 scale-x-0 group-hover:scale-x-100 ${progress >= 90 ? "bg-gradient-to-r from-green-500 to-green-400" : progress >= 50 ? "bg-gradient-to-r from-electric-500 to-electric-400" : "bg-gradient-to-r from-saffron-500 to-saffron-400"}`}
+                  />
+
                   {/* Top row: status + sector */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border border-white/5 ${statusStyle.bg} ${statusStyle.text}`}>
@@ -315,18 +348,20 @@ export default function ProjectsPage() {
                         <span className="font-medium text-white">{formatINR(project.spentAmount)}</span>
                         <span className="text-slate-500">/ {formatINR(project.approvedAmount)}</span>
                       </span>
-                      <span className={`font-semibold ${progress >= 90 ? "text-green-400" : progress >= 50 ? "text-electric-400" : "text-saffron-400"}`}>
+                      <span className={`font-bold tabular-nums ${progress >= 90 ? "text-green-400" : progress >= 50 ? "text-electric-400" : "text-saffron-400"}`}>
                         {progress}%
                       </span>
                     </div>
                     <div className="h-1.5 bg-navy-800/80 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          progress >= 90 ? "bg-green-500" :
-                          progress >= 50 ? "bg-electric-500" :
-                          "bg-saffron-500"
+                      <motion.div
+                        className={`h-full rounded-full ${
+                          progress >= 90 ? "bg-gradient-to-r from-green-600 to-green-400" :
+                          progress >= 50 ? "bg-gradient-to-r from-electric-600 to-electric-400" :
+                          "bg-gradient-to-r from-saffron-600 to-saffron-400"
                         }`}
-                        style={{ width: `${progress}%` }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 1.2, delay: 0.1 + i * 0.04, ease: EASE }}
                       />
                     </div>
                   </div>
@@ -341,20 +376,23 @@ export default function ProjectsPage() {
 
                   {/* Footer */}
                   <div className="mt-3 flex items-center justify-between text-[10px] text-slate-600">
-                    <span>ID: {project.id.slice(0, 8)}</span>
+                    <span className="font-mono">ID: {project.id.slice(0, 8)}</span>
                     <span className="flex items-center gap-1 text-slate-500 group-hover:text-electric-400 transition-colors">
                       View details
                       <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between text-xs text-slate-400 glass rounded-xl px-4 py-3">
+            <motion.div
+              variants={fadeUp}
+              className="flex items-center justify-between text-xs text-slate-400 glass rounded-xl px-4 py-3"
+            >
               <span>
                 Page <span className="text-white font-medium">{page}</span> of {totalPages}
                 <span className="text-slate-600"> · {total} total</span>
@@ -364,7 +402,7 @@ export default function ProjectsPage() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   aria-label="Previous page"
-                  className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
                 </button>
@@ -372,15 +410,15 @@ export default function ProjectsPage() {
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                   aria-label="Next page"
-                  className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   Next
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
         </>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -4,6 +4,10 @@ import { motion, type Variants } from "framer-motion";
 import type { Project, HealthStatus } from "@/types";
 import type { SchemeFinancials } from "@/types/financial-types";
 import { LoadingState } from "@/components/ui";
+import { SkeletonStatCard } from "@/components/ui/Skeleton";
+import HeroBanner from "@/components/dashboard/HeroBanner";
+import LiveTicker from "@/components/dashboard/LiveTicker";
+import RibbonGauge from "@/components/dashboard/RibbonGauge";
 import { useHealth } from "@/hooks/useSystem";
 import { useProjects } from "@/hooks/useProjects";
 import { useSchemeFinancials } from "@/hooks/useFinancial";
@@ -30,8 +34,6 @@ import {
   Database,
   Globe,
   Cpu,
-  ArrowUpRight,
-  ArrowDownRight,
   ChevronRight,
   Map,
   Rocket,
@@ -256,50 +258,6 @@ function SystemStatus({ health }: { health: HealthStatus | null }) {
   );
 }
 
-// ── Quick Ratio Stats ──────────────────────────────────────────────────────
-function QuickStats({ reports, pendingReports, totalProjects, completedProjects, utilization }: {
-  reports: NonNullable<ReturnType<typeof useReports>["data"]> | undefined;
-  pendingReports: number;
-  totalProjects: number;
-  completedProjects: number;
-  utilization: number;
-}) {
-  const stats = [
-    { label: "Report Resolution",  value: reports && reports.total > 0 ? Math.round(((reports.total - pendingReports) / reports.total) * 100) : 0, unit: "%", icon: CheckCircle,  color: "text-green-400",   bg: "bg-green-500/10",    delta: "+12%", up: true },
-    { label: "Project Completion", value: totalProjects > 0 ? Math.round((completedProjects / totalProjects) * 100) : 0, unit: "%", icon: TrendingUp, color: "text-electric-400", bg: "bg-electric-500/10", delta: "+5%", up: true },
-    { label: "Avg Utilization",    value: Math.round(utilization), unit: "%", icon: BarChart2, color: "text-saffron-400", bg: "bg-saffron-500/10", delta: "-3%", up: false },
-    { label: "Active Rate",         value: totalProjects > 0 ? Math.round((completedProjects / totalProjects) * 100) : 0, unit: "%", icon: Activity, color: "text-blue-400", bg: "bg-blue-500/10", delta: "+8%", up: true },
-  ];
-  return (
-    <div className="glass rounded-xl p-4 top-accent top-accent-green">
-      <h3 className="text-xs font-semibold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-        <BarChart2 className="w-3.5 h-3.5 text-green-400" />
-        Quick Ratios
-      </h3>
-      <div className="grid grid-cols-2 gap-2">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-navy-800/50 rounded-lg p-3 border border-white/5">
-              <div className="flex items-center justify-between mb-2">
-                <div className={cn("w-6 h-6 rounded-md flex items-center justify-center", s.bg)}>
-                  <Icon className={cn("w-3 h-3", s.color)} />
-                </div>
-                <span className={cn("flex items-center gap-0.5 text-[10px] font-bold", s.up ? "text-green-400" : "text-red-400")}>
-                  {s.up ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
-                  {s.delta}
-                </span>
-              </div>
-              <p className="text-xl font-bold text-white leading-none">{s.value}{s.unit}</p>
-              <p className="text-[10px] text-slate-600 mt-1 leading-tight">{s.label}</p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ── Anomaly Row ─────────────────────────────────────────────────────────────
 function AnomalyRow({ anom, index }: { anom: any; index: number }) {
   return (
@@ -433,7 +391,20 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [projects, anomalies]);
 
-  if (loading) return <LoadingState message="Loading command center..." />;
+  if (loading) {
+    return (
+      <div className="space-y-5">
+        {/* Hero banner skeleton */}
+        <div className="h-52 rounded-3xl overflow-hidden">
+          <SkeletonStatCard />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+        </div>
+        <LoadingState message="Loading command center..." />
+      </div>
+    );
+  }
 
   const startTour = () => {
     localStorage.removeItem("vojas.demoTourCompleted");
@@ -444,37 +415,45 @@ export default function DashboardPage() {
 
   return (
     <motion.div className="space-y-5" variants={stagger} initial="hidden" animate="visible">
-      {/* ── Page header ───────────────────────────────────────────────────── */}
-      <motion.div variants={fadeUp} custom={0} className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="w-1 h-8 rounded-full bg-gradient-to-b from-electric-400 to-electric-600 shrink-0" />
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Command Center</h1>
-            <p className="text-xs text-slate-500 mt-0.5 font-mono">VOJAS · MPLAD Accountability · Live monitoring</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      {/* ── Cinematic Hero Banner (with animated grid + mesh gradient) ──── */}
+      <motion.div variants={fadeUp} custom={0}>
+        <HeroBanner
+          totalBudget={totalBudget}
+          totalProjects={totalProjects}
+          activeProjects={activeProjects}
+          utilization={utilization}
+          anomalies={topAnomalies.length}
+          healthOk={health?.status === "ok"}
+        />
+      </motion.div>
+
+      {/* ── Live Ticker (Bloomberg-style scrolling KPI bar) ──────────────── */}
+      <motion.div variants={fadeUp} custom={1}>
+        <LiveTicker />
+      </motion.div>
+
+      {/* ── Quick actions row ────────────────────────────────────────────── */}
+      <motion.div variants={fadeUp} custom={2} className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
           <button
             onClick={startTour}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-electric-500/10 hover:bg-electric-500/20 border border-electric-500/30 text-electric-400 text-xs font-semibold transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-electric-500 to-electric-400 hover:from-electric-400 hover:to-electric-300 text-navy-900 text-xs font-bold transition-all shadow-lg shadow-electric-500/30 hover:shadow-electric-500/50 hover:scale-105"
             title="Walk through the 4 key screens"
           >
             <Rocket className="w-3.5 h-3.5" />
             Start Demo Tour
           </button>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
-            </span>
-            <span className="text-xs text-green-400 font-medium">System Active</span>
-            <span className="text-[10px] text-green-400/50 font-mono">v1.0</span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] text-slate-400">
+            <span className="text-electric-400 font-mono">●</span> Auto-refresh 30s
           </div>
         </div>
+        <Link to="/projects" className="text-[11px] text-electric-400 hover:text-electric-300 flex items-center gap-1 font-medium">
+          View all projects <ChevronRight className="w-3 h-3" />
+        </Link>
       </motion.div>
 
-      {/* ── Spatial Command Scene (3D WebGL2) ───────────────────────────── */}
-      <motion.div variants={fadeUp} custom={1} className="glass rounded-xl p-2 top-accent top-accent-electric">
+      {/* ── 3D Spatial Command Scene ────────────────────────────────────── */}
+      <motion.div variants={fadeUp} custom={3} className="glass rounded-xl p-2 top-accent top-accent-electric">
         <div className="flex items-center justify-between mb-2 px-2 pt-1">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-white">Project Constellation</h2>
@@ -492,11 +471,11 @@ export default function DashboardPage() {
         <SpatialCommandScene projects={projects} />
       </motion.div>
 
-      {/* ── Spatial Command Map + Live Feed ──────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_320px] gap-5">
+      {/* ── Map + Live Activity Feed ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_340px] gap-5">
         <motion.div
           variants={fadeUp}
-          custom={7}
+          custom={4}
           className="glass rounded-xl p-2 top-accent top-accent-electric"
         >
           <div className="flex items-center justify-between mb-2 px-2 pt-1">
@@ -509,23 +488,118 @@ export default function DashboardPage() {
               Open map <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
-          <div style={{ height: 380 }}>
+          <div style={{ height: 400 }}>
             <SpatialDashboardMap />
           </div>
         </motion.div>
-        <motion.div variants={fadeUp} custom={9} className="xl:row-span-2">
+        <motion.div variants={fadeUp} custom={5} className="xl:row-span-2">
           <div className="h-full"><LiveActivityFeed activities={liveActivities} /></div>
         </motion.div>
       </div>
 
-      {/* ── Financial Health Bar (full width) ────────────────────────────── */}
-      <motion.div variants={fadeUp} custom={8}>
+      {/* ── Financial Health Bar (full width, dramatic) ────────────────── */}
+      <motion.div variants={fadeUp} custom={6}>
         {schemeFin && <FinancialBar fin={schemeFin} />}
       </motion.div>
 
-      {/* ── Anomalies + System / Quick Stats ──────────────────────────────── */}
+      {/* ── Centerpiece: Big Ribbon Gauges + Quick Ratios ────────────────── */}
+      <motion.div
+        variants={fadeUp}
+        custom={7}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-5"
+      >
+        {/* Ribbon Gauges — dramatic visualization */}
+        <div className="lg:col-span-2 glass rounded-2xl p-6 top-accent top-accent-electric relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none opacity-50" style={{
+            background: "radial-gradient(ellipse at top left, rgba(59,130,246,0.08), transparent 60%)"
+          }} />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <BarChart2 className="w-4 h-4 text-electric-400" />
+                <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Performance Pulse</h2>
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono">live · all sectors</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="flex flex-col items-center">
+                <RibbonGauge
+                  value={utilization}
+                  label="Budget Utilization"
+                  color={utilization > 90 ? "red" : utilization > 70 ? "saffron" : "green"}
+                  size={140}
+                  thickness={10}
+                />
+              </div>
+              <div className="flex flex-col items-center">
+                <RibbonGauge
+                  value={totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0}
+                  label="Project Completion"
+                  color="electric"
+                  size={140}
+                  thickness={10}
+                />
+              </div>
+              <div className="flex flex-col items-center">
+                <RibbonGauge
+                  value={reports && reports.total > 0 ? Math.round(((reports.total - pendingReports) / reports.total) * 100) : 0}
+                  label="Report Resolution"
+                  color="saffron"
+                  size={140}
+                  thickness={10}
+                />
+              </div>
+              <div className="flex flex-col items-center">
+                <RibbonGauge
+                  value={topProjects.length > 0 ? Math.min(100, (topProjects[0] ? (topProjects[0].spentAmount / topProjects[0].approvedAmount) * 100 : 0)) : 0}
+                  label="Top Project"
+                  color="green"
+                  size={140}
+                  thickness={10}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* System Status — vertical card */}
+        <div className="space-y-4">
+          <SystemStatus health={health} />
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Today",  val: "47",  sub: "resolved", icon: TrendingUp,  color: "text-green-400",   bg: "bg-green-500/10"   },
+              { label: "Queue",  val: "23",  sub: "pending",  icon: Activity,    color: "text-electric-400", bg: "bg-electric-500/10" },
+              { label: "AI",     val: "4",   sub: "engines",  icon: Zap,         color: "text-saffron-400",  bg: "bg-saffron-500/10"  },
+              { label: "Risk",   val: "3",   sub: "alerts",   icon: AlertTriangle, color: "text-red-400",     bg: "bg-red-500/10"      },
+            ].map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <motion.div
+                  key={s.label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 + i * 0.08, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: -2, scale: 1.03 }}
+                  className="glass rounded-xl p-3 border border-white/[0.06] hover:border-white/[0.12] transition-all"
+                >
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center mb-2", s.bg)}>
+                    <Icon className={cn("w-3.5 h-3.5", s.color)} />
+                  </div>
+                  <p className={cn("text-2xl font-bold leading-none tabular-nums", s.color)} style={{ textShadow: `0 0 16px currentColor` }}>
+                    {s.val}
+                  </p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1.5 font-semibold">{s.label}</p>
+                  <p className="text-[9px] text-slate-600 mt-0.5">{s.sub}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── Anomalies + Quick Access ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <motion.div variants={fadeUp} custom={10} className="lg:col-span-2 glass rounded-xl p-5 top-accent top-accent-saffron">
+        <motion.div variants={fadeUp} custom={8} className="lg:col-span-2 glass rounded-xl p-5 top-accent top-accent-saffron">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-saffron-400" />
@@ -553,20 +627,36 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        <motion.div variants={fadeUp} custom={11} className="space-y-4">
-          <SystemStatus health={health} />
-          <QuickStats
-            reports={reports}
-            pendingReports={pendingReports}
-            totalProjects={totalProjects}
-            completedProjects={completedProjects}
-            utilization={utilization}
-          />
+        <motion.div variants={fadeUp} custom={9} className="glass rounded-xl p-5 top-accent top-accent-green">
+          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <Eye className="w-4 h-4 text-electric-400" />
+            Quick Access
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "All Projects",    path: "/projects",  icon: FileText },
+              { label: "Anomalies",       path: "/anomalies", icon: AlertTriangle },
+              { label: "Risk Dashboard",  path: "/risk",      icon: Shield },
+              { label: "Reports Queue",    path: "/reports",   icon: Users },
+              { label: "Map View",        path: "/map",       icon: Activity },
+              { label: "Analytics",        path: "/analytics", icon: BarChart2 },
+            ].map(({ label, path, icon: Icon }) => (
+              <Link key={path} to={path}
+                className="flex items-center gap-2.5 p-3 rounded-lg border border-white/5
+                  hover:border-electric-500/30 hover:bg-electric-500/5 bg-navy-800/30
+                  transition-all group">
+                <div className="w-8 h-8 rounded-lg bg-electric-500/10 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-electric-400" />
+                </div>
+                <span className="text-xs text-slate-300 group-hover:text-white font-medium">{label}</span>
+              </Link>
+            ))}
+          </div>
         </motion.div>
       </div>
 
-      {/* ── Top Projects Table ───────────────────────────────────────────── */}
-      <motion.div variants={fadeUp} custom={12} className="glass rounded-xl p-5 top-accent top-accent-electric">
+      {/* ── Top Projects Table ─────────────────────────────────────────── */}
+      <motion.div variants={fadeUp} custom={10} className="glass rounded-xl p-5 top-accent top-accent-electric">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-electric-400" />
@@ -601,73 +691,44 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* ── Quick Access + Sector Performance ────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <motion.div variants={fadeUp} custom={13} className="glass rounded-xl p-5 top-accent top-accent-green">
-          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Eye className="w-4 h-4 text-electric-400" />
-            Quick Access
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "All Projects",    path: "/projects",  icon: FileText },
-              { label: "Anomalies",       path: "/anomalies", icon: AlertTriangle },
-              { label: "Risk Dashboard",  path: "/risk",      icon: Shield },
-              { label: "Reports Queue",    path: "/reports",   icon: Users },
-              { label: "Map View",        path: "/map",       icon: Activity },
-              { label: "Analytics",        path: "/analytics", icon: BarChart2 },
-            ].map(({ label, path, icon: Icon }) => (
-              <Link key={path} to={path}
-                className="flex items-center gap-2.5 p-3 rounded-lg border border-white/5
-                  hover:border-electric-500/30 hover:bg-electric-500/5 bg-navy-800/30
-                  transition-all group">
-                <div className="w-8 h-8 rounded-lg bg-electric-500/10 flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-electric-400" />
+      {/* ── Sector Performance ──────────────────────────────────────────── */}
+      <motion.div variants={fadeUp} custom={11} className="glass rounded-xl p-5 top-accent top-accent-electric">
+        <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-electric-400" />
+          Sector Performance
+        </h2>
+        <div className="space-y-1">
+          {sectorStats.length === 0 ? (
+            <p className="text-[11px] text-slate-600 text-center py-6">No sector data</p>
+          ) : sectorStats.map(s => {
+            const pct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
+            return (
+              <div key={s.name} className="flex items-center gap-3 py-2">
+                <div className="w-32 shrink-0">
+                  <span className="text-xs text-slate-400 truncate block">{s.name.replace(/_/g, " ")}</span>
                 </div>
-                <span className="text-xs text-slate-300 group-hover:text-white font-medium">{label}</span>
-              </Link>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div variants={fadeUp} custom={14} className="glass rounded-xl p-5 top-accent top-accent-electric">
-          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-electric-400" />
-            Sector Performance
-          </h2>
-          <div className="space-y-1">
-            {sectorStats.length === 0 ? (
-              <p className="text-[11px] text-slate-600 text-center py-6">No sector data</p>
-            ) : sectorStats.map(s => {
-              const pct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
-              return (
-                <div key={s.name} className="flex items-center gap-3 py-2">
-                  <div className="w-32 shrink-0">
-                    <span className="text-xs text-slate-400 truncate block">{s.name.replace(/_/g, " ")}</span>
-                  </div>
-                  <div className="flex-1 h-1.5 bg-navy-800 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-electric-500 to-electric-400 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 w-36 justify-end">
-                    {s.flagged > 0 && (
-                      <span className="flex items-center gap-0.5 text-[10px] text-saffron-400">
-                        <AlertTriangle className="w-2.5 h-2.5" />{s.flagged}
-                      </span>
-                    )}
-                    <span className="text-[10px] text-slate-500 font-mono">{pct}%</span>
-                    <span className="text-[10px] text-slate-600">{s.completed}/{s.total}</span>
-                  </div>
+                <div className="flex-1 h-1.5 bg-navy-800 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-electric-500 to-electric-400 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
+                  />
                 </div>
-              );
-            })}
-          </div>
-        </motion.div>
-      </div>
+                <div className="flex items-center gap-2 shrink-0 w-36 justify-end">
+                  {s.flagged > 0 && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-saffron-400">
+                      <AlertTriangle className="w-2.5 h-2.5" />{s.flagged}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-slate-500 font-mono">{pct}%</span>
+                  <span className="text-[10px] text-slate-600">{s.completed}/{s.total}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

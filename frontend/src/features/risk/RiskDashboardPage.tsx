@@ -1,5 +1,6 @@
 import { useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   ShieldAlert,
   TrendingUp,
@@ -21,12 +22,15 @@ import { useAnomalies } from "@/hooks/useAnomalies";
 import { aiApi, type AIExplanation } from "@/services/ai-api";
 import type { RiskLevel, RiskStats } from "@/services/risk-api";
 import type { Anomaly } from "@/types";
+import PageHeader from "@/components/ui/PageHeader";
+import { fadeUp, staggerContainer, EASE } from "@/components/ui/Animations";
+import EmptyState from "@/components/ui/Empty";
 
-const RISK_COLORS: Record<RiskLevel, { bg: string; text: string; border: string; dot: string }> = {
-  LOW:      { bg: "bg-emerald-500/10",  text: "text-emerald-400", border: "border-emerald-500/20",  dot: "bg-emerald-400" },
-  MEDIUM:   { bg: "bg-amber-500/10",    text: "text-amber-400",   border: "border-amber-500/20",    dot: "bg-amber-400" },
-  HIGH:     { bg: "bg-orange-500/10",   text: "text-orange-400",  border: "border-orange-500/20",   dot: "bg-orange-400" },
-  CRITICAL: { bg: "bg-red-500/10",      text: "text-red-400",     border: "border-red-500/20",     dot: "bg-red-400" },
+const RISK_COLORS: Record<RiskLevel, { bg: string; text: string; border: string; dot: string; gradient: string }> = {
+  LOW:      { bg: "bg-emerald-500/10",  text: "text-emerald-400", border: "border-emerald-500/20",  dot: "bg-emerald-400", gradient: "from-emerald-500 to-emerald-400" },
+  MEDIUM:   { bg: "bg-amber-500/10",    text: "text-amber-400",   border: "border-amber-500/20",    dot: "bg-amber-400",   gradient: "from-amber-500 to-amber-400" },
+  HIGH:     { bg: "bg-orange-500/10",   text: "text-orange-400",  border: "border-orange-500/20",   dot: "bg-orange-400",  gradient: "from-orange-500 to-orange-400" },
+  CRITICAL: { bg: "bg-red-500/10",      text: "text-red-400",     border: "border-red-500/20",     dot: "bg-red-400",     gradient: "from-red-500 to-red-400" },
 };
 
 const RISK_LABELS: Record<RiskLevel, string> = {
@@ -39,7 +43,12 @@ function ScoreBar({ score, max, color }: { score: number; max: number; color: st
   const pct = Math.min((score / max) * 100, 100);
   return (
     <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden">
-      <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
+      <motion.div
+        className={`h-full rounded-full ${color}`}
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 1, ease: EASE }}
+      />
     </div>
   );
 }
@@ -54,24 +63,32 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub, color }: {
+function StatCard({ icon: Icon, label, value, sub, color, gradient, index }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   sub?: string;
   color: string;
+  gradient: string;
+  index: number;
 }) {
   return (
-    <div className="bg-navy-800/50 border border-white/5 rounded-xl p-5">
+    <motion.div
+      variants={fadeUp}
+      custom={index}
+      whileHover={{ y: -3, scale: 1.02 }}
+      className="glass rounded-2xl p-5 border ring-1 ring-white/5 relative overflow-hidden group cursor-default"
+    >
+      <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${gradient}`} />
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
           <Icon className="w-4.5 h-4.5" />
         </div>
         <p className="text-slate-400 text-sm font-medium">{label}</p>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold text-white tabular-nums">{value}</p>
       {sub && <p className="text-slate-500 text-xs mt-1">{sub}</p>}
-    </div>
+    </motion.div>
   );
 }
 
@@ -100,14 +117,12 @@ export default function RiskDashboardPage() {
   const [page, setPage] = useState(1);
   const [expandedRisk, setExpandedRisk] = useState<string | null>(null);
 
-  // AI explanation state (Phase 11)
   const [aiExplanation, setAiExplanation] = useState<AIExplanation | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [expandedAnomaly, setExpandedAnomaly] = useState<string | null>(null);
   const [anomaliesProjectId, setAnomaliesProjectId] = useState<string | null>(null);
 
-  // React Query
   const risksQuery = useRiskList({
     riskLevel: filterLevel === "ALL" ? undefined : filterLevel,
     sortBy,
@@ -176,47 +191,91 @@ export default function RiskDashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <ShieldAlert className="w-6 h-6 text-electric-400" />
-            Risk Dashboard
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Unified risk scores combining anomalies, financials, reports &amp; timelines
-          </p>
-        </div>
-        <button
-          onClick={handleRecalculate}
-          disabled={recalculating}
-          aria-label={recalculating ? "Recalculating risk scores" : "Recalculate all risk scores"}
-          className="flex items-center gap-2 px-4 py-2 bg-electric-500/10 border border-electric-500/20 text-electric-400 rounded-lg text-sm font-medium hover:bg-electric-500/20 transition-colors disabled:opacity-50"
-        >
-          {recalculating ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="w-4 h-4" aria-hidden="true" />}
-          {recalculating ? "Recalculating..." : "Recalculate All"}
-        </button>
-      </div>
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Page header */}
+      <motion.div variants={fadeUp}>
+        <PageHeader
+          title="Risk"
+          gradientWord="Dashboard"
+          accent="red"
+          icon={ShieldAlert}
+          subtitle="Unified risk scores combining anomalies, financials, reports & timelines"
+          breadcrumbs={[
+            { label: "Dashboard", href: "/" },
+            { label: "Risk Dashboard" },
+          ]}
+          actions={
+            <button
+              onClick={handleRecalculate}
+              disabled={recalculating}
+              aria-label={recalculating ? "Recalculating risk scores" : "Recalculate all risk scores"}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-400 hover:from-red-400 hover:to-orange-300 disabled:from-red-500/50 text-navy-900 text-sm font-bold rounded-lg shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {recalculating ? (
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <RefreshCw className="w-4 h-4" aria-hidden="true" />
+              )}
+              {recalculating ? "Recalculating..." : "Recalculate All"}
+            </button>
+          }
+        />
+      </motion.div>
 
       {/* Stats row */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          <StatCard icon={TrendingUp} label="Avg Score" value={stats.avgScore.toFixed(1)} sub="out of 100" color="bg-electric-500/20 text-electric-400" />
-          <StatCard icon={ShieldAlert} label="Critical" value={stats.distribution.CRITICAL} sub="projects" color="bg-red-500/20 text-red-400" />
-          <StatCard icon={AlertTriangle} label="High" value={stats.distribution.HIGH} sub="projects" color="bg-orange-500/20 text-orange-400" />
-          <StatCard icon={TrendingUp} label="Medium" value={stats.distribution.MEDIUM} sub="projects" color="bg-amber-500/20 text-amber-400" />
-          <StatCard icon={ShieldAlert} label="Low" value={stats.distribution.LOW} sub="projects" color="bg-emerald-500/20 text-emerald-400" />
-          <StatCard icon={FileText} label="Total" value={stats.totalProjects} sub="projects scored" color="bg-slate-500/20 text-slate-400" />
-        </div>
+        <motion.div variants={fadeUp} className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+          <StatCard
+            icon={TrendingUp} label="Avg Score" value={stats.avgScore.toFixed(1)} sub="out of 100"
+            color="bg-electric-500/20 text-electric-400" gradient={RISK_COLORS.LOW.gradient} index={0}
+          />
+          <StatCard
+            icon={ShieldAlert} label="Critical" value={stats.distribution.CRITICAL} sub="projects"
+            color="bg-red-500/20 text-red-400" gradient={RISK_COLORS.CRITICAL.gradient} index={1}
+          />
+          <StatCard
+            icon={AlertTriangle} label="High" value={stats.distribution.HIGH} sub="projects"
+            color="bg-orange-500/20 text-orange-400" gradient={RISK_COLORS.HIGH.gradient} index={2}
+          />
+          <StatCard
+            icon={TrendingUp} label="Medium" value={stats.distribution.MEDIUM} sub="projects"
+            color="bg-amber-500/20 text-amber-400" gradient={RISK_COLORS.MEDIUM.gradient} index={3}
+          />
+          <StatCard
+            icon={ShieldAlert} label="Low" value={stats.distribution.LOW} sub="projects"
+            color="bg-emerald-500/20 text-emerald-400" gradient={RISK_COLORS.LOW.gradient} index={4}
+          />
+          <StatCard
+            icon={FileText} label="Total" value={stats.totalProjects} sub="projects scored"
+            color="bg-slate-500/20 text-slate-400" gradient="from-slate-500 to-slate-400" index={5}
+          />
+        </motion.div>
       )}
 
       {/* Risk Distribution Bar */}
       {stats && (
-        <div className="bg-navy-800/50 border border-white/5 rounded-xl p-5">
-          <p className="text-sm font-medium text-slate-300 mb-3">Risk Distribution</p>
+        <motion.div variants={fadeUp} className="glass rounded-2xl p-5 top-accent top-accent-electric relative overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-white uppercase tracking-wider">Risk Distribution</h2>
+              <p className="text-[10px] text-slate-500 mt-0.5">{stats.totalProjects} projects scored</p>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-mono">
+              {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as RiskLevel[]).map(level => (
+                <span key={level} className="flex items-center gap-1.5 text-slate-400">
+                  <span className={`w-2 h-2 rounded-full ${RISK_COLORS[level].dot}`} />
+                  {level}: <span className={`font-bold ${RISK_COLORS[level].text}`}>{stats.distribution[level]}</span>
+                </span>
+              ))}
+            </div>
+          </div>
           <div
-            className="flex h-6 rounded-full overflow-hidden gap-0.5"
+            className="flex h-7 rounded-full overflow-hidden gap-1"
             role="img"
             aria-label={`Risk distribution: ${stats.distribution.CRITICAL} critical, ${stats.distribution.HIGH} high, ${stats.distribution.MEDIUM} medium, ${stats.distribution.LOW} low out of ${stats.totalProjects} total projects`}
           >
@@ -225,39 +284,38 @@ export default function RiskDashboardPage() {
               const pct = stats.totalProjects > 0 ? (count / stats.totalProjects) * 100 : 0;
               if (pct === 0) return null;
               return (
-                <div
+                <motion.div
                   key={level}
-                  className={`flex items-center justify-center text-xs font-bold text-white/80 transition-all ${RISK_COLORS[level].dot.replace("bg-", "bg-")}`}
-                  style={{ width: `${pct}%` }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 1.2, ease: EASE }}
+                  className={`flex items-center justify-center text-[11px] font-bold text-white/90 ${
+                    level === "CRITICAL" ? "bg-gradient-to-r from-red-600 to-red-400" :
+                    level === "HIGH"     ? "bg-gradient-to-r from-orange-600 to-orange-400" :
+                    level === "MEDIUM"   ? "bg-gradient-to-r from-amber-600 to-amber-400" :
+                                           "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                  }`}
                   title={`${level}: ${count} projects`}
                 >
-                  {pct > 10 ? count : ""}
-                </div>
+                  {pct > 8 ? count : ""}
+                </motion.div>
               );
             })}
           </div>
-          <div className="flex gap-4 mt-2 flex-wrap">
-            {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as RiskLevel[]).map((level) => (
-              <div key={level} className="flex items-center gap-1.5 text-xs text-slate-400">
-                <span className={`w-2 h-2 rounded-full ${RISK_COLORS[level].dot}`} />
-                {level}: {stats.distribution[level]}
-              </div>
-            ))}
-          </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Filters & Table */}
-      <div className="bg-navy-800/50 border border-white/5 rounded-xl overflow-hidden">
+      <motion.div variants={fadeUp} className="glass rounded-2xl overflow-hidden top-accent top-accent-red">
         {/* Filter bar */}
         <div className="flex items-center gap-3 p-4 border-b border-white/5 flex-wrap" role="group" aria-label="Filter by risk level">
-          <span className="text-sm text-slate-400 font-medium">Filter:</span>
+          <span className="text-sm text-slate-400 font-semibold uppercase tracking-wider">Filter:</span>
           <button
             onClick={() => { setFilterLevel("ALL"); setPage(1); }}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
               filterLevel === "ALL"
-                ? "bg-electric-500/20 text-electric-400 border border-electric-500/30"
-                : "bg-navy-700 text-slate-400 border border-white/10 hover:bg-navy-600"
+                ? "bg-electric-500/20 text-electric-400 border border-electric-500/30 shadow-sm shadow-electric-500/20"
+                : "bg-navy-800/50 text-slate-400 border border-white/10 hover:bg-navy-700 hover:border-white/20"
             }`}
           >
             All ({total})
@@ -266,13 +324,13 @@ export default function RiskDashboardPage() {
             <button
               key={level}
               onClick={() => { setFilterLevel(level); setPage(1); }}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                 filterLevel === level
-                  ? `${RISK_COLORS[level].bg} ${RISK_COLORS[level].text} border ${RISK_COLORS[level].border}`
-                  : "bg-navy-700 text-slate-400 border border-white/10 hover:bg-navy-600"
+                  ? `${RISK_COLORS[level].bg} ${RISK_COLORS[level].text} border ${RISK_COLORS[level].border} shadow-sm`
+                  : "bg-navy-800/50 text-slate-400 border border-white/10 hover:bg-navy-700 hover:border-white/20"
               }`}
             >
-              {level}
+              {RISK_LABELS[level]}
             </button>
           ))}
         </div>
@@ -287,26 +345,33 @@ export default function RiskDashboardPage() {
             <p className="text-red-400">{error}</p>
           </div>
         ) : risks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <ShieldAlert className="w-10 h-10 text-slate-600" />
-            <p className="text-slate-400">No risk data found</p>
-            <button onClick={handleRecalculate} className="text-sm text-electric-400 hover:underline">
-              Run risk calculation
-            </button>
-          </div>
+          <EmptyState
+            icon={ShieldAlert}
+            title="No risk data found"
+            description="Run a risk calculation to populate this dashboard."
+            accent="red"
+            action={
+              <button
+                onClick={handleRecalculate}
+                className="text-sm text-electric-400 hover:underline"
+              >
+                Run risk calculation
+              </button>
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <caption className="sr-only">Project risk scores — sortable by overall score, with district, status, level, and risk factors</caption>
               <thead>
-                <tr className="border-b border-white/5">
-                  <th scope="col" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Project</th>
-                  <th scope="col" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">District</th>
-                  <th scope="col" className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Status</th>
+                <tr className="border-b border-white/5 bg-navy-900/30">
+                  <th scope="col" className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Project</th>
+                  <th scope="col" className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden md:table-cell">District</th>
+                  <th scope="col" className="text-left px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden lg:table-cell">Status</th>
                   <th
                     scope="col"
                     aria-sort={sortBy === "overallScore" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}
-                    className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    className="text-right px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest"
                   >
                     <button
                       onClick={() => toggleSort("overallScore")}
@@ -316,19 +381,22 @@ export default function RiskDashboardPage() {
                       Score <ArrowUpDown className="w-3 h-3" aria-hidden="true" />
                     </button>
                   </th>
-                  <th scope="col" className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Level</th>
-                  <th scope="col" className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Factors</th>
+                  <th scope="col" className="text-center px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Level</th>
+                  <th scope="col" className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Factors</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {risks.map((risk) => (
+                {risks.map((risk, idx) => (
                   <Fragment key={risk.id}>
-                    <tr
-                      className="hover:bg-white/3 transition-colors cursor-pointer"
+                    <motion.tr
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03, duration: 0.4, ease: EASE }}
+                      className="hover:bg-white/[0.02] transition-colors cursor-pointer group"
                       onClick={() => navigate(`/projects/${risk.projectId}`)}
                     >
                       <td className="px-4 py-3.5">
-                        <p className="text-sm font-medium text-slate-200 leading-tight">{risk.project.name}</p>
+                        <p className="text-sm font-medium text-slate-200 group-hover:text-white leading-tight">{risk.project.name}</p>
                         <p className="text-xs text-slate-500 mt-0.5">{risk.project.sector.replace(/_/g, " ")}</p>
                       </td>
                       <td className="px-4 py-3.5 hidden md:table-cell">
@@ -339,15 +407,18 @@ export default function RiskDashboardPage() {
                         <span className="text-xs text-slate-400">{risk.project.status.replace(/_/g, " ")}</span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        <div className="flex flex-col items-end gap-1">
-                          <span className={`text-lg font-bold ${RISK_COLORS[risk.riskLevel].text}`}>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <span
+                            className={`text-lg font-bold tabular-nums ${RISK_COLORS[risk.riskLevel].text}`}
+                            style={{ textShadow: "0 0 12px currentColor" }}
+                          >
                             {risk.overallScore}
                           </span>
                           <div className="w-20">
                             <ScoreBar
                               score={risk.overallScore}
                               max={100}
-                              color={`bg-electric-500`}
+                              color={`bg-gradient-to-r ${RISK_COLORS[risk.riskLevel].gradient}`}
                             />
                           </div>
                         </div>
@@ -370,27 +441,27 @@ export default function RiskDashboardPage() {
                               loadAnomalies(risk.projectId);
                             }
                           }}
-                          className="text-xs text-electric-400 hover:text-electric-300 flex items-center gap-1 mx-auto"
+                          className="text-xs text-electric-400 hover:text-electric-300 flex items-center gap-1 mx-auto transition-colors"
                         >
                           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedRisk === risk.id ? "rotate-180" : ""}`} />
                           {risk.factors.length}
                         </button>
                       </td>
-                    </tr>
+                    </motion.tr>
 
                     {/* Expanded breakdown row */}
                     {expandedRisk === risk.id && (
                       <tr className="bg-navy-900/50">
-                        <td colSpan={6} className="px-6 py-4">
+                        <td colSpan={6} className="px-6 py-5">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Score breakdown */}
                             <div className="space-y-3">
-                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Score Breakdown</p>
+                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Score Breakdown</p>
                               <BreakdownRow label="Anomalies" score={risk.anomalyScore} max={40} icon={AlertTriangle} colorClass="text-red-400" />
                               <BreakdownRow label="Financial" score={risk.financialScore} max={25} icon={DollarSign} colorClass="text-amber-400" />
                               <BreakdownRow label="Reports" score={risk.reportScore} max={20} icon={Users} colorClass="text-blue-400" />
                               <BreakdownRow label="Timeline" score={risk.timelineScore} max={15} icon={Clock} colorClass="text-purple-400" />
-                              <div className="flex items-center gap-3 pt-1 border-t border-white/5">
+                              <div className="flex items-center gap-3 pt-2 mt-1 border-t border-white/5">
                                 <TrendingUp className="w-4 h-4 text-electric-400" />
                                 <span className="text-sm text-slate-400 w-32">Total</span>
                                 <ScoreBar score={risk.overallScore} max={100} color="bg-electric-500" />
@@ -400,7 +471,7 @@ export default function RiskDashboardPage() {
 
                             {/* Risk factors */}
                             <div className="space-y-2">
-                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Risk Factors</p>
+                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Risk Factors</p>
                               {risk.factors.length === 0 ? (
                                 <p className="text-sm text-slate-500 italic">No risk factors detected</p>
                               ) : (
@@ -418,9 +489,9 @@ export default function RiskDashboardPage() {
                               )}
                             </div>
 
-                            {/* Anomalies + AI Analysis (Phase 11) */}
+                            {/* Anomalies + AI Analysis */}
                             <div className="space-y-2">
-                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Anomalies &amp; AI</p>
+                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Anomalies &amp; AI</p>
                               {anomaliesLoading ? (
                                 <div className="flex items-center gap-2 text-xs text-slate-500">
                                   <div className="w-3.5 h-3.5 border border-slate-500/30 border-t-slate-400 rounded-full animate-spin" />
@@ -516,7 +587,7 @@ export default function RiskDashboardPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
             <p className="text-sm text-slate-500">
-              Page {page} of {totalPages} — {total} projects
+              Page {page} of {totalPages} — <span className="text-white font-medium">{total}</span> projects
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -539,7 +610,7 @@ export default function RiskDashboardPage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
