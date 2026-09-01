@@ -100,19 +100,20 @@ export const projectService = {
     }
 
     if (filters.district) {
-      where.district = { contains: filters.district, mode: "insensitive" };
+      where.district = { contains: filters.district };
     }
 
     if (filters.state) {
-      where.state = { contains: filters.state, mode: "insensitive" };
+      where.state = { contains: filters.state };
     }
 
     if (filters.search) {
+      const s = filters.search;
       where.OR = [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { description: { contains: filters.search, mode: "insensitive" } },
-        { district: { contains: filters.search, mode: "insensitive" } },
-        { contractor: { contains: filters.search, mode: "insensitive" } },
+        { name: { contains: s } },
+        { description: { contains: s } },
+        { district: { contains: s } },
+        { contractor: { contains: s } },
       ];
     }
 
@@ -207,12 +208,13 @@ export const projectService = {
 
     if (filters?.status) where.status = filters.status;
     if (filters?.sector) where.sector = filters.sector;
-    if (filters?.district) where.district = { contains: filters.district, mode: "insensitive" };
-    if (filters?.state) where.state = { contains: filters.state, mode: "insensitive" };
+    if (filters?.district) where.district = { contains: filters.district };
+    if (filters?.state) where.state = { contains: filters.state };
     if (filters?.search) {
+      const s = filters.search;
       where.OR = [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { description: { contains: filters.search, mode: "insensitive" } },
+        { name: { contains: s } },
+        { description: { contains: s } },
       ];
     }
 
@@ -226,9 +228,9 @@ export const projectService = {
     totalBudget: number;
     totalSpent: number;
   }> {
-    const [total, allProjects, byStatus, bySector] = await Promise.all([
+    const [total, financials, byStatus, bySector] = await Promise.all([
       prisma.project.count(),
-      prisma.project.findMany({ select: { approvedAmount: true, spentAmount: true } }),
+      prisma.project.aggregate({ _sum: { approvedAmount: true, spentAmount: true } }),
       prisma.project.groupBy({
         by: ["status"],
         _count: true,
@@ -239,8 +241,8 @@ export const projectService = {
       }),
     ]);
 
-    const totalBudget = allProjects.reduce((sum, p) => sum + p.approvedAmount, 0);
-    const totalSpent = allProjects.reduce((sum, p) => sum + p.spentAmount, 0);
+    const totalBudget = Number(financials._sum.approvedAmount ?? 0);
+    const totalSpent = Number(financials._sum.spentAmount ?? 0);
 
     const statusMap: Record<string, number> = {};
     for (const s of byStatus) {

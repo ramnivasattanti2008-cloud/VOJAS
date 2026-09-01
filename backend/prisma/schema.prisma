@@ -39,6 +39,7 @@ model User {
   expenditures          Expenditure[]
   acknowledgedAnomalies Anomaly[]      @relation("AnomalyAcknowledger")
   resolvedAnomalies     Anomaly[]      @relation("AnomalyResolver")
+  escalatedAnomalies    Anomaly[]      @relation("AnomalyLawEscalator")
   notifications         Notification[]
   uploadedDocuments     Document[]     @relation("UploadedDocuments")
   verifiedDocuments     Document[]     @relation("VerifiedDocuments")
@@ -75,6 +76,7 @@ model MP {
   @@unique([name, constituency, term])
   @@index([state, constituency])
   @@index([house, term])
+  @@index([createdAt])
 }
 
 enum Role {
@@ -516,6 +518,14 @@ model Anomaly {
   resolvedById     String?
   resolvedAt       DateTime?
   resolution       String? // Resolution note
+  // Law enforcement escalation
+  lawEscalation    Boolean         @default(false) // Flagged for ACB/Police/CVC
+  lawAuthority     String? // "ACB_OFFICE" | "POLICE_OFFICE" | "CVC" | "LOKAYUKTA" | "VIGILANCE"
+  lawReferenceNo   String? // Reference number from the authority
+  lawEscalatedAt   DateTime?
+  lawEscalatedById String?
+  lawAcknowledged  Boolean         @default(false)
+  lawNotes         String? // Free-text case notes for the authority
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -529,6 +539,7 @@ model Anomaly {
   vendor         Vendor?  @relation(fields: [vendorId], references: [id])
   acknowledgedBy User?    @relation("AnomalyAcknowledger", fields: [acknowledgedById], references: [id])
   resolvedBy     User?    @relation("AnomalyResolver", fields: [resolvedById], references: [id])
+  lawEscalatedBy User?    @relation("AnomalyLawEscalator", fields: [lawEscalatedById], references: [id])
   // rule: relation to AnomalyRule removed; ruleCode is a plain string reference.
   // Phase 9 will introduce the proper FK relation (ruleId -> AnomalyRule.id).
 
@@ -538,6 +549,7 @@ model Anomaly {
   @@index([projectId])
   @@index([createdAt])
   @@index([ruleCode])
+  @@index([lawEscalation, lawAuthority])
 }
 
 // Detection rule definition
@@ -571,9 +583,11 @@ enum NotificationType {
   ANOMALY_ACKNOWLEDGED // An analyst acknowledged an anomaly
   ANOMALY_RESOLVED // An anomaly was resolved/dismissed
   ANOMALY_ESCALATED // Anomaly escalated to higher authority
+  ANOMALY_ESCALATED_TO_LAW // Anomaly escalated to ACB/Police/CVC
   REPORT_SUBMITTED // New citizen report submitted
   REPORT_ASSIGNED // Report assigned to an officer
   RISK_THRESHOLD // Project risk crossed threshold
+  REFERRAL_ACKNOWLEDGED // Law enforcement acknowledged referral
 }
 
 model Notification {
