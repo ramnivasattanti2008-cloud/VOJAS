@@ -39,6 +39,10 @@ COPY --from=builder /app/package.json  ./package.json
 # Copy prisma dir then swap schema.prisma → postgresql provider for prod.
 # (The committed schema.prisma is sqlite for local dev convenience.)
 COPY --from=builder /app/prisma       ./prisma
+# Copy src/ so SEED_ON_BOOT seed script (which imports ../src/...) can find modules
+COPY --from=builder /app/src          ./src
+# Copy scripts/ for seed script (compiled alongside dist/ in builder stage)
+COPY --from=builder /app/scripts      ./scripts
 
 RUN chown -R nodeapp:nodejs /app
 
@@ -50,4 +54,6 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/api/v1/health || exit 1
 
-CMD ["node", "dist/server.js"]
+# On first start: optionally run seed (gated by SEED_ON_BOOT env var),
+# then start the API server. The seed script uses tsx (devDep installed in stage 1).
+CMD ["sh", "-c", "if [ \"$SEED_ON_BOOT\" = \"true\" ]; then echo 'SEED_ON_BOOT=true — running seed...'; npx tsx scripts/seed.ts || echo 'seed failed (non-fatal)'; fi; exec node dist/server.js"]
