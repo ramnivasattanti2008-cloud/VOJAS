@@ -12,7 +12,16 @@ import {
   ArrowRight,
   PieChart,
   Loader2,
+  Users,
+  Building2,
+  LineChart as LineChartIcon,
 } from "lucide-react";
+
+const SUB_ANALYTICS: { title: string; desc: string; path: string; icon: React.ElementType; accent: string }[] = [
+  { title: "MP Analytics", desc: "MPLADS Member of Parliament performance, utilization & longitudinal trends", path: "/analytics/mp", icon: Users, accent: "saffron" },
+  { title: "Vendor Analytics", desc: "Vendor concentration, cross-constituency risk & payment benchmark", path: "/analytics/vendor", icon: Building2, accent: "electric" },
+  { title: "Longitudinal Trends", desc: "MPLADS utilization across 15th–18th Lok Sabha", path: "/analytics/longitudinal", icon: LineChartIcon, accent: "saffron" },
+];
 import { useAnalyticsSummary } from "@/hooks/useAnalytics";
 import type {
   ProjectStatusCount,
@@ -256,6 +265,43 @@ export default function AnalyticsPage() {
             </button>
           }
         />
+      </motion.div>
+
+      {/* Sub-analytics hub */}
+      <motion.div
+        variants={staggerContainer}
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+      >
+        {SUB_ANALYTICS.map((s) => {
+          const Icon = s.icon;
+          const accentBar = s.accent === "saffron"
+            ? "from-saffron-500 to-saffron-400"
+            : "from-electric-500 to-electric-400";
+          return (
+            <motion.div key={s.path} variants={fadeUp}>
+              <Link
+                to={s.path}
+                className="block glass rounded-2xl p-5 border ring-1 ring-white/5 relative overflow-hidden group hover:ring-white/20 transition-all"
+              >
+                <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${accentBar} opacity-60`} />
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Icon className={s.accent === "saffron" ? "w-4 h-4 text-saffron-400" : "w-4 h-4 text-electric-400"} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+                        {s.title}
+                      </p>
+                      <ArrowRight className="w-3 h-3 text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{s.desc}</p>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          );
+        })}
       </motion.div>
 
       {/* Section 1 — Project KPIs */}

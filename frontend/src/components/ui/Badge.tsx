@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
-type BadgeVariant = "red" | "amber" | "green" | "blue" | "slate" | "electric";
+type BadgeVariant = "red" | "amber" | "green" | "blue" | "slate" | "electric" | "emerald" | "saffron";
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -14,12 +14,14 @@ interface BadgeProps {
 }
 
 const VARIANT_STYLES: Record<BadgeVariant, string> = {
-  red:    "bg-red-500/15 border-red-500/30 text-red-400",
-  amber:  "bg-saffron-500/15 border-saffron-500/30 text-saffron-400",
-  green:  "bg-green-500/15 border-green-500/30 text-green-400",
-  blue:   "bg-blue-500/15 border-blue-500/30 text-blue-400",
-  slate:  "bg-white/5 border-white/10 text-slate-400",
-  electric: "bg-electric-500/15 border-electric-500/30 text-electric-400",
+  red:     "bg-red-500/15 border-red-500/30 text-red-400",
+  amber:   "bg-amber-500/15 border-amber-500/30 text-amber-400",
+  saffron: "bg-saffron-500/15 border-saffron-500/30 text-saffron-400",
+  green:   "bg-green-500/15 border-green-500/30 text-green-400",
+  blue:    "bg-blue-500/15 border-blue-500/30 text-blue-400",
+  slate:   "bg-white/5 border-white/10 text-slate-400",
+  electric:"bg-electric-500/15 border-electric-500/30 text-electric-400",
+  emerald: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400",
 };
 
 const SIZE_STYLES = {
@@ -57,9 +59,11 @@ export function Badge({
             className={cn(
               "absolute inline-flex h-full w-full rounded-full opacity-75",
               variant === "red"    ? "bg-red-400"    :
-              variant === "amber"  ? "bg-saffron-400" :
+              variant === "amber"  ? "bg-amber-400"  :
+              variant === "saffron"? "bg-saffron-400" :
               variant === "green"  ? "bg-green-400"   :
               variant === "blue"   ? "bg-blue-400"    :
+              variant === "emerald"? "bg-emerald-400" :
               "bg-slate-400"
             )}
           />
@@ -67,9 +71,11 @@ export function Badge({
             className={cn(
               "relative inline-flex h-1.5 w-1.5 rounded-full",
               variant === "red"    ? "bg-red-400"    :
-              variant === "amber"  ? "bg-saffron-400" :
+              variant === "amber"  ? "bg-amber-400"  :
+              variant === "saffron"? "bg-saffron-400" :
               variant === "green"  ? "bg-green-400"   :
               variant === "blue"   ? "bg-blue-400"    :
+              variant === "emerald"? "bg-emerald-400" :
               "bg-slate-400"
             )}
           />

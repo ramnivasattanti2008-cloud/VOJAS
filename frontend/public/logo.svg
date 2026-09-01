@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60">
+  <!-- VOJAS Primary Logo Lockup -->
+  <defs>
+    <filter id="apex-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Symbol: Stylized V with apex dot -->
+  <g transform="translate(0, 6)">
+    <!-- Outer V shape -->
+    <path d="M24 0L0 48h14l3.5-9.5L24 48l6.5-9.5L34 48h14L24 0z"
+          fill="none" stroke="#3b82f6" stroke-width="3" stroke-linejoin="round"/>
+
+    <!-- Apex dot (point of truth) -->
+    <circle cx="24" cy="24" r="5" fill="#3b82f6" filter="url(#apex-glow)"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="56" y="34"
+        font-family="Inter, system-ui, -apple-system, sans-serif"
+        font-size="22"
+        font-weight="700"
+        letter-spacing="0.12em"
+        fill="currentColor">VOJAS</text>
+
+  <!-- Subtitle -->
+  <text x="56" y="50"
+        font-family="Inter, system-ui, -apple-system, sans-serif"
+        font-size="9"
+        font-weight="500"
+        letter-spacing="0.18em"
+        fill="currentColor"
+        opacity="0.6">ACCOUNTABILITY</text>
+</svg>

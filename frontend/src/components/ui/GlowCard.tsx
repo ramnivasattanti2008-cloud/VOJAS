@@ -26,6 +26,7 @@ const ACCENT_MAP: Record<Accent, { bar: string; halo: string; ring: string; glow
   green:    { bar: "from-green-500 to-green-400",        halo: "bg-green-500/20",    ring: "ring-green-500/25",  glow: "shadow-green-500/20"  },
   red:      { bar: "from-red-500 to-red-400",            halo: "bg-red-500/20",      ring: "ring-red-500/25",    glow: "shadow-red-500/20"    },
   blue:     { bar: "from-blue-500 to-blue-400",          halo: "bg-blue-500/20",     ring: "ring-blue-500/25",   glow: "shadow-blue-500/20"   },
+  emerald:  { bar: "from-emerald-500 to-emerald-400",    halo: "bg-emerald-500/20",  ring: "ring-emerald-500/25", glow: "shadow-emerald-500/20" },
 };
 
 const BADGE_COLORS = {
@@ -56,7 +57,7 @@ export default function GlowCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
       whileHover={hoverable ? { y: -2 } : undefined}
       onClick={onClick}
       className={cn(

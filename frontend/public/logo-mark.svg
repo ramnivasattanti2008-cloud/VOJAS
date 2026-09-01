@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- VOJAS Symbol (icon only) -->
+  <defs>
+    <filter id="apex-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- V shape -->
+  <path d="M24 4L6 40h11l3-7 3 7h11L24 4z"
+        fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Apex dot -->
+  <circle cx="24" cy="22" r="4" fill="#3b82f6" filter="url(#apex-glow)"/>
+</svg>

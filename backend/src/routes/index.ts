@@ -17,6 +17,8 @@ import documentRoutes from "./documents.js";
 import adminSeedRoutes from "./adminSeed.js";
 import mpRoutes from "./mps.js";
 import vendorRoutes from "./vendors.js";
+import mpaAnalyticsRoutes from "./mpaAnalytics.js";
+import geocodingRoutes from "./geocoding.js";
 
 const router = Router();
 
@@ -41,5 +43,7 @@ router.use("/notifications", notificationRoutes);
 router.use("/documents", documentRoutes);
 router.use("/mps", mpRoutes);
 router.use("/vendors", vendorRoutes);
+router.use("/analytics", mpaAnalyticsRoutes);
+router.use("/geocoding", geocodingRoutes);
 
 export default router;

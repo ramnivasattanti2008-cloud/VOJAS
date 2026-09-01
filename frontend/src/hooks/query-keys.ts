@@ -60,4 +60,11 @@ export const qk = {
   vendors: (filters?: object) => ["vendors", "list", filters ?? {}] as const,
   vendor: (id: string) => ["vendors", "detail", id] as const,
   topVendors: (limit: number) => ["vendors", "top", limit] as const,
+
+  // Extended analytics
+  mpOverview: () => ["analytics", "mp-overview"] as const,
+  mpTrends: (id: string) => ["analytics", "mp-trends", id] as const,
+  vendorOverview: () => ["analytics", "vendor-overview"] as const,
+  vendorTop: (limit: number) => ["analytics", "vendor-top", limit] as const,
+  longitudinal: () => ["analytics", "longitudinal"] as const,
 } as const;

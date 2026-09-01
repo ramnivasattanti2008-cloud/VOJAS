@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Layout, ProtectedRoute } from "@/components/layout";
 import { LoadingState, ErrorBoundary } from "@/components/ui";
 import CommandPalette from "@/components/CommandPalette/CommandPalette";
+import OpeningGate from "@/components/hero/OpeningGate";
 
 // ── Lazy-loaded page bundles (code-split for faster initial load) ───────────
 
@@ -24,6 +25,9 @@ const AnomaliesPage      = lazy(() => import("@/features/anomalies/AnomaliesPage
 const AnomalyDetailPage  = lazy(() => import("@/features/anomalies/AnomalyDetailPage"));
 const RiskDashboardPage  = lazy(() => import("@/features/risk/RiskDashboardPage"));
 const AnalyticsPage      = lazy(() => import("@/features/analytics/AnalyticsPage"));
+const MPAnalyticsPage    = lazy(() => import("@/features/analytics/MPAnalyticsPage"));
+const VendorAnalyticsPage= lazy(() => import("@/features/analytics/VendorAnalyticsPage"));
+const LongitudinalPage   = lazy(() => import("@/features/analytics/LongitudinalPage"));
 const SettingsPage       = lazy(() => import("@/features/settings/SettingsPage"));
 const NotificationsPage  = lazy(() => import("@/features/notifications/NotificationsPage"));
 
@@ -76,7 +80,11 @@ function AppRoutes() {
           path="/"
           element={
             <ProtectedRoute>
-              <Layout user={user}><DashboardPage /></Layout>
+              <Layout user={user}>
+                <OpeningGate>
+                  <DashboardPage />
+                </OpeningGate>
+              </Layout>
             </ProtectedRoute>
           }
         />
@@ -201,6 +209,30 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout user={user}><AnalyticsPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics/mp"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><MPAnalyticsPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics/vendor"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><VendorAnalyticsPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics/longitudinal"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><LongitudinalPage /></Layout>
             </ProtectedRoute>
           }
         />

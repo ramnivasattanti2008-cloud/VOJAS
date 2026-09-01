@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { type LucideIcon, ChevronRight } from "lucide-react";
 
-export type Accent = "electric" | "saffron" | "green" | "red" | "blue";
+export type Accent = "electric" | "saffron" | "green" | "red" | "blue" | "emerald";
 
 interface PageHeaderProps {
   title: string;
@@ -21,6 +21,7 @@ const ACCENT_CONFIG: Record<Accent, { bar: string; icon: string; badge: string; 
   electric: { bar: "from-electric-500 to-electric-400", icon: "text-electric-400", badge: "bg-electric-500/15 border-electric-500/30 text-electric-400", gradient: "from-electric-400 via-electric-300 to-saffron-400" },
   saffron:  { bar: "from-saffron-500 to-saffron-400",  icon: "text-saffron-400",  badge: "bg-saffron-500/15 border-saffron-500/30 text-saffron-400", gradient: "from-saffron-400 to-orange-400" },
   green:    { bar: "from-green-500 to-green-400",    icon: "text-green-400",    badge: "bg-green-500/15 border-green-500/30 text-green-400", gradient: "from-green-400 to-emerald-400" },
+  emerald:  { bar: "from-emerald-500 to-emerald-400", icon: "text-emerald-400", badge: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400", gradient: "from-emerald-400 to-teal-400" },
   red:      { bar: "from-red-500 to-red-400",          icon: "text-red-400",       badge: "bg-red-500/15 border-red-500/30 text-red-400", gradient: "from-red-400 to-rose-400" },
   blue:     { bar: "from-blue-500 to-blue-400",        icon: "text-blue-400",      badge: "bg-blue-500/15 border-blue-500/30 text-blue-400", gradient: "from-blue-400 to-cyan-400" },
 };

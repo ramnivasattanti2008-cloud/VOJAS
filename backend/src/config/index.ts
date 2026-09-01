@@ -27,6 +27,14 @@ export const config = {
     rounds: parseInt(process.env.BCRYPT_ROUNDS || "10", 10),
   },
   clientUrl: process.env.CLIENT_BASE_URL || "http://localhost:5173",
+  // httpOnly cookie settings for browser-based auth (XSS-safe — token never accessible to JS)
+  cookie: {
+    name: process.env.JWT_COOKIE_NAME || "vojas_token",
+    secure: NODE_ENV === "production",    // HTTPS-only in production
+    httpOnly: true,                        // JS cannot read this cookie
+    sameSite: "strict" as const,          // CSRF protection
+    maxAgeMs: 7 * 24 * 60 * 60 * 1000,  // 7 days — matches JWT expiry default
+  },
   // Rate limit knobs
   rateLimit: {
     authWindowMs: 15 * 60 * 1000,   // 15 minutes

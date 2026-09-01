@@ -5,6 +5,31 @@ import { userService } from "../services/userService.js";
 import { tokenService } from "../services/tokenService.js";
 import { auditLog } from "../services/auditLogService.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { config } from "../config/index.js";
+
+/**
+ * Set the auth token as a secure httpOnly cookie (XSS-safe).
+ * The token is still returned in the JSON body for non-browser clients
+ * (CLI tools, mobile apps) that prefer the Authorization header flow.
+ */
+function setAuthCookie(res: Response, token: string) {
+  res.cookie(config.cookie.name, token, {
+    httpOnly: config.cookie.httpOnly,
+    secure: config.cookie.secure,
+    sameSite: config.cookie.sameSite,
+    maxAge: config.cookie.maxAgeMs,
+    path: "/",
+  });
+}
+
+function clearAuthCookie(res: Response) {
+  res.clearCookie(config.cookie.name, {
+    httpOnly: config.cookie.httpOnly,
+    secure: config.cookie.secure,
+    sameSite: config.cookie.sameSite,
+    path: "/",
+  });
+}
 
 const registerSchema = z.object({
   name: z.string().min(2).max(100),
@@ -48,6 +73,8 @@ export const authController = {
       details: { email: user.email, role: user.role },
       req,
     });
+
+    setAuthCookie(res, token);
 
     res.status(201).json(
       successResponse({ user, token })
@@ -109,6 +136,8 @@ export const authController = {
       req,
     });
 
+    setAuthCookie(res, token);
+
     res.json(
       successResponse({
         user: {
@@ -153,6 +182,7 @@ export const authController = {
         req,
       });
     }
+    clearAuthCookie(res);
     res.json(successResponse({ message: "Logged out successfully" }));
   },
 };
