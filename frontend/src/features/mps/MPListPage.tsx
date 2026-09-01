@@ -8,6 +8,9 @@ import {
   ChevronRight,
   Plus,
   Calendar,
+  Briefcase,
+  IndianRupee,
+  TrendingUp,
 } from "lucide-react";
 import { useMPs } from "@/hooks/useMPs";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
@@ -171,6 +174,45 @@ export default function MPListPage() {
         ))}
       </motion.div>
 
+      {/* Aggregate per-page metrics */}
+      {items.length > 0 && (
+        <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-slate-500 text-xs font-medium">MPLADS Spent (Page)</p>
+              <IndianRupee className="w-3.5 h-3.5 text-emerald-400" />
+            </div>
+            <p className="text-xl font-bold text-emerald-400 font-mono">
+              ₹{items.reduce((s, m) => s + (m.mpladExpenditure ?? 0), 0).toFixed(1)} Cr
+            </p>
+          </div>
+          <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-slate-500 text-xs font-medium">Avg Utilization</p>
+              <TrendingUp className="w-3.5 h-3.5 text-saffron-400" />
+            </div>
+            <p className="text-xl font-bold text-saffron-400 font-mono">
+              {(() => {
+                const mps = items.filter(m => m.mpladUtilization != null);
+                if (mps.length === 0) return "—";
+                const avg = mps.reduce((s, m) => s + (m.mpladUtilization ?? 0), 0) / mps.length;
+                return `${avg.toFixed(0)}%`;
+              })()}
+            </p>
+          </div>
+          <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-slate-500 text-xs font-medium">Top Performers</p>
+              <Briefcase className="w-3.5 h-3.5 text-electric-400" />
+            </div>
+            <p className="text-xl font-bold text-electric-400 font-mono">
+              {items.filter(m => (m.mpladUtilization ?? 0) >= 95).length}
+            </p>
+            <p className="text-[10px] text-slate-600 mt-0.5">≥ 95% utilization</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Table */}
       <motion.div variants={fadeUp}>
         {loading ? (
@@ -197,7 +239,7 @@ export default function MPListPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-900/80 border-b border-slate-800">
-                    {["Name", "House", "State", "Constituency", "Term", "Party", ""].map((h) => (
+                    {["MP", "Constituency", "Party", "Term", "MPLADS Spent", "Utilization", ""].map((h) => (
                       <th key={h}
                         className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         {h}
@@ -206,45 +248,95 @@ export default function MPListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {items.map((mp: MP) => (
-                    <tr
-                      key={mp.id}
-                      className="hover:bg-slate-800/40 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/mps/${mp.id}`)}
-                    >
-                      <td className="px-4 py-3 font-medium text-slate-200">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-saffron-500/10 text-saffron-400
-                            flex items-center justify-center text-xs font-bold">
-                            {mp.name.charAt(0)}
+                  {items.map((mp: MP) => {
+                    const mpladExpCr = mp.mpladExpenditure ?? 0;
+                    const mpladUtil = mp.mpladUtilization ?? 0;
+                    const utilClass =
+                      mpladUtil > 100 ? "text-red-400" :
+                      mpladUtil >= 95 ? "text-emerald-400" :
+                      mpladUtil >= 75 ? "text-blue-400" :
+                      mpladUtil >= 50 ? "text-saffron-400" :
+                      "text-slate-500";
+                    return (
+                      <tr
+                        key={mp.id}
+                        className="hover:bg-slate-800/40 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/mps/${mp.id}`)}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-200 min-w-[200px]">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-full bg-saffron-500/10 text-saffron-400
+                              flex items-center justify-center text-xs font-bold shrink-0">
+                              {mp.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate">{mp.name}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{mp.state}</div>
+                            </div>
                           </div>
-                          <span>{mp.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium
-                          ${mp.house === "LOK_SABHA"
-                            ? "bg-blue-500/10 text-blue-400"
-                            : "bg-purple-500/10 text-purple-400"}`}>
-                          {getHouseLabel(mp.house)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-400">{mp.state}</td>
-                      <td className="px-4 py-3 text-slate-300">{mp.constituency}</td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">
-                        <span className="inline-flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {getTermLabel(mp.term)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-400">
-                        {mp.party ?? <span className="text-slate-600 italic">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ChevronRight className="w-4 h-4 text-slate-600 inline" />
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3 text-slate-300 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium
+                              ${mp.house === "LOK_SABHA"
+                                ? "bg-blue-500/10 text-blue-400"
+                                : "bg-purple-500/10 text-purple-400"}`}>
+                              {getHouseLabel(mp.house)}
+                            </span>
+                            <span className="text-slate-400">{mp.constituency}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
+                          {mp.party ?? <span className="text-slate-600 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {getTermLabel(mp.term)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-300 font-mono text-xs whitespace-nowrap">
+                          {mpladExpCr > 0 ? (
+                            <div>
+                              <div className="text-emerald-400">₹{mpladExpCr.toFixed(1)} Cr</div>
+                              {(mp.mpladEntitlement ?? 0) > 0 && (
+                                <div className="text-[10px] text-slate-600">
+                                  of ₹{(mp.mpladEntitlement ?? 0).toFixed(1)} Cr
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {mpladUtil > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    mpladUtil > 100 ? "bg-red-500" :
+                                    mpladUtil >= 95 ? "bg-emerald-500" :
+                                    mpladUtil >= 75 ? "bg-blue-500" :
+                                    "bg-saffron-500"
+                                  }`}
+                                  style={{ width: `${Math.min(100, mpladUtil)}%` }}
+                                />
+                              </div>
+                              <span className={`text-xs font-mono font-bold ${utilClass} w-12 text-right`}>
+                                {mpladUtil.toFixed(0)}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-600 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <ChevronRight className="w-4 h-4 text-slate-600 inline" />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

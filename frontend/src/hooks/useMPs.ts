@@ -29,6 +29,25 @@ export const mpApi = {
     api.get<{ items: any[]; total: number; page: number; limit: number; totalPages: number }>(
       `/mps/${id}/projects?page=${page}&limit=20`
     ),
+  getProjectsEnhanced: (id: string, page: number = 1, limit: number = 20) =>
+    api.get<{ items: any[]; total: number; page: number; limit: number; totalPages: number }>(
+      `/mps/${id}/projects-enhanced?page=${page}&limit=${limit}`
+    ),
+  getWeeklyActivity: (id: string, weeks: number = 12) =>
+    api.get<{ weeks: number; series: any[]; summary: any }>(
+      `/mps/${id}/weekly-activity?weeks=${weeks}`
+    ),
+  getSatelliteSummary: (id: string) =>
+    api.get<{
+      totalProjects: number;
+      withCoordinates: number;
+      withoutCoordinates: number;
+      activeConstruction: number;
+      completed: number;
+      avgDevelopmentScore: number;
+      byStatusLabel: Record<string, number>;
+      topProjectsByDevelopment: any[];
+    }>(`/mps/${id}/satellite-summary`),
   create: (data: Partial<MP>) => api.post<{ mp: MP }>(`/mps`, data),
   update: (id: string, data: Partial<MP>) =>
     api.patch<{ mp: MP }>(`/mps/${id}`, data),
@@ -76,6 +95,32 @@ export function useMPProjects(id: string | undefined, page: number = 1) {
     queryKey: ["mp-projects", id, page],
     queryFn: () => mpApi.getProjects(id!, page),
     enabled: !!id,
+  });
+}
+
+export function useMPProjectsEnhanced(id: string | undefined, page: number = 1, limit: number = 20) {
+  return useQuery({
+    queryKey: ["mp-projects-enhanced", id, page, limit],
+    queryFn: () => mpApi.getProjectsEnhanced(id!, page, limit),
+    enabled: !!id,
+  });
+}
+
+export function useMPWeeklyActivity(id: string | undefined, weeks: number = 12) {
+  return useQuery({
+    queryKey: ["mp-weekly-activity", id, weeks],
+    queryFn: () => mpApi.getWeeklyActivity(id!, weeks),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+}
+
+export function useMPSatelliteSummary(id: string | undefined) {
+  return useQuery({
+    queryKey: ["mp-satellite-summary", id],
+    queryFn: () => mpApi.getSatelliteSummary(id!),
+    enabled: !!id,
+    staleTime: 5 * 60_000,
   });
 }
 

@@ -334,4 +334,93 @@ export const projectService = {
       },
     };
   },
+
+  /**
+   * Derive works/phase breakdown from project name + sector + status.
+   * Returns ordered array of work phases with computed status from project lifecycle.
+   */
+  parseWorks(project: {
+    sector: string;
+    status: string;
+    startDate?: Date | null;
+    expectedEndDate?: Date | null;
+    completedAt?: Date | null;
+  }): Array<{ name: string; status: "completed" | "active" | "pending" | "delayed" | "skipped"; pct: number }> {
+    // Phase templates by sector category
+    const templates: Record<string, string[]> = {
+      CONSTRUCTION: ["Site Survey & Clearance", "Foundation & Excavation", "Superstructure", "Roofing & Finishing", "Handover & Inspection"],
+      WATER: ["Survey & Design", "Pipeline Laying", "Tank / Structure", "Testing & Flushing", "Commissioning"],
+      EDUCATION: ["Site Preparation", "Foundation", "Building Structure", "Electrification & Plumbing", "Furnishing & Handover"],
+      HEALTH: ["Site & Permits", "Foundation", "Building Structure", "Equipment Installation", "Handover"],
+      TRANSPORT: ["Survey & Marking", "Earthwork & Embankment", "Base Course", "Surface & Marking", "Handover"],
+      ENERGY: ["Survey & DPR", "Material Procurement", "Installation", "Testing & Grid Tie", "Commissioning"],
+      AGRICULTURE: ["Site Survey", "Land Preparation", "Infrastructure", "Planting / Equipment", "Handover"],
+      HOUSING: ["Beneficiary Selection", "Foundation", "Superstructure", "Finishing & Amenities", "Handover"],
+      DEFAULT: ["Planning & Approval", "Procurement", "Execution", "Quality Check", "Handover"],
+    };
+
+    const sectorToCategory: Record<string, keyof typeof templates> = {
+      PUBLIC_INFRASTRUCTURE: "CONSTRUCTION",
+      HOUSING: "HOUSING",
+      HEALTH: "HEALTH",
+      EDUCATION: "EDUCATION",
+      TRANSPORT: "TRANSPORT",
+      WATER_SANITATION: "WATER",
+      ENERGY: "ENERGY",
+      AGRICULTURE: "AGRICULTURE",
+    };
+
+    const category = sectorToCategory[project.sector] ?? "DEFAULT";
+    const phaseNames = templates[category];
+
+    // Compute overall progress (0-100) from status
+    const statusPct: Record<string, number> = {
+      PROPOSED: 5,
+      UNSANCTIONED: 0,
+      APPROVED: 15,
+      IN_PROGRESS: 50,
+      COMPLETED: 90,
+      VERIFIED: 100,
+      CANCELLED: 0,
+    };
+    const overallPct = statusPct[project.status] ?? 0;
+
+    // Map overallPct to "which phase is currently active"
+    // Each phase occupies a 20% slice: 0-20, 20-40, 40-60, 60-80, 80-100
+    const activePhaseIdx = Math.min(4, Math.floor(overallPct / 20));
+    const withinPhasePct = overallPct - activePhaseIdx * 20; // 0-20 within current phase
+
+    // Calculate whether project is delayed
+    const isDelayed = project.expectedEndDate
+      ? project.status !== "COMPLETED" &&
+        project.status !== "VERIFIED" &&
+        new Date(project.expectedEndDate) < new Date()
+      : false;
+
+    return phaseNames.map((name, i) => {
+      let status: "completed" | "active" | "pending" | "delayed" | "skipped";
+      let pct: number;
+
+      if (project.status === "CANCELLED") {
+        status = "skipped";
+        pct = 0;
+      } else if (i < activePhaseIdx) {
+        status = "completed";
+        pct = 100;
+      } else if (i === activePhaseIdx) {
+        if (isDelayed && withinPhasePct < 20) {
+          status = "delayed";
+          pct = withinPhasePct;
+        } else {
+          status = "active";
+          pct = withinPhasePct;
+        }
+      } else {
+        status = "pending";
+        pct = 0;
+      }
+
+      return { name, status, pct };
+    });
+  },
 };

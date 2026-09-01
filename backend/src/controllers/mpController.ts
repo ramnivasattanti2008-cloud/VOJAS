@@ -87,3 +87,36 @@ export async function getProjects(req: Request, res: Response, next: NextFunctio
     next(err);
   }
 }
+
+export async function getWeeklyActivity(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = pickString(req.params.id) as string;
+    const weeks = req.query.weeks ? Math.min(52, Math.max(1, Number(req.query.weeks))) : 12;
+    const result = await svc.getWeeklyActivity(id, weeks);
+    res.json({ success: true, data: result, error: null, meta: { timestamp: new Date().toISOString() } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getSatelliteSummary(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = pickString(req.params.id) as string;
+    const result = await svc.getSatelliteSummary(id);
+    res.json({ success: true, data: result, error: null, meta: { timestamp: new Date().toISOString() } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getProjectsEnhanced(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = pickString(req.params.id) as string;
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = Math.min(100, req.query.limit ? Number(req.query.limit) : 20);
+    const result = await svc.getProjectsWithDetails(id, page, limit);
+    res.json({ success: true, data: result, error: null, meta: { timestamp: new Date().toISOString() } });
+  } catch (err) {
+    next(err);
+  }
+}
