@@ -56,7 +56,17 @@ model MP {
   termStart    DateTime?
   termEnd      DateTime?
   party        String?
+  attendance   String? // e.g. "92%" — attendance percentage
   lgdCode      String? // optional LGD reference
+
+  // MPLADS spending (17th Lok Sabha — OpenCity.in)
+  mpladEntitlement      Float?  // ₹ Cr total entitlement
+  mpladFundReceived    Float?  // ₹ Cr received from GOI
+  mpladWorksCost       Float?  // ₹ Cr works cost sanctioned
+  mpladExpenditure     Float?  // ₹ Cr actual expenditure
+  mpladUtilization     Float?  // % utilization over release
+  mpladUnspentBalance  Float?  // ₹ Cr unspent
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 

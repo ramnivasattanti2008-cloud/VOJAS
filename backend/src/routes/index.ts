@@ -19,6 +19,8 @@ import mpRoutes from "./mps.js";
 import vendorRoutes from "./vendors.js";
 import mpaAnalyticsRoutes from "./mpaAnalytics.js";
 import geocodingRoutes from "./geocoding.js";
+import satelliteRoutes from "./satellite.js";
+import satelliteAiRoutes from "./satelliteAi.js";
 
 const router = Router();
 
@@ -45,5 +47,7 @@ router.use("/mps", mpRoutes);
 router.use("/vendors", vendorRoutes);
 router.use("/analytics", mpaAnalyticsRoutes);
 router.use("/geocoding", geocodingRoutes);
+router.use("/satellite", satelliteRoutes);
+router.use("/satellite", satelliteAiRoutes);
 
 export default router;

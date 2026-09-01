@@ -21,6 +21,7 @@ import {
   File,
   Lock,
   Eye,
+  Satellite,
 } from "lucide-react";
 import {
   useReport,
@@ -30,6 +31,7 @@ import {
 } from "@/hooks/useReports";
 import { ApiError } from "@/services/report-api";
 import { useAuth } from "@/hooks/useAuth";
+import SatelliteTimeline from "@/components/satellite/SatelliteTimeline";
 import type {
   ReportStatus,
   ReportAttachment,
@@ -361,6 +363,27 @@ export default function ReportDetailPage() {
                   Resolved on {formatDate(report.resolvedAt)}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Satellite Imagery — only when report is tied to a project */}
+          {report.projectId && (
+            <div className="glass rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-2">
+                  <Satellite className="w-3.5 h-3.5 text-cyan-400" />
+                  Satellite Development Timeline
+                </h2>
+                <span className="text-[10px] text-slate-600 uppercase tracking-wider">
+                  Weekly imagery · ESRI World Imagery
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Independent satellite-based development tracking for the project under report. Each weekly
+                capture includes an automated development score, built-up area, vegetation cover, and
+                construction status derived from change detection.
+              </p>
+              <SatelliteTimeline projectId={report.projectId} />
             </div>
           )}
 

@@ -254,4 +254,84 @@ export const projectService = {
 
     return { total, byStatus: statusMap, bySector: sectorMap, totalBudget, totalSpent };
   },
+
+  /**
+   * Rich detail view — returns project with all related data.
+   * Used by the project detail page to show everything at once.
+   */
+  async findDetail(id: string): Promise<any> {
+    const project = await prisma.project.findUnique({
+      where: { id },
+      include: {
+        createdBy: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+        mp: true,
+        locations: {
+          orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        },
+        reports: {
+          include: {
+            attachments: { select: { id: true, filename: true, originalName: true, mimeType: true, size: true } },
+            statusLogs: { orderBy: { createdAt: "asc" } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        expenditures: {
+          include: {
+            vendorEntity: {
+              select: { id: true, name: true, state: true, district: true },
+            },
+          },
+          orderBy: { paidOn: "desc" },
+        },
+        anomalies: {
+          orderBy: { createdAt: "desc" },
+        },
+        risk: true,
+        documents: {
+          orderBy: { uploadedAt: "desc" },
+        },
+      },
+    });
+
+    if (!project) {
+      throw new AppError(404, "NOT_FOUND", `Project with id '${id}' not found`);
+    }
+
+    // Derive vendor from expenditures if no contractor field
+    let vendor = null;
+    if (project.expenditures && project.expenditures.length > 0) {
+      const firstExp = project.expenditures[0];
+      if (firstExp.vendorEntity) {
+        vendor = firstExp.vendorEntity;
+      }
+    }
+
+    // Summary stats
+    const totalExpenditure = project.expenditures
+      ? project.expenditures.reduce((sum, e) => sum + e.amount, 0)
+      : 0;
+    const paidExpenditure = project.expenditures
+      ? project.expenditures
+          .filter((e) => e.status === "PAID")
+          .reduce((sum, e) => sum + e.amount, 0)
+      : 0;
+    const pendingExpenditure = project.expenditures
+      ? project.expenditures
+          .filter((e) => e.status === "PENDING" || e.status === "AUTHORIZED")
+          .reduce((sum, e) => sum + e.amount, 0)
+      : 0;
+
+    return {
+      ...project,
+      vendor,
+      expenditureSummary: {
+        total: totalExpenditure,
+        paid: paidExpenditure,
+        pending: pendingExpenditure,
+        count: project.expenditures?.length ?? 0,
+      },
+    };
+  },
 };

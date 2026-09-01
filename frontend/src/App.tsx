@@ -20,6 +20,7 @@ const ReportsPage        = lazy(() => import("@/features/reports/ReportsPage"));
 const ReportDetailPage   = lazy(() => import("@/features/reports/ReportDetailPage"));
 const CitizenReportPage  = lazy(() => import("@/features/reports/CitizenReportPage"));
 const MPListPage         = lazy(() => import("@/features/mps/MPListPage"));
+const MPDetailPage       = lazy(() => import("@/features/mps/MPDetailPage"));
 const VendorListPage     = lazy(() => import("@/features/vendors/VendorListPage"));
 const AnomaliesPage      = lazy(() => import("@/features/anomalies/AnomaliesPage"));
 const AnomalyDetailPage  = lazy(() => import("@/features/anomalies/AnomalyDetailPage"));
@@ -189,6 +190,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout user={user}><MPListPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mps/:id"
+          element={
+            <ProtectedRoute>
+              <Layout user={user}><MPDetailPage /></Layout>
             </ProtectedRoute>
           }
         />

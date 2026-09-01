@@ -24,7 +24,11 @@ export const mpApi = {
     return api.get<PaginatedMPs>(`/mps?${params.toString()}`);
   },
   get: (id: string) =>
-    api.get<{ mp: MP & { stats: Record<string, unknown> } }>(`/mps/${id}`),
+    api.get<{ mp: MP & { stats: Record<string, unknown> } }>(`/mps/${id}`).then((res: any) => res),
+  getProjects: (id: string, page: number = 1) =>
+    api.get<{ items: any[]; total: number; page: number; limit: number; totalPages: number }>(
+      `/mps/${id}/projects?page=${page}&limit=20`
+    ),
   create: (data: Partial<MP>) => api.post<{ mp: MP }>(`/mps`, data),
   update: (id: string, data: Partial<MP>) =>
     api.patch<{ mp: MP }>(`/mps/${id}`, data),
@@ -43,6 +47,34 @@ export function useMP(id: string | undefined) {
   return useQuery({
     queryKey: qk.mp(id ?? ""),
     queryFn: () => mpApi.get(id!),
+    enabled: !!id,
+  });
+}
+
+export function useMPDetail(id: string | undefined) {
+  return useQuery({
+    queryKey: ["mp-detail", id],
+    queryFn: () => mpApi.get(id!).then((res: any) => res.mp ?? res),
+    enabled: !!id,
+  });
+}
+
+export function useMPStats(id: string | undefined) {
+  return useQuery({
+    queryKey: ["mp-stats", id],
+    queryFn: () =>
+      mpApi.get(id!).then((res: any) => {
+        const mp = res.mp ?? res;
+        return mp?.stats;
+      }),
+    enabled: !!id,
+  });
+}
+
+export function useMPProjects(id: string | undefined, page: number = 1) {
+  return useQuery({
+    queryKey: ["mp-projects", id, page],
+    queryFn: () => mpApi.getProjects(id!, page),
     enabled: !!id,
   });
 }

@@ -89,6 +89,23 @@ export interface Project {
     name: string;
     email: string;
   } | null;
+  // Open data fields
+  mpId?: string | null;
+  mpName?: string | null;
+  house?: string | null;
+  term?: string | null;
+  implementingAgency?: string | null;
+  recommendedDate?: string | null;
+  source?: string | null;
+  sourceWorkId?: string | null;
+  // Relations
+  mp?: MP | null;
+  locations?: Location[];
+  reports?: any[];
+  expenditures?: any[];
+  anomalies?: any[];
+  risk?: any;
+  documents?: any[];
 }
 
 export interface PaginatedProjects {
@@ -371,9 +388,30 @@ export interface MP {
   termStart: string | null;
   termEnd: string | null;
   party: string | null;
+  attendance: string | null;
   lgdCode: string | null;
+  // MPLADS spending (OpenCity.in data, in Crore)
+  mpladEntitlement: number | null;
+  mpladFundReceived: number | null;
+  mpladWorksCost: number | null;
+  mpladExpenditure: number | null;
+  mpladUtilization: number | null;
+  mpladUnspentBalance: number | null;
   createdAt: string;
   updatedAt: string;
+  projects?: Project[];
+  stats?: MPStats;
+}
+
+export interface MPStats {
+  totalProjects: number;
+  totalApproved: number;
+  totalSpent: number;
+  utilization: number;
+  anomalyCount: number;
+  byStatus: Record<string, number>;
+  bySector: Record<string, number>;
+  byState: Record<string, number>;
 }
 
 /** Vendor master — deduplicated across all MPLADS data sources */

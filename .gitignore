@@ -68,6 +68,12 @@ Thumbs.db
 backend/uploads/
 !**/uploads/.gitkeep
 
+# Large data files (ingest sources — not needed in repo)
+backend/mps_17th.json
+backend/mps_affidavits.csv
+backend/mps_list.csv
+backend/data/
+
 # Docker
 .dockerignore
 docker-compose.*.override.yml

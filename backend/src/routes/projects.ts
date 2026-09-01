@@ -12,6 +12,7 @@ router.use(authenticate);
 router.get("/",              asyncHandler(projectController.list));
 router.get("/stats",        asyncHandler(projectController.stats));
 router.get("/:id",          asyncHandler(projectController.getOne));
+router.get("/:id/detail",   asyncHandler(projectController.getDetail));
 
 // Create — ADMIN and OFFICER only
 router.post(

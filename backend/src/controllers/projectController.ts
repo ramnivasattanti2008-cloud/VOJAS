@@ -118,6 +118,19 @@ export const projectController = {
     res.json(successResponse({ project }));
   },
 
+  /** Rich detail with all related data (MP, vendor, reports, anomalies, expenditures, risk, locations) */
+  async getDetail(req: Request, res: Response) {
+    const id = String(req.params.id ?? "");
+    if (!id) {
+      return res.status(400).json(
+        errorResponse("VALIDATION_ERROR", "Project ID is required")
+      );
+    }
+
+    const detail = await projectService.findDetail(id);
+    res.json(successResponse({ detail }));
+  },
+
   async update(req: Request, res: Response) {
     const id = String(req.params.id ?? "");
     if (!id) {

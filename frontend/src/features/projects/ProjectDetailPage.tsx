@@ -13,7 +13,7 @@ import {
   SECTOR_COLORS,
 } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProject } from "@/hooks/useProjects";
+import { useProjectDetail, useProject } from "@/hooks/useProjects";
 import { useProjectLocations } from "@/hooks/useMap";
 import { LoadingState, ErrorState } from "@/components/ui";
 import FinancialTab from "./FinancialTab";
@@ -21,6 +21,8 @@ import ProjectRiskTab from "./ProjectRiskTab";
 import SiteComparison from "./SiteComparison";
 import SiteAnalysis from "./SiteAnalysis";
 import DocumentsTab from "./DocumentsTab";
+import SatelliteTimeline from "@/components/satellite/SatelliteTimeline";
+import { RelatedDataPanel } from "./RelatedDataPanel";
 import {
   ArrowLeft,
   FileText,
@@ -44,6 +46,8 @@ import {
   ShieldAlert,
   Image as ImageIcon,
   FolderOpen,
+  Database,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -73,15 +77,17 @@ function getProgress(p: Project) {
 }
 
 // Tab definitions
-type Tab = "overview" | "site" | "risk" | "financial" | "timeline" | "location" | "documents";
+type Tab = "all" | "overview" | "site" | "risk" | "financial" | "timeline" | "location" | "documents" | "satellite";
 const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
-  { key: "overview",   label: "Overview",    icon: FileText },
-  { key: "site",       label: "Site",        icon: ImageIcon },
-  { key: "risk",       label: "Risk",        icon: ShieldAlert },
-  { key: "financial",  label: "Financial",   icon: IndianRupee },
-  { key: "timeline",   label: "Timeline",    icon: Calendar },
-  { key: "location",   label: "Location",    icon: MapPin },
-  { key: "documents",   label: "Documents",   icon: FolderOpen },
+  { key: "all",        label: "All Data",    icon: Database },
+  { key: "overview",   label: "Overview",   icon: FileText },
+  { key: "site",       label: "Site",       icon: ImageIcon },
+  { key: "risk",       label: "Risk",       icon: ShieldAlert },
+  { key: "financial",   label: "Financial",  icon: IndianRupee },
+  { key: "timeline",   label: "Timeline",   icon: Calendar },
+  { key: "location",   label: "Location",   icon: MapPin },
+  { key: "documents",  label: "Documents",  icon: FolderOpen },
+  { key: "satellite",  label: "Satellite",  icon: Globe },
 ];
 
 // ── Field Row ───────────────────────────────────────────────────────────────
@@ -119,17 +125,19 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [activeTab, setActiveTab] = useState<Tab>("all");
   const [exportingPDF, setExportingPDF] = useState(false);
 
   // React Query hooks
   const projectQuery = useProject(id);
+  const projectDetailQuery = useProjectDetail(id);
   const projectLocationsQuery = useProjectLocations(
     (activeTab === "location" || activeTab === "site") ? id : undefined
   );
 
   const project = projectQuery.data?.project ?? null;
-  const locations = projectLocationsQuery.data?.locations ?? [];
+  const detail = projectDetailQuery.data ?? null;
+  const locations = projectLocationsQuery.data?.locations ?? detail?.locations ?? [];
   const loading = projectQuery.isLoading;
   const error = projectQuery.error?.message ?? null;
   const locationsLoading = projectLocationsQuery.isLoading;
@@ -325,6 +333,27 @@ export default function ProjectDetailPage() {
 
       {/* Tab content */}
       <div className="pt-1">
+        {/* ── All Data ──────────────────────────────────────────────────── */}
+        {activeTab === "all" && (
+          <div id="panel-all" role="tabpanel" aria-labelledby="tab-all">
+            {projectDetailQuery.isLoading ? (
+              <LoadingState message="Loading complete project data..." />
+            ) : projectDetailQuery.error ? (
+              <div className="text-center py-12 text-slate-500">
+                <p className="text-sm">Failed to load related data</p>
+                <button
+                  onClick={() => projectDetailQuery.refetch()}
+                  className="mt-2 text-xs text-electric-400 hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <RelatedDataPanel detail={detail} projectId={id!} />
+            )}
+          </div>
+        )}
+
         {/* ── Overview ───────────────────────────────────────────────────── */}
         {activeTab === "overview" && (
           <div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -362,6 +391,78 @@ export default function ProjectDetailPage() {
 
             {/* Sidebar stats — denser */}
             <div className="space-y-3">
+              {/* MP info */}
+              {(project.mp || detail?.mp) && (
+                <div className="glass rounded-xl p-4">
+                  <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-electric-400" />
+                    MP / Sponsor
+                  </h3>
+                  <div className="space-y-0.5 text-xs">
+                    <p className="text-slate-200 font-medium">{(project.mpName || detail?.mp?.name) ?? "—"}</p>
+                    <p className="text-slate-500 text-[10px]">
+                      {detail?.mp?.party || project.house || ""} · {detail?.mp?.constituency || project.constituency || ""}
+                    </p>
+                    {detail?.mp?.attendance && (
+                      <p className="text-slate-500 text-[10px]">
+                        Attendance: {detail.mp.attendance}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Vendor info */}
+              {(project.contractor || detail?.vendor) && (
+                <div className="glass rounded-xl p-4">
+                  <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-saffron-400" />
+                    Vendor / Contractor
+                  </h3>
+                  <div className="space-y-0.5 text-xs">
+                    <p className="text-slate-200 font-medium">
+                      {detail?.vendor?.name || project.contractor || "—"}
+                    </p>
+                    {detail?.vendor && (
+                      <p className="text-slate-500 text-[10px]">
+                        {detail.vendor.district}, {detail.vendor.state}
+                        {detail.vendor.constituencyCount > 5 && (
+                          <span className="text-saffron-400 ml-1">⚠ {detail.vendor.constituencyCount} constituencies</span>
+                        )}
+                      </p>
+                    )}
+                    {detail?.vendor?.projectCount && (
+                      <p className="text-slate-500 text-[10px]">
+                        {detail.vendor.projectCount} projects total
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Quick counts */}
+              {detail && (
+                <div className="glass rounded-xl p-4">
+                  <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-blue-400" />
+                    At a Glance
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "Reports", value: detail.reports?.length ?? 0, accent: "text-saffron-400" },
+                      { label: "Anomalies", value: detail.anomalies?.length ?? 0, accent: detail.anomalies?.length > 0 ? "text-red-400" : "text-emerald-400" },
+                      { label: "Expenditures", value: detail.expenditureSummary?.count ?? 0, accent: "text-emerald-400" },
+                      { label: "Risk Score", value: detail.risk?.overallScore != null ? Math.round(detail.risk.overallScore) : "—", accent: "text-red-400" },
+                    ].map(({ label, value, accent }) => (
+                      <div key={label} className="px-2.5 py-2 rounded-lg bg-navy-800/50 border border-white/5">
+                        <p className={`text-lg font-bold font-mono ${accent}`}>{value}</p>
+                        <p className="text-[9px] text-slate-500 uppercase tracking-wider">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Risk Indicators */}
               <div className="glass rounded-xl p-4">
                 <h3 className="text-xs font-semibold text-white mb-2.5 flex items-center gap-1.5">
@@ -424,7 +525,7 @@ export default function ProjectDetailPage() {
             {locationsLoading ? (
               <LoadingState message="Loading project location..." />
             ) : (() => {
-                const primary = locations.find((l) => l.isPrimary) ?? locations[0];
+                const primary = locations.find((l: any) => l.isPrimary) ?? locations[0];
                 if (!primary) {
                   return (
                     <div className="max-w-xl">
@@ -677,7 +778,7 @@ export default function ProjectDetailPage() {
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
                         <ZoomControl position="bottomright" />
-                        {locations.map((loc) => (
+                        {locations.map((loc: any) => (
                           <Marker
                             key={loc.id}
                             position={[loc.latitude, loc.longitude]}
@@ -741,7 +842,7 @@ export default function ProjectDetailPage() {
 
                   <InfoCard title={`Sites (${locations.length})`}>
                     <div className="space-y-2 max-h-[280px] overflow-y-auto">
-                      {locations.map((loc) => (
+                      {locations.map((loc: any) => (
                         <div
                           key={loc.id}
                           className={`p-2.5 rounded-lg border ${
@@ -790,6 +891,15 @@ export default function ProjectDetailPage() {
         {/* ── Documents ────────────────────────────────────────────────────── */}
         {activeTab === "documents" && (
           <DocumentsTab projectId={project.id} userRole={user?.role as UserRole | undefined} />
+        )}
+
+        {/* ── Satellite Imagery ─────────────────────────────────────────── */}
+        {activeTab === "satellite" && (
+          <div id="panel-satellite" role="tabpanel" aria-labelledby="tab-satellite" className="space-y-4">
+            <div className="glass rounded-xl p-5">
+              <SatelliteTimeline projectId={project.id} />
+            </div>
+          </div>
         )}
       </div>
     </div>

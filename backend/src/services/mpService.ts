@@ -113,6 +113,49 @@ export async function getStats(mpId: string) {
   };
 }
 
+/**
+ * Paginated list of projects for a given MP, ordered by recommendedDate desc.
+ */
+export async function getProjects(
+  mpId: string,
+  page: number = 1,
+  limit: number = 20,
+) {
+  const skip = (page - 1) * limit;
+  const [items, total] = await Promise.all([
+    prisma.project.findMany({
+      where: { mpId },
+      skip,
+      take: limit,
+      orderBy: { recommendedDate: "desc" },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        sector: true,
+        district: true,
+        state: true,
+        constituency: true,
+        approvedAmount: true,
+        spentAmount: true,
+        contractor: true,
+        startDate: true,
+        expectedEndDate: true,
+        completedAt: true,
+        recommendedDate: true,
+      },
+    }),
+    prisma.project.count({ where: { mpId } }),
+  ]);
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+}
+
 export async function create(input: CreateMPInput) {
   return prisma.mP.create({ data: input });
 }

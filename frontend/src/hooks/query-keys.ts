@@ -67,4 +67,16 @@ export const qk = {
   vendorOverview: () => ["analytics", "vendor-overview"] as const,
   vendorTop: (limit: number) => ["analytics", "vendor-top", limit] as const,
   longitudinal: () => ["analytics", "longitudinal"] as const,
+
+  // Satellite imagery
+  satelliteCaptures: (projectId: string, options?: { from?: string; to?: string }) =>
+    ["satellite", "captures", projectId, options ?? {}] as const,
+  satelliteLatestCapture: (projectId: string) =>
+    ["satellite", "latest", projectId] as const,
+  satelliteTimeline: (projectId: string) =>
+    ["satellite", "timeline", projectId] as const,
+  satelliteCapture: (captureId: string) =>
+    ["satellite", "capture", captureId] as const,
+  satelliteAnalysis: (projectId: string, options?: { from?: string; to?: string }) =>
+    ["satellite", "analyze", projectId, options ?? {}] as const,
 } as const;

@@ -29,6 +29,7 @@ export const projectApi = {
   },
   stats: () => api.get<{ stats: ProjectStats }>(`/projects/stats`),
   get: (id: string) => api.get<{ project: Project }>(`/projects/${id}`),
+  getDetail: (id: string) => api.get<{ detail: any }>(`/projects/${id}/detail`),
   create: (data: Partial<Project>) => api.post<{ project: Project }>(`/projects`, data),
   update: (id: string, data: Partial<Project>) =>
     api.put<{ project: Project }>(`/projects/${id}`, data),
@@ -56,6 +57,15 @@ export function useProject(id: string | undefined) {
     queryKey: qk.project(id ?? ""),
     queryFn: () => projectApi.get(id!),
     enabled: !!id,
+  });
+}
+
+export function useProjectDetail(id: string | undefined) {
+  return useQuery({
+    queryKey: ["project-detail", id],
+    queryFn: () => projectApi.getDetail(id!).then((res: any) => res.detail ?? res),
+    enabled: !!id,
+    staleTime: 30_000,
   });
 }
 

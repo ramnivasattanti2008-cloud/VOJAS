@@ -9,6 +9,7 @@ const router = Router();
 
 router.get("/", ctrl.list);
 router.get("/:id", ctrl.getById);
+router.get("/:id/projects", ctrl.getProjects);
 router.post("/", authenticate, authorize("ADMIN", "OFFICER"), ctrl.create);
 router.patch("/:id", authenticate, authorize("ADMIN", "OFFICER"), ctrl.update);
 router.delete("/:id", authenticate, authorize("ADMIN"), ctrl.remove);
