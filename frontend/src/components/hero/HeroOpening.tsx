@@ -147,7 +147,9 @@ export default function HeroOpening({ children, onComplete }: HeroOpeningProps) 
   function markShown() {
     try {
       localStorage.setItem(STORAGE_KEY, "1");
-    } catch {}
+    } catch {
+      // localStorage may be unavailable (private mode / quota)
+    }
   }
 
   function handleSkip() {
@@ -357,5 +359,7 @@ export function useOpeningShown(): boolean {
 export function resetOpening(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  } catch {
+    // localStorage may be unavailable
+  }
 }
