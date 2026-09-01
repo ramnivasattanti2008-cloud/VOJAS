@@ -20,11 +20,7 @@ export default function OpeningGate({ children }: { children: ReactNode }) {
   });
 
   if (showOpening) {
-    return (
-      <HeroOpening onComplete={() => setShowOpening(false)}>
-        {children}
-      </HeroOpening>
-    );
+    return <HeroOpening onComplete={() => setShowOpening(false)} />;
   }
   return <>{children}</>;
 }
