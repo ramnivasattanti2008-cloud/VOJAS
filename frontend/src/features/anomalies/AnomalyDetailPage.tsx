@@ -11,6 +11,7 @@ import {
 } from "@/types";
 import { LoadingState, ErrorState } from "@/components/ui";
 import AIVerdictPanel from "./AIVerdictPanel";
+import LawEscalationDialog from "./LawEscalationDialog";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -23,6 +24,7 @@ import {
   ChevronRight,
   CheckCircle,
   Sparkles,
+  Gavel,
 } from "lucide-react";
 
 export default function AnomalyDetailPage() {
@@ -42,6 +44,7 @@ export default function AnomalyDetailPage() {
     : null;
 
   const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [showEscalationDialog, setShowEscalationDialog] = useState(false);
   const [resolution, setResolution] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -193,6 +196,78 @@ export default function AnomalyDetailPage() {
               <CheckCircle2 className="w-4 h-4" />
               Mark Resolved
             </button>
+            {!anomaly.lawEscalation && (
+              <button
+                onClick={() => setShowEscalationDialog(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium rounded-lg transition-colors"
+              >
+                <Gavel className="w-4 h-4" />
+                Escalate to Law Enforcement
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Law enforcement escalation info */}
+        {anomaly.lawEscalation && (
+          <div className="mt-5 pt-5 border-t border-white/5">
+            <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 text-red-400 text-xs font-semibold">
+                  <Gavel className="w-3.5 h-3.5" />
+                  ESCALATED TO LAW ENFORCEMENT
+                </div>
+                {anomaly.lawAcknowledged && (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Acknowledged
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1.5 text-[11px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Authority</span>
+                  <span className="text-slate-200 font-semibold">
+                    {anomaly.lawAuthorityLabel ?? anomaly.lawAuthority}
+                  </span>
+                </div>
+                {anomaly.lawReferenceNo && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Reference</span>
+                    <span className="text-slate-200 font-mono font-bold">
+                      {anomaly.lawReferenceNo}
+                    </span>
+                  </div>
+                )}
+                {anomaly.lawEscalatedAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Escalated at</span>
+                    <span className="text-slate-300">
+                      {new Date(anomaly.lawEscalatedAt).toLocaleString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                )}
+                {anomaly.escalatedBy && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Escalated by</span>
+                    <span className="text-slate-300">{anomaly.escalatedBy.name}</span>
+                  </div>
+                )}
+                {anomaly.lawNotes && (
+                  <div className="mt-2 pt-2 border-t border-red-500/20">
+                    <p className="text-slate-400 italic text-[10px] leading-relaxed">
+                      "{anomaly.lawNotes}"
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -460,6 +535,17 @@ export default function AnomalyDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Law enforcement escalation dialog */}
+      <LawEscalationDialog
+        anomalyId={id ?? ""}
+        anomalyTitle={anomaly.title}
+        isOpen={showEscalationDialog}
+        onClose={() => setShowEscalationDialog(false)}
+        onEscalated={() => {
+          anomalyQuery.refetch();
+        }}
+      />
     </div>
   );
 }

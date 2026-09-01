@@ -291,6 +291,15 @@ export interface Anomaly {
   } | null;
   acknowledgedBy?: { id: string; name: string } | null;
   resolvedBy?: { id: string; name: string } | null;
+  // Law enforcement escalation
+  lawEscalation?: boolean;
+  lawAuthority?: string | null;
+  lawAuthorityLabel?: string | null;
+  lawReferenceNo?: string | null;
+  lawEscalatedAt?: string | null;
+  lawAcknowledged?: boolean;
+  lawNotes?: string | null;
+  escalatedBy?: { id: string; name: string; email: string; role: string } | null;
 }
 
 export interface AnomalyRule {

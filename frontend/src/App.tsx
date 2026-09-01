@@ -24,6 +24,7 @@ const MPDetailPage       = lazy(() => import("@/features/mps/MPDetailPage"));
 const VendorListPage     = lazy(() => import("@/features/vendors/VendorListPage"));
 const AnomaliesPage      = lazy(() => import("@/features/anomalies/AnomaliesPage"));
 const AnomalyDetailPage  = lazy(() => import("@/features/anomalies/AnomalyDetailPage"));
+const LawEnforcementPage = lazy(() => import("@/features/lawEnforcement/LawEnforcementPage"));
 const RiskDashboardPage  = lazy(() => import("@/features/risk/RiskDashboardPage"));
 const AnalyticsPage      = lazy(() => import("@/features/analytics/AnalyticsPage"));
 const MPAnalyticsPage    = lazy(() => import("@/features/analytics/MPAnalyticsPage"));
@@ -183,6 +184,16 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout user={user}><AnomalyDetailPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Law Enforcement — ACB / Police / CVC / Lokayukta / Vigilance / CAG */}
+        <Route
+          path="/law-enforcement"
+          element={
+            <ProtectedRoute roles={["ADMIN", "OFFICER"]}>
+              <Layout user={user}><LawEnforcementPage /></Layout>
             </ProtectedRoute>
           }
         />

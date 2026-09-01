@@ -30,6 +30,7 @@ model User {
   password  String
   name      String
   role      Role     @default(VIEWER)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -192,6 +193,15 @@ model Project {
   // Open-data dedup: unique per source so upsert is fast
   @@unique([source, sourceWorkId])
   @@index([source, sourceWorkId])
+  // Performance indexes for filters and analytics
+  @@index([state])
+  @@index([district])
+  @@index([sector])
+  @@index([status])
+  @@index([mpId])
+  @@index([state, district])
+  @@index([sector, status])
+  @@index([approvedAmount])
 }
 
 // ── Project Documents (Phase 8) ───────────────────────────────────────────────
@@ -857,6 +867,7 @@ enum CaseType {
   FINANCIAL_MISCONDUCT
   VERIFICATION_REQUIRED
   REFERRAL_INCOMING
+  LAW_ENFORCEMENT
   OTHER
 }
 

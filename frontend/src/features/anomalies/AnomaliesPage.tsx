@@ -375,6 +375,12 @@ export default function AnomaliesPage() {
                         {getStatusLabel(a.status)}
                       </span>
                     )}
+                    {a.lawEscalation && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-red-500/10 text-red-400 uppercase tracking-wider border border-red-500/20 flex items-center gap-1">
+                        <ShieldCheck className="w-2.5 h-2.5" />
+                        {a.lawAuthorityLabel ?? "Escalated"}
+                      </span>
+                    )}
                   </div>
                   <div className="text-right shrink-0 pr-2">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Risk</p>

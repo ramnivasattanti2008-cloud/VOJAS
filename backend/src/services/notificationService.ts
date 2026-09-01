@@ -164,3 +164,50 @@ export async function notifyRiskThreshold({
     role: "ANALYST",
   });
 }
+
+/**
+ * Notify the escalator that an anomaly was successfully escalated to a
+ * law-enforcement authority. The escalator gets a confirmation receipt.
+ */
+export async function notifyAnomalyEscalatedToLaw(
+  userId: string,
+  anomalyId: string,
+  authority: string,
+  referenceNo: string,
+): Promise<void> {
+  await notify({
+    type: "ANOMALY_ESCALATED_TO_LAW",
+    title: `Anomaly escalated to ${authority}`,
+    message: `Reference: ${referenceNo}. The authority has been notified and a case has been opened.`,
+    resource: "Anomaly",
+    resourceId: anomalyId,
+    userId,
+  });
+}
+
+/**
+ * Broadcast to admins and officers that a referral was acknowledged by the
+ * external authority.
+ */
+export async function notifyReferralAcknowledged(
+  referenceNo: string,
+  anomalyId: string,
+  authority: string,
+): Promise<void> {
+  await notify({
+    type: "REFERRAL_ACKNOWLEDGED",
+    title: `Referral acknowledged by ${authority}`,
+    message: `Reference ${referenceNo} acknowledged. Investigation is now in progress.`,
+    resource: "Anomaly",
+    resourceId: anomalyId,
+    role: "ADMIN",
+  });
+  await notify({
+    type: "REFERRAL_ACKNOWLEDGED",
+    title: `Referral acknowledged by ${authority}`,
+    message: `Reference ${referenceNo} acknowledged. Investigation is now in progress.`,
+    resource: "Anomaly",
+    resourceId: anomalyId,
+    role: "OFFICER",
+  });
+}

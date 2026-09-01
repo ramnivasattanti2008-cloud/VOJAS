@@ -31,6 +31,7 @@ import dataSourceRoutes from "./dataSources.js";
 import guidelineRoutes from "./guidelines.js";
 import priorityRoutes from "./priority.js";
 import dataQualityRoutes from "./dataQuality.js";
+import lawEnforcementRoutes from "./lawEnforcement.js";
 
 const router = Router();
 
@@ -68,5 +69,6 @@ router.use("/data-sources", dataSourceRoutes);
 router.use("/guidelines", guidelineRoutes);
 router.use("/priority", priorityRoutes);
 router.use("/data-quality", dataQualityRoutes);
+router.use("/law-enforcement", lawEnforcementRoutes);
 
 export default router;

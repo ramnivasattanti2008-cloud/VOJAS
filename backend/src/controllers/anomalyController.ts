@@ -115,8 +115,19 @@ export const anomalyController = {
   },
 
   /** Manually trigger full anomaly scan */
-  async scan(_req: Request, res: Response) {
+  async scan(req: Request, res: Response) {
     const result = await runAnomalyScan();
+    // After a scan, auto-escalate any CRITICAL/HIGH anomalies to ACB/Police
+    const userId = (req as any).user?.userId ?? "";
+    if (userId) {
+      const { lawEnforcementService } = await import(
+        "../services/lawEnforcementService.js"
+      );
+      const autoEscCount = await lawEnforcementService
+        .autoEscalateCritical(85, userId)
+        .catch(() => 0);
+      (result as any).autoEscalated = autoEscCount;
+    }
     res.json(successResponse(result));
   },
 
