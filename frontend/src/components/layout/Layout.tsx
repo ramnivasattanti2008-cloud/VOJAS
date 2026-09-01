@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type ComponentType } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   LayoutDashboard,
   Map,
@@ -28,6 +29,7 @@ import {
   Database,
   Scale,
   Activity,
+  Gavel,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -37,6 +39,7 @@ import PageTransition from "./PageTransition";
 import NotificationCenter from "./NotificationCenter";
 import { DemoTour } from "../DemoTour";
 import { LogoMark } from "../brand/Logo";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
 // ── Route metadata ─────────────────────────────────────────────────────────────
 
@@ -48,28 +51,29 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard",    path: "/",              icon: LayoutDashboard },
-  { label: "Projects",     path: "/projects",      icon: FileText        },
-  { label: "Map View",     path: "/map",           icon: Map             },
-  { label: "Risk",         path: "/risk",          icon: ShieldAlert     },
-  { label: "Anomalies",    path: "/anomalies",     icon: AlertTriangle   },
-  { label: "MPs",          path: "/mps",           icon: Users           },
-  { label: "Vendors",      path: "/vendors",       icon: Building2       },
-  { label: "Reports",      path: "/reports",       icon: FileText        },
-  { label: "Alerts",       path: "/notifications", icon: BellRing        },
-  { label: "Citizens",     path: "/citizens",      icon: Users           },
-  { label: "Assets",       path: "/assets",        icon: Hammer          },
-  { label: "Requests",     path: "/development-requests", icon: FileText   },
-  { label: "Inspections",  path: "/inspections",   icon: ClipboardCheck  },
-  { label: "Cases",        path: "/cases",         icon: Scale           },
-  { label: "Priority",     path: "/priority",      icon: TrendingUp      },
-  { label: "Contractor",   path: "/contractor",    icon: Briefcase, roles: ["CONTRACTOR", "ADMIN"] },
-  { label: "Whistleblower", path: "/whistleblower/queue", icon: Shield, roles: ["ADMIN", "REVIEWER", "OFFICER"] },
-  { label: "Data Sources", path: "/admin/data-sources", icon: Database, roles: ["ADMIN"] },
-  { label: "Guidelines",   path: "/admin/guidelines", icon: Scale, roles: ["ADMIN"] },
-  { label: "Data Quality", path: "/admin/data-quality", icon: Activity, roles: ["ADMIN", "ANALYST"] },
-  { label: "Analytics",    path: "/analytics",     icon: BarChart3, roles: ["ADMIN", "ANALYST"] },
-  { label: "Settings",     path: "/settings",      icon: Settings, roles: ["ADMIN"]            },
+  { label: "nav.dashboard",    path: "/",              icon: LayoutDashboard },
+  { label: "nav.projects",     path: "/projects",      icon: FileText        },
+  { label: "nav.map",         path: "/map",           icon: Map             },
+  { label: "nav.risk",        path: "/risk",          icon: ShieldAlert     },
+  { label: "nav.anomalies",    path: "/anomalies",     icon: AlertTriangle   },
+  { label: "nav.lawEnforcement", path: "/law-enforcement", icon: Gavel, roles: ["ADMIN", "OFFICER"] },
+  { label: "nav.mps",          path: "/mps",           icon: Users           },
+  { label: "nav.vendors",      path: "/vendors",       icon: Building2       },
+  { label: "nav.reports",      path: "/reports",       icon: FileText        },
+  { label: "nav.notifications", path: "/notifications", icon: BellRing        },
+  { label: "nav.citizens",     path: "/citizens",     icon: Users           },
+  { label: "nav.assets",       path: "/assets",        icon: Hammer          },
+  { label: "nav.requests",     path: "/development-requests", icon: FileText   },
+  { label: "nav.inspections",  path: "/inspections",   icon: ClipboardCheck  },
+  { label: "nav.cases",        path: "/cases",         icon: Scale           },
+  { label: "nav.priority",    path: "/priority",      icon: TrendingUp      },
+  { label: "nav.contractor",   path: "/contractor",    icon: Briefcase, roles: ["CONTRACTOR", "ADMIN"] },
+  { label: "nav.whistleblower", path: "/whistleblower/queue", icon: Shield, roles: ["ADMIN", "REVIEWER", "OFFICER"] },
+  { label: "nav.dataSources",   path: "/admin/data-sources", icon: Database, roles: ["ADMIN"] },
+  { label: "nav.guidelines",   path: "/admin/guidelines", icon: Scale, roles: ["ADMIN"] },
+  { label: "nav.dataQuality",  path: "/admin/data-quality", icon: Activity, roles: ["ADMIN", "ANALYST"] },
+  { label: "nav.analytics",    path: "/analytics",     icon: BarChart3, roles: ["ADMIN", "ANALYST"] },
+  { label: "nav.settings",     path: "/settings",      icon: Settings, roles: ["ADMIN"]            },
 ];
 
 function getNavItems(role?: string): NavItem[] {
@@ -141,6 +145,7 @@ function NavLink({
   onClick?: () => void;
   badge?: number;
 }) {
+  const { t } = useTranslation();
   const { pathname } = useLocation();
   const active = isActiveNav(item.path, { pathname });
   const Icon = item.icon as ComponentType<{ className?: string }>;
@@ -165,7 +170,7 @@ function NavLink({
       <Icon
         className={iconClass}
       />
-      {!collapsed && <span className="font-medium">{item.label}</span>}
+      {!collapsed && <span className="font-medium">{t(item.label)}</span>}
       {!collapsed && (badge ?? 0) > 0 && (
         <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-electric-500 text-white min-w-[18px] text-center">
           {badge! > 99 ? "99+" : badge}
@@ -177,7 +182,7 @@ function NavLink({
       {/* Tooltip on collapsed desktop */}
       {collapsed && !mobile && (
         <div className="absolute left-full ml-2 px-2 py-1 bg-navy-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap border border-white/10 z-50 shadow-xl">
-          {item.label}
+          {t(item.label)}
         </div>
       )}
     </Link>
@@ -208,6 +213,7 @@ const AVATAR_BG: Record<string, string> = {
 
 function UserMenu({ user, logout }: { user: any; logout: () => void }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
   const userRef = useRef<HTMLDivElement>(null);
 
   const roleStyle = ROLE_COLORS[user?.role] ?? ROLE_COLORS.VIEWER;
@@ -267,7 +273,7 @@ function UserMenu({ user, logout }: { user: any; logout: () => void }) {
               role="menuitem"
               className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors border-b border-white/5"
             >
-              <span>Profile & Preferences</span>
+              <span>{t("nav.profile")}</span>
             </Link>
             <button
               onClick={logout}
@@ -275,7 +281,7 @@ function UserMenu({ user, logout }: { user: any; logout: () => void }) {
               className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign out
+              {t("auth.signOut")}
             </button>
           </div>
         )}
@@ -427,6 +433,9 @@ export default function Layout({ children, user }: { children: React.ReactNode; 
 
           {/* Right cluster */}
           <div className="flex items-center gap-1 shrink-0">
+            {/* Language selector */}
+            <LanguageSelector variant="dropdown" showSelected={false} />
+
             {/* Theme toggle */}
             <button
               onClick={toggleTheme}

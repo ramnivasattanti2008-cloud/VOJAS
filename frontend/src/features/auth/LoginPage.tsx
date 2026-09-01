@@ -9,11 +9,13 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError } from "@/services/api";
 import { LogoAnimated } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { LanguageSelector } from "@/components/ui/LanguageSelector";
 
 // ── Ambient grid background ─────────────────────────────────────────────────────
 
@@ -105,6 +107,7 @@ function FloatingHUD({ side }: { side: 'left' | 'right' }) {
 // ── Main login form ─────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -119,14 +122,14 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { setError("Enter email and password to continue."); return; }
+    if (!email || !password) { setError(t("common.required")); return; }
     setLoading(true);
     setError(null);
     try {
       await login({ email, password });
       navigate("/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Authentication failed. Please try again.");
+      setError(err instanceof ApiError ? err.message : t("auth.invalidCredentials"));
     } finally {
       setLoading(false);
     }
@@ -142,6 +145,11 @@ export default function LoginPage() {
       <GridBackground />
       <FloatingHUD side="left" />
       <FloatingHUD side="right" />
+
+      {/* Language selector — top right corner */}
+      <div className="absolute top-6 right-6 z-20">
+        <LanguageSelector variant="dropdown" showSelected={true} />
+      </div>
 
       <div className="relative z-10 w-full max-w-md">
         {/* Brand header */}
@@ -222,11 +230,11 @@ export default function LoginPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-1.5 h-4 bg-gradient-to-b from-electric-400 to-electric-600 rounded-full" />
                   <h2 className="text-lg font-bold text-white tracking-tight">
-                    Sign In
+                    {t("auth.signIn")}
                   </h2>
                 </div>
                 <p className="text-sm text-slate-500 ml-3.5">
-                  Access the MPLAD monitoring system
+                  {t("auth.enterCredentials")}
                 </p>
               </div>
 
@@ -250,11 +258,11 @@ export default function LoginPage() {
               <form onSubmit={handleSubmit} className="space-y-4" aria-label="Sign in">
                 <Input
                   id="login-email"
-                  label="Email Address"
+                  label={t("auth.email")}
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="officer@vojas.gov"
+                  placeholder={t("auth.emailPlaceholder")}
                   disabled={loading}
                   autoComplete="email"
                   required
@@ -268,7 +276,7 @@ export default function LoginPage() {
 
                 <Input
                   id="login-password"
-                  label="Password"
+                  label={t("auth.password")}
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -302,12 +310,12 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   loading={loading}
-                  loadingText="Authenticating..."
+                  loadingText={t("common.loading")}
                   className="w-full mt-2"
                   glow
                   size="lg"
                 >
-                  Access System
+                  {t("auth.loginButton")}
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -316,9 +324,9 @@ export default function LoginPage() {
 
               <div className="mt-5 pt-5 border-t border-white/[0.05] text-center">
                 <p className="text-xs text-slate-500">
-                  No account?{' '}
+                  {t("auth.dontHaveAccount")}{' '}
                   <Link to="/register" className="text-electric-400 hover:text-electric-300 font-medium transition-colors">
-                    Request access
+                    {t("auth.registerHere")}
                   </Link>
                 </p>
               </div>
