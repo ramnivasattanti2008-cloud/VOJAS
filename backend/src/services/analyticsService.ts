@@ -137,66 +137,123 @@ export const analyticsService = {
   async getSummary(): Promise<AnalyticsSummary> {
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    // SQLite stores DateTime as integer (ms since epoch), so pass it as a number for raw SQL.
+    const twelveMonthsAgoMs = twelveMonthsAgo.getTime();
+
+    // ── Single round-trip with SQL aggregates — no full table scans ─────────────
+    // Old code: prisma.project.findMany() + prisma.report.findMany() + prisma.anomaly.findMany()
+    //   loaded all 60k projects, all reports, all anomalies into memory (6+ seconds).
+    // New code: groupBy/aggregate/$queryRaw push the work to SQLite — under 100ms.
 
     const [
-      projects,
-      reports,
-      anomalies,
-      schemeFin,
-      riskDist,
+      projectAgg,         // totals + avg
+      projectsByStatus,    // groupBy status
+      projectsBySector,    // groupBy sector
+      projectsByDistrict,  // groupBy district+state
+      projectsByMonth,     // $queryRaw: monthly creation
+      reportAgg,           // totals
+      reportsByStatus,     // groupBy status
+      reportsByCategory,   // groupBy category
+      reportsResolution,   // $queryRaw: avg resolution days
+      anomalyAgg,          // totals
+      anomaliesBySeverity, // groupBy severity
+      anomaliesByStatus,   // groupBy status
+      anomaliesByCategory, // groupBy category
+      expenditureByCat,    // groupBy category+status
+      expendituresByMonth, // $queryRaw: monthly spend
+      riskAgg,             // groupBy riskLevel + avg
+      topRiskProjects,     // findMany top 10 (small set)
     ] = await Promise.all([
-      // ── Projects ────────────────────────────────────────────────────────────
-      prisma.project.findMany({
-        select: {
-          status: true,
-          sector: true,
-          district: true,
-          state: true,
-          approvedAmount: true,
-          spentAmount: true,
-          createdAt: true,
-        },
+      // Project totals
+      prisma.project.aggregate({
+        _count: { _all: true },
+        _sum: { approvedAmount: true, spentAmount: true },
+        _avg: { approvedAmount: true, spentAmount: true },
       }),
-
-      // ── Reports ────────────────────────────────────────────────────────────
-      prisma.report.findMany({
-        select: {
-          status: true,
-          category: true,
-          createdAt: true,
-          resolvedAt: true,
-        },
+      // Project by status
+      prisma.project.groupBy({ by: ["status"], _count: true }),
+      // Project by sector (with sums)
+      prisma.project.groupBy({
+        by: ["sector"],
+        _count: true,
+        _sum: { approvedAmount: true, spentAmount: true },
       }),
-
-      // ── Anomalies ──────────────────────────────────────────────────────────
-      prisma.anomaly.findMany({
-        select: {
-          severity: true,
-          status: true,
-          category: true,
-        },
+      // Project by district+state (with sums)
+      prisma.project.groupBy({
+        by: ["district", "state"],
+        _count: true,
+        _sum: { approvedAmount: true, spentAmount: true },
       }),
-
-      // ── Scheme financials (re-use existing aggregation) ─────────────────────
+      // Monthly project creation — last 12 months
+      prisma.$queryRaw<Array<{ ym: string; count: number }>>`
+        SELECT
+          strftime('%Y-%m', datetime(createdAt/1000, 'unixepoch')) AS ym,
+          COUNT(*) AS count
+        FROM Project
+        WHERE createdAt >= ${twelveMonthsAgoMs}
+        GROUP BY ym
+        ORDER BY ym ASC
+      `.then((rows) =>
+        rows.map((r) => {
+          const [year, month] = r.ym.split("-");
+          const d = new Date(parseInt(year), parseInt(month) - 1, 1);
+          return { month: formatMonth(d), count: Number(r.count) };
+        })
+      ),
+      // Report totals
+      prisma.report.aggregate({ _count: { _all: true } }),
+      // Report by status
+      prisma.report.groupBy({ by: ["status"], _count: true }),
+      // Report by category
+      prisma.report.groupBy({ by: ["category"], _count: true }),
+      // Avg resolution time
+      prisma.$queryRaw<Array<{ avg_days: number | null }>>`
+        SELECT AVG(
+          (julianday(datetime(resolvedAt/1000, 'unixepoch'))
+           - julianday(datetime(createdAt/1000, 'unixepoch')))
+        ) AS avg_days
+        FROM Report
+        WHERE resolvedAt IS NOT NULL AND createdAt IS NOT NULL
+      `,
+      // Anomaly totals
+      prisma.anomaly.aggregate({ _count: { _all: true } }),
+      prisma.anomaly.groupBy({ by: ["severity"], _count: true }),
+      prisma.anomaly.groupBy({ by: ["status"], _count: true }),
+      prisma.anomaly.groupBy({ by: ["category"], _count: true }),
+      // Expenditure groupBy category+status
       prisma.expenditure.groupBy({
         by: ["category", "status"],
         _sum: { amount: true },
         _count: true,
       }),
-
-      // ── Risk distribution ────────────────────────────────────────────────────
+      // Monthly expenditures — last 12 months
+      prisma.$queryRaw<Array<{ ym: string; total: number }>>`
+        SELECT
+          strftime('%Y-%m', datetime(paidOn/1000, 'unixepoch')) AS ym,
+          COALESCE(SUM(amount), 0) AS total
+        FROM Expenditure
+        WHERE paidOn IS NOT NULL AND paidOn >= ${twelveMonthsAgoMs}
+        GROUP BY ym
+        ORDER BY ym ASC
+      `.then((rows) =>
+        rows.map((r) => {
+          const [year, month] = r.ym.split("-");
+          const d = new Date(parseInt(year), parseInt(month) - 1, 1);
+          return { month: formatMonth(d), amount: Number(r.total) };
+        })
+      ),
+      // Risk distribution + avg score
+      prisma.projectRisk.groupBy({
+        by: ["riskLevel"],
+        _count: true,
+        _avg: { overallScore: true },
+      }),
+      // Top 10 risk projects (only 10 rows)
       prisma.projectRisk.findMany({
         select: {
           overallScore: true,
           riskLevel: true,
-          project: {
-            select: {
-              id: true,
-              name: true,
-              district: true,
-              state: true,
-            },
-          },
+          project: { select: { id: true, name: true, district: true, state: true } },
         },
         orderBy: { overallScore: "desc" },
         take: 10,
@@ -205,128 +262,83 @@ export const analyticsService = {
 
     // ── Projects ────────────────────────────────────────────────────────────────
 
-    const byStatus: ProjectStatusCount[] = Object.entries(
-      projects.reduce<Record<string, number>>((acc, p) => {
-        acc[p.status] = (acc[p.status] ?? 0) + 1;
-        return acc;
-      }, {})
-    ).map(([status, count]) => ({ status: status as ProjectStatus, count }));
+    const totalProjects = projectAgg._count._all;
+    const totalBudget = projectAgg._sum.approvedAmount ?? 0;
+    const totalSpent = projectAgg._sum.spentAmount ?? 0;
 
-    const bySectorMap = projects.reduce<
-      Record<string, { count: number; totalBudget: number; totalSpent: number }>
-    >((acc, p) => {
-      if (!acc[p.sector]) acc[p.sector] = { count: 0, totalBudget: 0, totalSpent: 0 };
-      acc[p.sector].count++;
-      acc[p.sector].totalBudget += p.approvedAmount;
-      acc[p.sector].totalSpent += p.spentAmount;
-      return acc;
-    }, {});
-    const bySector: ProjectBySector[] = Object.entries(bySectorMap)
-      .map(([sector, v]) => ({ sector, ...v }))
+    const byStatus: ProjectStatusCount[] = projectsByStatus
+      .map((p) => ({ status: p.status as ProjectStatus, count: p._count }))
       .sort((a, b) => b.count - a.count);
 
-    const byDistrictMap = projects.reduce<
-      Record<string, { state: string; count: number; totalBudget: number; totalSpent: number }>
-    >((acc, p) => {
-      if (!acc[p.district]) acc[p.district] = { state: p.state, count: 0, totalBudget: 0, totalSpent: 0 };
-      acc[p.district].count++;
-      acc[p.district].totalBudget += p.approvedAmount;
-      acc[p.district].totalSpent += p.spentAmount;
-      return acc;
-    }, {});
-    const byDistrict: ProjectByDistrict[] = Object.entries(byDistrictMap)
-      .map(([district, v]) => ({ district, ...v }))
+    const bySector: ProjectBySector[] = projectsBySector
+      .map((s) => ({
+        sector: s.sector,
+        count: s._count,
+        totalBudget: s._sum.approvedAmount ?? 0,
+        totalSpent: s._sum.spentAmount ?? 0,
+      }))
       .sort((a, b) => b.count - a.count);
 
-    // Monthly project creation — last 12 months
-    const monthlyCreationMap: Record<string, number> = {};
-    for (const p of projects) {
-      const key = formatMonth(startOfMonth(new Date(p.createdAt)));
-      if (new Date(p.createdAt) >= twelveMonthsAgo) {
-        monthlyCreationMap[key] = (monthlyCreationMap[key] ?? 0) + 1;
-      }
-    }
-    const monthlyCreation: MonthlyProjectCreation[] = Object.entries(monthlyCreationMap)
-      .map(([month, count]) => ({ month, count }))
-      .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+    const byDistrict: ProjectByDistrict[] = projectsByDistrict
+      .map((d) => ({
+        district: d.district,
+        state: d.state,
+        count: d._count,
+        totalBudget: d._sum.approvedAmount ?? 0,
+        totalSpent: d._sum.spentAmount ?? 0,
+      }))
+      .sort((a, b) => b.count - a.count);
 
-    const totalBudget = projects.reduce((s, p) => s + p.approvedAmount, 0);
-    const totalSpent = projects.reduce((s, p) => s + p.spentAmount, 0);
+    const monthlyCreation: MonthlyProjectCreation[] = projectsByMonth;
 
     // ── Reports ─────────────────────────────────────────────────────────────────
 
-    const reportByStatus: ReportStatusCount[] = Object.entries(
-      reports.reduce<Record<string, number>>((acc, r) => {
-        acc[r.status] = (acc[r.status] ?? 0) + 1;
-        return acc;
-      }, {})
-    ).map(([status, count]) => ({ status: status as ReportStatus, count }));
+    const reportByStatus: ReportStatusCount[] = reportsByStatus.map((r) => ({
+      status: r.status as ReportStatus,
+      count: r._count,
+    }));
 
-    const reportByCategory: ReportCategoryCount[] = Object.entries(
-      reports.reduce<Record<string, number>>((acc, r) => {
-        acc[r.category] = (acc[r.category] ?? 0) + 1;
-        return acc;
-      }, {})
-    ).map(([category, count]) => ({ category, count }))
+    const reportByCategory: ReportCategoryCount[] = reportsByCategory
+      .map((r) => ({ category: r.category, count: r._count }))
       .sort((a, b) => b.count - a.count);
 
-    // Avg resolution time
-    const resolved = reports.filter((r) => r.resolvedAt && r.createdAt);
     const avgResolutionDays =
-      resolved.length > 0
-        ? Math.round(
-            resolved.reduce((sum, r) => {
-              const ms = new Date(r.resolvedAt!).getTime() - new Date(r.createdAt).getTime();
-              return sum + ms / (1000 * 60 * 60 * 24);
-            }, 0) / resolved.length
-          )
+      reportsResolution[0]?.avg_days != null
+        ? Math.round(reportsResolution[0].avg_days)
         : null;
 
     // ── Anomalies ────────────────────────────────────────────────────────────────
 
-    const anomalyBySeverity: AnomalySeverityCount[] = Object.entries(
-      anomalies.reduce<Record<string, number>>((acc, a) => {
-        acc[a.severity] = (acc[a.severity] ?? 0) + 1;
-        return acc;
-      }, {})
-    ).map(([severity, count]) => ({ severity: severity as AnomalySeverity, count }));
+    const anomalyBySeverity: AnomalySeverityCount[] = anomaliesBySeverity.map((a) => ({
+      severity: a.severity as AnomalySeverity,
+      count: a._count,
+    }));
 
-    const anomalyByStatus: AnomalyStatusCount[] = Object.entries(
-      anomalies.reduce<Record<string, number>>((acc, a) => {
-        acc[a.status] = (acc[a.status] ?? 0) + 1;
-        return acc;
-      }, {})
-    ).map(([status, count]) => ({ status, count }));
+    const anomalyByStatus: AnomalyStatusCount[] = anomaliesByStatus.map((a) => ({
+      status: a.status,
+      count: a._count,
+    }));
 
-    const anomalyByCategory: AnomalyCategoryCount[] = Object.entries(
-      anomalies.reduce<Record<string, number>>((acc, a) => {
-        acc[a.category] = (acc[a.category] ?? 0) + 1;
-        return acc;
-      }, {})
-    ).map(([category, count]) => ({ category, count }))
+    const anomalyByCategory: AnomalyCategoryCount[] = anomaliesByCategory
+      .map((a) => ({ category: a.category, count: a._count }))
       .sort((a, b) => b.count - a.count);
 
-    const openAnomalies = anomalies.filter((a) =>
-      ["OPEN", "ACKNOWLEDGED", "UNDER_INVESTIGATION"].includes(a.status)
-    ).length;
+    const openAnomalies = anomalyByStatus
+      .filter((a) => ["OPEN", "ACKNOWLEDGED", "UNDER_INVESTIGATION"].includes(a.status))
+      .reduce((s, a) => s + a.count, 0);
 
     // ── Financials ───────────────────────────────────────────────────────────────
 
-    const finTotalBudget = totalBudget;
-    const finTotalSpent = totalSpent;
-
-    // SchemeFin now returns rows keyed by (category, status)
-    // Sum amount by status for header KPIs
-    const totalAuthorizedAmt = schemeFin
+    const totalAuthorizedAmt = expenditureByCat
       .filter((e) => e.status === "AUTHORIZED")
       .reduce((s, e) => s + (e._sum.amount ?? 0), 0);
-    const totalPendingAmt = schemeFin
+    const totalPendingAmt = expenditureByCat
       .filter((e) => e.status === "PENDING")
       .reduce((s, e) => s + (e._sum.amount ?? 0), 0);
 
     // Aggregate by category (sum across statuses)
     const byCatMap: Record<string, { total: number; count: number }> = {};
-    for (const row of schemeFin) {
+    for (const row of expenditureByCat) {
       if (!byCatMap[row.category]) byCatMap[row.category] = { total: 0, count: 0 };
       byCatMap[row.category].total += row._sum.amount ?? 0;
       byCatMap[row.category].count += row._count;
@@ -335,37 +347,20 @@ export const analyticsService = {
       .map(([category, v]) => ({ category, ...v }))
       .sort((a, b) => b.total - a.total);
 
-    const allExpenditures = await prisma.expenditure.findMany({
-      select: { amount: true, category: true, paidOn: true },
-    });
+    const byMonth: ExpenditureByMonth[] = expendituresByMonth;
 
-    // Monthly expenditures — last 12 months
-    const byMonthMap: Record<string, number> = {};
-    for (const e of allExpenditures) {
-      if (e.paidOn) {
-        const d = new Date(e.paidOn);
-        if (d >= twelveMonthsAgo) {
-          const key = formatMonth(startOfMonth(d));
-          byMonthMap[key] = (byMonthMap[key] ?? 0) + e.amount;
-        }
-      }
-    }
-    const byMonth: ExpenditureByMonth[] = Object.entries(byMonthMap)
-      .map(([month, amount]) => ({ month, amount }))
-      .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
-
-    const utilization = finTotalBudget > 0 ? (finTotalSpent / finTotalBudget) * 100 : 0;
+    const utilization = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
     // ── Risk ─────────────────────────────────────────────────────────────────────
 
     const riskDistMap: Record<string, number> = {};
-    for (const r of riskDist) {
-      riskDistMap[r.riskLevel] = (riskDistMap[r.riskLevel] ?? 0) + 1;
+    for (const r of riskAgg) {
+      riskDistMap[r.riskLevel] = r._count;
     }
     const riskDistribution: RiskDistribution[] = (["LOW", "MEDIUM", "HIGH", "CRITICAL"] as RiskLevel[])
       .map((level) => ({ level, count: riskDistMap[level] ?? 0 }));
 
-    const topProjects: TopRiskProjects[] = riskDist.slice(0, 10).map((r) => ({
+    const topProjects: TopRiskProjects[] = topRiskProjects.map((r) => ({
       projectId: r.project.id,
       projectName: r.project.name,
       district: r.project.district,
@@ -374,37 +369,41 @@ export const analyticsService = {
       riskLevel: r.riskLevel,
     }));
 
+    // Avg of groupBy averages weighted by count for accuracy
+    const totalRiskRows = riskAgg.reduce((s, r) => s + r._count, 0);
     const avgScore =
-      riskDist.length > 0
-        ? Math.round(riskDist.reduce((s, r) => s + r.overallScore, 0) / riskDist.length)
+      totalRiskRows > 0
+        ? Math.round(
+            riskAgg.reduce((s, r) => s + (r._avg.overallScore ?? 0) * r._count, 0) / totalRiskRows
+          )
         : 0;
 
     return {
       projects: {
-        total: projects.length,
+        total: totalProjects,
         byStatus,
         bySector,
         byDistrict,
         monthlyCreation,
-        avgBudget: projects.length > 0 ? totalBudget / projects.length : 0,
-        avgSpent: projects.length > 0 ? totalSpent / projects.length : 0,
+        avgBudget: projectAgg._avg.approvedAmount ?? 0,
+        avgSpent: projectAgg._avg.spentAmount ?? 0,
       },
       reports: {
-        total: reports.length,
+        total: reportAgg._count._all,
         byStatus: reportByStatus,
         byCategory: reportByCategory,
         avgResolutionDays,
       },
       anomalies: {
-        total: anomalies.length,
+        total: anomalyAgg._count._all,
         open: openAnomalies,
         bySeverity: anomalyBySeverity,
         byStatus: anomalyByStatus,
         byCategory: anomalyByCategory,
       },
       financial: {
-        totalBudget: finTotalBudget,
-        totalSpent: finTotalSpent,
+        totalBudget,
+        totalSpent,
         totalAuthorized: totalAuthorizedAmt,
         totalPending: totalPendingAmt,
         utilization,
@@ -467,19 +466,27 @@ export const analyticsService = {
     };
   },
 
-  /** Risk distribution for the risk page */
+  /** Risk distribution for the risk page — uses groupBy, no full scan */
   async getRiskStats() {
-    const risks = await prisma.projectRisk.findMany({
-      select: { riskLevel: true, overallScore: true },
-    });
+    const [grouped, totalAgg] = await Promise.all([
+      prisma.projectRisk.groupBy({
+        by: ["riskLevel"],
+        _count: true,
+        _avg: { overallScore: true },
+      }),
+      prisma.projectRisk.aggregate({
+        _count: { _all: true },
+        _avg: { overallScore: true },
+      }),
+    ]);
 
     const dist: Record<string, number> = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
-    for (const r of risks) dist[r.riskLevel] = (dist[r.riskLevel] ?? 0) + 1;
+    for (const r of grouped) dist[r.riskLevel] = r._count;
 
-    const avg = risks.length > 0
-      ? Math.round(risks.reduce((s, r) => s + r.overallScore, 0) / risks.length)
-      : 0;
-
-    return { distribution: dist, total: risks.length, avgScore: avg };
+    return {
+      distribution: dist,
+      total: totalAgg._count._all,
+      avgScore: Math.round(totalAgg._avg.overallScore ?? 0),
+    };
   },
 };
