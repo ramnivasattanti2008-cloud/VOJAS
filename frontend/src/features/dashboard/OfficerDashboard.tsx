@@ -460,7 +460,7 @@ function FinancialBar({ fin }: { fin: SchemeFinancials }) {
 
 export default function OfficerDashboard() {
   const healthQuery      = useHealth();
-  const projectsQuery   = useProjects({ limit: 50 });
+  const projectsQuery   = useProjects({ limit: 8 });
   const finQuery        = useSchemeFinancials();
   const anomaliesQuery  = useAnomalies({ status: 'OPEN', limit: 8 });
   const reportsQuery    = useReports({ status: 'SUBMITTED', limit: 10 });

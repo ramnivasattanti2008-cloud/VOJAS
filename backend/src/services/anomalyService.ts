@@ -798,94 +798,109 @@ export async function runAnomalyScan(): Promise<{
   }
 
   // Upsert anomalies (avoid duplicates on same project+rule)
+  // Bulk dedup: one findMany instead of N findFirst calls
+  const dedupKeys = allFound
+    .filter((a) => a.projectId)
+    .map((a) => ({ projectId: a.projectId as string, ruleCode: a.ruleCode }));
+  const existingAll = await prisma.anomaly.findMany({
+    where: {
+      status: { in: ["OPEN", "ACKNOWLEDGED", "UNDER_INVESTIGATION"] },
+      OR: dedupKeys.map((k) => ({
+        projectId: k.projectId,
+        ruleCode: k.ruleCode,
+      })),
+    },
+    select: { projectId: true, ruleCode: true },
+  });
+  const existingSet = new Set(
+    existingAll.map((e) => `${e.projectId}::${e.ruleCode}`),
+  );
+
+  // Bulk fetch projects needed for AI explanations
+  const projectIds = Array.from(new Set(allFound.map((a) => a.projectId).filter(Boolean) as string[]));
+  const projectsAll = projectIds.length > 0
+    ? await prisma.project.findMany({
+        where: { id: { in: projectIds } },
+        include: {
+          expenditures: true,
+          locations: { where: { isPrimary: true } },
+        },
+      })
+    : [];
+  const projectMap = new Map(projectsAll.map((p) => [p.id, p]));
+
   let newCount = 0;
   for (const a of allFound) {
-    // Check if this anomaly already exists as OPEN
-    const existing = await prisma.anomaly.findFirst({
-      where: {
-        projectId: a.projectId,
-        ruleCode: a.ruleCode,
-        status: { in: ["OPEN", "ACKNOWLEDGED", "UNDER_INVESTIGATION"] },
-      },
-    });
+    const key = a.projectId ? `${a.projectId}::${a.ruleCode}` : null;
+    if (key && existingSet.has(key)) continue;
 
-    if (!existing) {
-      const project = a.projectId
-        ? await prisma.project.findUnique({
-            where: { id: a.projectId },
-            include: {
-              expenditures: true,
-              locations: { where: { isPrimary: true } },
-            },
-          })
-        : null;
+    const project = a.projectId ? projectMap.get(a.projectId) ?? null : null;
 
-      const expenditures = project?.expenditures.map((e) => ({
-        amount: e.amount,
-        vendor: e.vendor ?? undefined,
-        invoiceNo: e.invoiceNo ?? undefined,
-        paidOn: e.paidOn?.toISOString() ?? undefined,
-        category: e.category,
-      })) ?? [];
+    const expenditures = project?.expenditures.map((e) => ({
+      amount: e.amount,
+      vendor: e.vendor ?? undefined,
+      invoiceNo: e.invoiceNo ?? undefined,
+      paidOn: e.paidOn?.toISOString() ?? undefined,
+      category: e.category,
+    })) ?? [];
 
-      const aiResult = await (async () => {
-        try {
-          return AnomalyExplainer.explain({
-            title: a.title,
-            description: a.description,
-            category: a.category,
-            severity: a.severity,
-            riskScore: a.riskScore,
-            ruleCode: a.ruleCode,
-            evidence: JSON.stringify(a.evidence),
-            projectName: project?.name,
-            expenditures,
-          });
-        } catch (err) {
-          logger.warn("[AI] Anomaly explanation failed:", err);
-          return null;
-        }
-      })();
-
-      await prisma.anomaly.create({
-        data: {
+    const aiResult = await (async () => {
+      try {
+        return AnomalyExplainer.explain({
           title: a.title,
           description: a.description,
           category: a.category,
           severity: a.severity,
           riskScore: a.riskScore,
-          status: "OPEN",
           ruleCode: a.ruleCode,
           evidence: JSON.stringify(a.evidence),
-          projectId: a.projectId,
-          aiExplanation: aiResult
-            ? JSON.stringify({
-                explanation: aiResult.explanation,
-                contributingFactors: aiResult.contributingFactors,
-                recommendation: aiResult.recommendation,
-              })
-            : null,
-          aiConfidence: aiResult?.confidence ?? null,
-        },
-      });
-      newCount++;
+          projectName: project?.name,
+          expenditures,
+        });
+      } catch (err) {
+        logger.warn("[AI] Anomaly explanation failed:", err);
+        return null;
+      }
+    })();
 
-      // Fire-and-forget: notify analysts and admins about the new anomaly.
-      void notifyAnomalyDetected(
-        a.projectId ?? "unknown",
-        a.title,
-        a.severity,
-        project?.name,
-      ).catch((err) => {
-        logger.warn("[notify] anomaly notification failed:", err);
-      });
+    await prisma.anomaly.create({
+      data: {
+        title: a.title,
+        description: a.description,
+        category: a.category,
+        severity: a.severity,
+        riskScore: a.riskScore,
+        status: "OPEN",
+        ruleCode: a.ruleCode,
+        evidence: JSON.stringify(a.evidence),
+        projectId: a.projectId,
+        aiExplanation: aiResult
+          ? JSON.stringify({
+              explanation: aiResult.explanation,
+              contributingFactors: aiResult.contributingFactors,
+              recommendation: aiResult.recommendation,
+            })
+          : null,
+        aiConfidence: aiResult?.confidence ?? null,
+      },
+    });
+    newCount++;
 
-      // Increment rule match count
-      await prisma.anomalyRule.update({
-        where: { code: a.ruleCode },
-        data: { matchCount: { increment: 1 } },
-      });
-    }
+    // Fire-and-forget: notify analysts and admins about the new anomaly.
+    void notifyAnomalyDetected(
+      a.projectId ?? "unknown",
+      a.title,
+      a.severity,
+      project?.name,
+    ).catch((err) => {
+      logger.warn("[notify] anomaly notification failed:", err);
+    });
+
+    // Increment rule match count
+    await prisma.anomalyRule.update({
+      where: { code: a.ruleCode },
+      data: { matchCount: { increment: 1 } },
+    });
   }
 
   const total = await prisma.anomaly.count();

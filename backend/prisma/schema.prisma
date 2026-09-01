@@ -560,6 +560,8 @@ model Anomaly {
   @@index([createdAt])
   @@index([ruleCode])
   @@index([lawEscalation, lawAuthority])
+  // Fast dedup check: find existing anomaly for same project+rule
+  @@index([projectId, ruleCode, status])
 }
 
 // Detection rule definition
