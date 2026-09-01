@@ -23,6 +23,8 @@ import SiteAnalysis from "./SiteAnalysis";
 import DocumentsTab from "./DocumentsTab";
 import SatelliteTimeline from "@/components/satellite/SatelliteTimeline";
 import { RelatedDataPanel } from "./RelatedDataPanel";
+import WorksBreakdown from "./WorksBreakdown";
+import { deriveWorks } from "@/utils/works";
 import {
   ArrowLeft,
   FileText,
@@ -374,6 +376,11 @@ export default function ProjectDetailPage() {
                 <FieldRow label="District" value={project.district} icon={MapPin} />
                 <FieldRow label="Constituency" value={project.constituency ?? undefined} />
               </InfoCard>
+
+              {/* Works Breakdown */}
+              <div className="glass rounded-xl p-5">
+                <WorksBreakdown works={deriveWorks(project)} variant="full" />
+              </div>
 
               <InfoCard title="Record">
                 <FieldRow label="Project ID" value={project.id} />

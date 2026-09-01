@@ -47,6 +47,7 @@ import {
   getTermLabel,
   getHouseLabel,
 } from "@/types";
+import WorksBreakdown from "@/features/projects/WorksBreakdown";
 
 function formatINR(amount: number): string {
   if (amount >= 1_00_00_000) return `₹${(amount / 1_00_00_000).toFixed(3)} Cr`;
@@ -554,6 +555,17 @@ function ProjectCard({ project, onClick }: { project: any; onClick: () => void }
           />
         </div>
       </div>
+
+      {/* Works breakdown (compact) */}
+      {project.works && project.works.length > 0 && (
+        <div className="mb-2 pb-2 border-b border-white/[0.03]">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Hammer className="w-2.5 h-2.5 text-orange-400" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-orange-400">Works</span>
+            <WorksBreakdown works={project.works} variant="compact" className="ml-1" />
+          </div>
+        </div>
+      )}
 
       {/* Footer: timeline + satellite + risk indicators */}
       <div className="flex items-center gap-3 text-[10px] text-slate-500 flex-wrap">

@@ -3,6 +3,7 @@
  * CRUD + analytics for the new MP model.
  */
 import { prisma } from "../config/database.js";
+import { projectService } from "./projectService.js";
 import type { House, LokSabhaTerm } from "@prisma/client";
 
 export interface CreateMPInput {
@@ -462,6 +463,13 @@ export async function getProjectsWithDetails(
     const verifiedDocs = p.documents.filter((d) => d.status === "VERIFIED").length;
     const criticalAnomalies = p.anomalies.filter((a) => a.severity === "CRITICAL").length;
     const score = deriveScore(p.id, p.status);
+    const works = projectService.parseWorks({
+      sector: p.sector,
+      status: p.status,
+      startDate: p.startDate,
+      expectedEndDate: p.expectedEndDate,
+      completedAt: p.completedAt,
+    });
     return {
       ...p,
       expenditureSummary: {
@@ -478,6 +486,7 @@ export async function getProjectsWithDetails(
         statusLabel: statusFromScore(score),
         hasCoordinates: p.locations.length > 0,
       },
+      works,
     };
   });
 
