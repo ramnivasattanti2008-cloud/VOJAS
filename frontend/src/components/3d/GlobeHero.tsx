@@ -20,6 +20,7 @@ import {
   Radio, Cpu, Shield,
   Eye,
 } from 'lucide-react';
+import { LogoMark } from '@/components/brand/Logo';
 
 interface GlobeHeroProps {
   height?: number;
@@ -267,6 +268,17 @@ export default function GlobeHero({ height = 520, className }: GlobeHeroProps) {
             </div>
           </motion.div>
         )}
+
+        {/* Brand watermark — top center */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 1.0, duration: 0.6 }}
+          className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none"
+        >
+          <LogoMark size="sm" className="w-6 h-6 opacity-80" />
+          <span className="text-[10px] text-slate-600 font-mono tracking-[0.3em] uppercase">VOJAS</span>
+        </motion.div>
       </div>
 
       {/* Outer corner brackets for cinematic frame */}
