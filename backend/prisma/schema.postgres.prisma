@@ -147,6 +147,20 @@ model Project {
   sourceWorkId       String? // original work ID from source dataset for deduplication
   sourceRef          Json? // original row from source for audit
 
+  // ── Phase 53: Geo-spatial project location + boundary ─────────────────────
+  latitude           Float?
+  longitude          Float?
+  locationSource     String?  // "MANUAL" | "GEOCODED" | "OFFICIAL_RECORD"
+  boundary          Json?   // GeoJSON Polygon
+  boundarySource    String?
+  boundaryQuality    String?  // "VERIFIED" | "APPROXIMATE" | "CENTROID_ONLY"
+
+  // ── Phase 53: Progress tracking + pilot flag ──────────────────────────────
+  reportedProgress         Float?
+  reportedProgressDate    DateTime?
+  reportedProgressSource  String?
+  pilotProject            Boolean @default(false)
+
   createdBy    User?         @relation("CreatedProjects", fields: [createdById], references: [id])
   mp           MP?           @relation(fields: [mpId], references: [id])
   locations    Location[]
@@ -155,6 +169,12 @@ model Project {
   anomalies    Anomaly[]
   risk         ProjectRisk?
   documents    Document[]
+
+  // Phase 53: Earth-observation + verification relations
+  satelliteObservations SatelliteObservation[]
+  projectEvents         ProjectEvent[]
+  progressObservations  ProgressObservation[]
+  analysisResults       AnalysisResult[]
 }
 
 // ── Project Documents (Phase 8) ───────────────────────────────────────────────
@@ -443,6 +463,7 @@ enum AnomalyCategory {
   GEOGRAPHIC // Unverified location or suspicious coordinates
   COMPLIANCE // Missing required fields/verification
   FINANCIAL // Other financial irregularities
+  PROGRESS_DISCREPANCY // Satellite-observed progress differs from reported progress
 }
 
 enum AnomalySeverity {
@@ -574,4 +595,171 @@ model ProjectRisk {
 
   @@index([overallScore])
   @@index([riskLevel])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 53 — Satellite Earth-Observation Intelligence
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SatelliteObservation {
+  id                String    @id @default(uuid())
+  projectId         String
+
+  // Scene metadata
+  observationDate   DateTime
+  provider          String    // "CDSE" | "GEE" | "BHOONIDHI" | "MANUAL"
+  satellite         String    // "SENTINEL-2A" | "SENTINEL-2B"
+  sensor            String    // "MSI"
+  dataset           String    // "S2_L2A" | "S2_L1C"
+  sceneId           String?
+  cloudCover        Float     @default(0)
+  resolution        Float     @default(10)
+  bbox              Json?     // { sw: [lat,lng], ne: [lat,lng] }
+
+  // Display tiles
+  tileUrl           String?
+  thumbnailUrl      String?
+  centerLat         Float?
+  centerLng         Float?
+
+  // Processing
+  processingDate    DateTime?
+  processingBaseline String?
+  processingLevel   String?
+  cloudMaskThreshold Int     @default(60)
+
+  // Quality
+  quality           String    @default("RAW")
+  projectCoverage   Float     @default(0)
+  rejectionReason   String?
+
+  // Analytical outputs
+  ndvi              Float?
+  ndbii             Float?
+  bsi               Float?
+  builtUpArea       Float?
+  vegetationArea    Float?
+  waterArea         Float?
+  constructionScore Float?
+
+  // Event relationship
+  targetDate        DateTime?
+  targetDifference  Int?
+
+  // Provenance
+  sourceUrl         String?
+  sourceName       String?
+  retrievalDate    DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  progress          ProgressObservation[]
+  analyses          AnalysisResult[]
+
+  @@unique([sceneId, observationDate])
+  @@index([projectId, observationDate])
+  @@index([projectId, targetDate])
+  @@index([projectId, quality])
+}
+
+model ProjectEvent {
+  id           String   @id @default(uuid())
+  projectId    String
+
+  eventType    String   // PROPOSAL | APPROVAL | SANCTION | FUND_RELEASE |
+                        // CONTRACTOR_ASSIGNED | WORK_START | MILESTONE |
+                        // PROGRESS_REPORT | SATELLITE_OBSERVATION |
+                        // CITIZEN_REPORT | FIELD_INSPECTION | AI_ALERT |
+                        // VERIFICATION | COMPLETION | ABANDONMENT
+  eventDate    DateTime
+
+  source       String   // MPLADS_PORTAL | VONTER | DATAFUL | OPENCITY |
+                        // LGD | SENTINEL2 | GEE | CITIZEN | CONTRACTOR |
+                        // INSPECTOR | AI | MANUAL
+  sourceUrl    String?
+  dataset      String?
+  description  String
+  evidenceUrls Json?    // string[]
+  actor        String?
+  confidence   String?   // HIGH | MEDIUM | LOW
+  retrievalDate DateTime @default(now())
+  createdAt   DateTime  @default(now())
+
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, eventDate])
+  @@index([projectId, eventType])
+  @@index([eventType])
+}
+
+model ProgressObservation {
+  id               String    @id @default(uuid())
+  projectId        String
+  observationId    String?
+
+  reportDate       DateTime
+  observationDate  DateTime?
+
+  // Reported (official)
+  reportedProgress Float
+  reportSource    String
+  reportSourceUrl String?
+
+  // Observable (satellite)
+  observedChange  Float?
+  observableArea  Float?
+  changeType      String?
+
+  // Verification
+  verificationResult String?
+  confidenceLevel    String?
+  explanation        String?
+
+  // Quality
+  dataQuality     String?
+  qualityFactors  Json?
+
+  // Next action
+  recommendedAction String?
+
+  createdAt       DateTime  @default(now())
+
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observation SatelliteObservation?  @relation(fields: [observationId], references: [id])
+  analyses   AnalysisResult[]
+
+  @@index([projectId, reportDate])
+  @@index([projectId, verificationResult])
+}
+
+model AnalysisResult {
+  id              String    @id @default(uuid())
+  projectId       String
+  observationId   String?
+  progressId      String?
+
+  analysisType    String    // NDVI_TREND | NDBI_CHANGE | BUILT_UP_AREA |
+                          // LAND_USE_CHANGE | CONSTRUCTION_DETECTED |
+                          // VERIFICATION | DISCREPANCY | WEEKLY_CHECK
+  result         Json      // free-form structured result
+  score           Float?
+
+  evidenceUrls    Json?     // string[]
+  mapTileUrl      String?
+
+  explanation    String?
+  confidence     String    @default("MEDIUM")
+  limitations    String?
+  modelUsed      String?
+  processingTimeMs Int?
+
+  createdAt       DateTime  @default(now())
+
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observation SatelliteObservation? @relation(fields: [observationId], references: [id])
+  progress   ProgressObservation?  @relation(fields: [progressId], references: [id])
+
+  @@index([projectId, analysisType])
+  @@index([projectId, createdAt])
 }

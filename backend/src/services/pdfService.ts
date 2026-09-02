@@ -62,6 +62,15 @@ export async function generateProjectPDF(projectId: string): Promise<Buffer> {
         orderBy: { createdAt: "desc" },
       },
       risk: true,
+      satelliteObservations: {
+        orderBy: { observationDate: "desc" },
+        take: 5,
+      },
+      progressObservations: {
+        where: { reportSource: "VOJAS_VERIFICATION" },
+        orderBy: { reportDate: "desc" },
+        take: 3,
+      },
     },
   });
 
@@ -187,7 +196,48 @@ export async function generateProjectPDF(projectId: string): Promise<Buffer> {
       }
     }
 
-    // ── Footer ──────────────────────────────────────────────────────────────
+    // ── Satellite / Earth Observation ────────────────────────────────────────
+    if (project.satelliteObservations.length > 0) {
+      section(doc, "Satellite Monitoring (Sentinel-2 L2A)");
+
+      const latestObs = project.satelliteObservations[0];
+      if (latestObs) {
+        row(doc, "Latest Observation", fmtDate(latestObs.observationDate));
+        row(doc, "Cloud Cover", `${latestObs.cloudCover}%`);
+        row(doc, "Source", latestObs.sourceName ?? "CDSE");
+        if (latestObs.ndvi !== null) row(doc, "NDVI", latestObs.ndvi.toFixed(3));
+        if (latestObs.ndbii !== null) row(doc, "NDBI", latestObs.ndbii.toFixed(3));
+        if (latestObs.builtUpArea !== null) row(doc, "Built-up Area", `${(latestObs.builtUpArea / 1000).toFixed(1)}K m²`);
+        if (latestObs.constructionScore !== null) row(doc, "Construction Score", `${latestObs.constructionScore}/100`);
+      }
+
+      doc.moveDown(0.4);
+      doc.fontSize(9).font("Helvetica").fillColor("#64748b")
+        .text(`Total observations available: ${project.satelliteObservations.length}. Latest observation: ${fmtDate(latestObs.observationDate)}.`, {
+          continued: false,
+        });
+    }
+
+    // ── Verification Results ───────────────────────────────────────────────────
+    if (project.progressObservations.length > 0) {
+      section(doc, "Verification History (VOJAS Rule Engine)");
+
+      for (const verification of project.progressObservations.slice(0, 3)) {
+        const statusColor = verification.verificationResult === "CONSISTENT" ? "#10b981"
+          : verification.verificationResult === "POTENTIAL_DISCREPANCY" ? "#ef4444"
+          : "#64748b";
+        doc.fontSize(10).font("Helvetica-Bold").fillColor(statusColor)
+          .text(`  ${verification.verificationResult ?? "—"}`, { continued: false });
+        doc.fontSize(9).font("Helvetica").fillColor("#64748b");
+        if (verification.confidenceLevel) doc.text(`  Confidence: ${verification.confidenceLevel}`);
+        if (verification.explanation) {
+          // Truncate to 200 chars to fit in PDF
+          const truncated = verification.explanation.slice(0, 200) + (verification.explanation.length > 200 ? "…" : "");
+          doc.text(`  ${truncated}`);
+        }
+        doc.moveDown(0.3);
+      }
+    }
     doc.moveDown(2);
     doc.fontSize(8).font("Helvetica").fillColor("#94a3b8")
       .text("VOJAS — Accountability Platform for MPLAD Scheme", { align: "center" });

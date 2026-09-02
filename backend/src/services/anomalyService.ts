@@ -22,7 +22,8 @@ export type AnomalyCategory =
   | "STALLED"
   | "GEOGRAPHIC"
   | "COMPLIANCE"
-  | "FINANCIAL";
+  | "FINANCIAL"
+  | "PROGRESS_DISCREPANCY";
 
 export interface FoundAnomaly {
   projectId: string;

@@ -42,4 +42,33 @@ export const config = {
     apiWindowMs: 60 * 1000,         // 1 minute
     apiMax: 2000,                   // 2000 req / min / IP for general API (dev only)
   },
+  // Phase 53: Earth-observation services
+  satellite: {
+    // Copernicus Data Space Ecosystem
+    cdse: {
+      clientId: process.env.CDSE_CLIENT_ID || "",
+      clientSecret: process.env.CDSE_CLIENT_SECRET || "",
+      // OAuth2 token endpoint
+      tokenUrl: "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token",
+      // STAC catalog
+      catalogUrl: "https://catalogue.dataspace.copernicus.eu/stac",
+      // WMS tile server
+      wmsUrl: "https://adas.dataspace.copernicus.eu/wms",
+      // Process API
+      processUrl: "https://adphas.dataspace.copernicus.eu/process",
+      // S2 L2A collection ID
+      collectionId: "SENTINEL-2",
+      // Default cloud-cover threshold
+      maxCloudCover: 70,
+      // Default AOI radius in metres
+      defaultRadiusMeters: 1000,
+    },
+    // Stub mode: no live API calls; only stored observations
+    stubMode: process.env.SATELLITE_STUB_MODE === "true" || !process.env.CDSE_CLIENT_ID,
+    // GEE Python service (future)
+    gee: {
+      serviceUrl: process.env.GEE_SERVICE_URL || "",
+      serviceKey: process.env.GEE_SERVICE_KEY || "",
+    },
+  },
 };

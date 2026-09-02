@@ -173,6 +173,24 @@ model Project {
   sourceWorkId       String? // original work ID from source dataset for deduplication
   sourceRef          String? // JSON: original row from source for audit
 
+  // ── Phase 53: Geo-spatial project location + boundary ─────────────────────
+  // Real pilot projects carry lat/lng and a (optional) boundary polygon
+  // used to query Sentinel-2 Earth-observation scenes. The `boundary` is
+  // a GeoJSON Polygon stored as Stringified JSON in SQLite (Postgres uses
+  // Json? in the parallel schema).
+  latitude        Float?
+  longitude       Float?
+  locationSource  String?  // "MANUAL" | "GEOCODED" | "OFFICIAL_RECORD"
+  boundary        String?  // JSON: GeoJSON Polygon (or Point if no polygon)
+  boundarySource  String?  // URL or note on where the boundary came from
+  boundaryQuality String?  // "VERIFIED" | "APPROXIMATE" | "CENTROID_ONLY"
+
+  // ── Phase 53: Progress tracking + pilot flag ──────────────────────────────
+  reportedProgress  Float?   // 0-100, latest official progress %
+  reportedProgressDate DateTime? // when that report was filed
+  reportedProgressSource String? // MPLADS_PORTAL | CONTRACTOR | MP
+  pilotProject      Boolean  @default(false) // marks the 5 real-data pilot projects
+
   createdBy    User?         @relation("CreatedProjects", fields: [createdById], references: [id])
   mp           MP?           @relation(fields: [mpId], references: [id])
   locations    Location[]
@@ -189,6 +207,12 @@ model Project {
   accountabilityChain AccountabilityChain[]
   referrals    Referral[]
   packages     EvidencePackage[]
+
+  // Phase 53: Earth-observation + verification relations
+  satelliteObservations SatelliteObservation[]
+  projectEvents         ProjectEvent[]
+  progressObservations  ProgressObservation[]
+  analysisResults       AnalysisResult[]
 
   // Open-data dedup: unique per source so upsert is fast
   @@unique([source, sourceWorkId])
@@ -492,6 +516,7 @@ enum AnomalyCategory {
   GEOGRAPHIC // Unverified location or suspicious coordinates
   COMPLIANCE // Missing required fields/verification
   FINANCIAL // Other financial irregularities
+  PROGRESS_DISCREPANCY // Satellite-observed progress differs from reported progress
 }
 
 enum AnomalySeverity {
@@ -1458,4 +1483,224 @@ model ContractorResponse {
 
   @@index([contractorId])
   @@index([anomalyId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 53 — Satellite Earth-Observation Intelligence
+// Real Sentinel-2 L2A scenes with cloud-mask, NDVI/NDBI analysis, change
+// detection. Replaces the previous synthetic/mock satellite service.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One Sentinel-2 (or compatible) scene for a project, captured on a real
+/// acquisition date with full provenance metadata.
+model SatelliteObservation {
+  id                String    @id @default(uuid())
+
+  projectId         String
+
+  // ── Scene metadata (from Sentinel-2 L2A) ────────────────────────────────
+  /// Date the satellite actually captured the scene.
+  observationDate   DateTime
+  provider          String    // "CDSE" | "GEE" | "BHOONIDHI" | "MANUAL"
+  satellite         String    // "SENTINEL-2A" | "SENTINEL-2B"
+  sensor            String    // "MSI"
+  dataset           String    // "S2_L2A" | "S2_L1C"
+  /// Copernicus scene ID, e.g. "S2A_MSIL2A_20240613T053641_N0510_R005_T43QHV_..."
+  sceneId           String?
+  /// 0-100, from s2cloudless / Sen2Cor SCL
+  cloudCover        Float     @default(0)
+  /// metres / pixel — 10 for Sentinel-2 RGB+NIR
+  resolution        Float     @default(10)
+  /// North-east corner of the scene's bounding box (lat,lng). Project AOI is
+  /// a subset of this. Stored as String JSON: `{ sw: [lat,lng], ne: [lat,lng] }`.
+  bbox              String?
+
+  // ── Display tiles (XYZ / WMS) ───────────────────────────────────────────
+  /// Tile URL template for showing this scene in Leaflet. Placeholders:
+  /// {z}, {x}, {y}. May be a CDSE WMS URL or a self-hosted XYZ cache.
+  tileUrl           String?
+  thumbnailUrl      String?
+  /// Center of the project AOI within the scene
+  centerLat         Float?
+  centerLng         Float?
+
+  // ── Processing metadata ─────────────────────────────────────────────────
+  processingDate    DateTime?
+  processingBaseline String?
+  processingLevel   String?   // "L2A" | "L1C"
+  /// s2cloudless CLP threshold applied (0-100); lower = stricter
+  cloudMaskThreshold Int?     @default(60)
+
+  // ── Quality & coverage ──────────────────────────────────────────────────
+  quality           String    @default("RAW") // RAW | PROCESSED | GOOD | MODERATE | POOR | REJECTED
+  /// 0-100, how much of the project boundary is covered by this scene
+  projectCoverage   Float     @default(0)
+  rejectionReason   String?
+
+  // ── Analytical outputs (computed server-side) ──────────────────────────
+  /// Mean NDVI inside the project AOI
+  ndvi              Float?
+  /// Mean NDBI (built-up index) inside the project AOI
+  ndbii             Float?
+  /// Mean BSI (bare soil index) inside the project AOI
+  bsi               Float?
+  /// Detected built-up area in sq metres
+  builtUpArea       Float?
+  /// Detected vegetation area in sq metres
+  vegetationArea    Float?
+  /// Detected water area in sq metres
+  waterArea         Float?
+  /// 0-100, simple construction-footprint presence score
+  constructionScore Float?
+
+  // ── Relationship to nearest project event ──────────────────────────────
+  /// If this observation was queried for a specific project event, store
+  /// the target date and the absolute day-difference. NULL if observation
+  /// is a routine weekly checkpoint.
+  targetDate        DateTime?
+  targetDifference  Int?
+
+  // ── Source attribution ─────────────────────────────────────────────────
+  sourceUrl         String?   // URL to the scene's STAC / catalog page
+  sourceName        String?   // e.g. "Copernicus Data Space Ecosystem"
+  retrievalDate     DateTime  @default(now())
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  progress          ProgressObservation[]
+  analyses          AnalysisResult[]
+
+  @@unique([sceneId, observationDate])
+  @@index([projectId, observationDate])
+  @@index([projectId, targetDate])
+  @@index([projectId, quality])
+}
+
+/// Typed, dated project event with explicit source provenance.
+/// Complements the simpler `ProjectHistory` with structured event types.
+model ProjectEvent {
+  id          String   @id @default(uuid())
+  projectId   String
+
+  eventType   String   // PROPOSAL | APPROVAL | SANCTION | FUND_RELEASE |
+                        // CONTRACTOR_ASSIGNED | WORK_START | MILESTONE |
+                        // PROGRESS_REPORT | SATELLITE_OBSERVATION |
+                        // CITIZEN_REPORT | FIELD_INSPECTION | AI_ALERT |
+                        // VERIFICATION | COMPLETION | ABANDONMENT
+
+  /// When the event actually happened (not when we recorded it).
+  eventDate   DateTime
+
+  // ── Source provenance (always required) ────────────────────────────────
+  source      String   // MPLADS_PORTAL | VONTER | DATAFUL | OPENCITY |
+                        // LGD | SENTINEL2 | GEE | CITIZEN | CONTRACTOR |
+                        // INSPECTOR | AI | MANUAL
+  sourceUrl   String?  // URL to original record
+  dataset     String?  // e.g. "18th Lok Sabha MPLADS" | "Sentinel-2 L2A"
+  description String
+  /// JSON: string[] of evidence URLs (documents, images, map links)
+  evidenceUrls String?
+  actor       String?  // MP name, officer name, "Sentinel-2", "VOJAS AI"
+  confidence  String?  // HIGH | MEDIUM | LOW
+  retrievalDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, eventDate])
+  @@index([projectId, eventType])
+  @@index([eventType])
+}
+
+/// A snapshot comparing reported progress (official record) against
+/// observable change (satellite Earth observation). Always dated.
+model ProgressObservation {
+  id              String    @id @default(uuid())
+  projectId       String
+  observationId   String?
+
+  /// Date of the official progress report
+  reportDate      DateTime
+  /// Date of the satellite observation (if any)
+  observationDate DateTime?
+
+  // ── Reported (official) progress ──────────────────────────────────────
+  reportedProgress Float     // 0-100 percentage
+  reportSource    String    // MPLADS_PORTAL | CONTRACTOR | OFFICER | MP | AI
+  reportSourceUrl String?
+
+  // ── Observable (satellite-derived) change ─────────────────────────────
+  /// 0-100, computed physical change indicator
+  observedChange  Float?
+  /// sq metres of detected change
+  observableArea  Float?
+  /// NEW_STRUCTURE | ROAD_LAYING | EXCAVATION | CLEARED | BRIDGE_SPAN | NONE
+  changeType      String?
+
+  // ── Verification ──────────────────────────────────────────────────────
+  /// CONSISTENT | POTENTIAL_DISCREPANCY | INSUFFICIENT_EVIDENCE | REQUIRES_FIELD
+  verificationResult String?
+  /// HIGH | MEDIUM | LOW
+  confidenceLevel    String?
+  explanation        String?
+
+  // ── Data quality ──────────────────────────────────────────────────────
+  /// GOOD | MODERATE | POOR | INSUFFICIENT
+  dataQuality     String?
+  /// JSON: { cloudCover, resolutionGap, boundaryQuality, observationAge }
+  qualityFactors  String?
+
+  // ── Next action ───────────────────────────────────────────────────────
+  recommendedAction String?
+
+  createdAt      DateTime  @default(now())
+
+  project      Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observation  SatelliteObservation?  @relation(fields: [observationId], references: [id])
+  analyses     AnalysisResult[]
+
+  @@index([projectId, reportDate])
+  @@index([projectId, verificationResult])
+}
+
+/// Server-computed analytical result (NDVI, NDBI, change detection,
+/// verification). Stores all provenance so users can audit the result.
+model AnalysisResult {
+  id              String    @id @default(uuid())
+  projectId       String
+  observationId   String?
+  progressId      String?
+
+  /// NDVI_TREND | NDBI_CHANGE | BUILT_UP_AREA | LAND_USE_CHANGE |
+  /// CONSTRUCTION_DETECTED | VERIFICATION | DISCREPANCY | WEEKLY_CHECK
+  analysisType    String
+
+  /// JSON: free-form structured result
+  result          String
+  /// 0-100 normalized score
+  score           Float?
+
+  evidenceUrls    String?   // JSON: string[] — map screenshots, overlays
+  mapTileUrl      String?   // URL to analysis overlay tile
+
+  /// Human-readable explanation
+  explanation     String?
+  /// HIGH | MEDIUM | LOW
+  confidence      String    @default("MEDIUM")
+  limitations     String?
+
+  /// "manual" | "sentinel-hub-evalscript" | "gee-ndvi" | "vojas-rule-engine"
+  modelUsed       String?
+  processingTimeMs Int?
+
+  createdAt       DateTime  @default(now())
+
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observation SatelliteObservation? @relation(fields: [observationId], references: [id])
+  progress    ProgressObservation?  @relation(fields: [progressId], references: [id])
+
+  @@index([projectId, analysisType])
+  @@index([projectId, createdAt])
 }
