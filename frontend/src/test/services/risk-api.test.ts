@@ -29,7 +29,8 @@ describe("riskApi", () => {
         distribution: { LOW: 3, MEDIUM: 3, HIGH: 1, CRITICAL: 1 },
         avgScore: 42,
       };
-      mockedApi.get.mockResolvedValue({ data: mockStats });
+      // api.get() already unwraps the response envelope, so mock returns the inner data directly
+      mockedApi.get.mockResolvedValue(mockStats);
 
       const result = await riskApi.stats();
 
@@ -72,7 +73,8 @@ describe("riskApi", () => {
   describe("get", () => {
     it("calls the per-project risk endpoint", async () => {
       const mockRisk = { id: "risk-1", projectId: "proj-1", overallScore: 75 } as any;
-      mockedApi.get.mockResolvedValue({ data: { risk: mockRisk } });
+      // api.get() already unwraps the response envelope
+      mockedApi.get.mockResolvedValue({ risk: mockRisk });
 
       const result = await riskApi.get("proj-1");
 
@@ -84,8 +86,11 @@ describe("riskApi", () => {
   describe("recalculateAll", () => {
     it("posts to the recalculate endpoint and returns projects", async () => {
       const mockProjects = [{ id: "proj-1", overallScore: 80 }] as any;
+      // api.post() already unwraps the response envelope
       mockedApi.post.mockResolvedValue({
-        data: { message: "Recalculated 8 projects", count: 8, projects: mockProjects },
+        message: "Recalculated 8 projects",
+        count: 8,
+        projects: mockProjects,
       });
 
       const result = await riskApi.recalculateAll();
@@ -99,7 +104,7 @@ describe("riskApi", () => {
   describe("recalculateOne", () => {
     it("posts to the per-project recalculate endpoint", async () => {
       const mockRisk = { id: "risk-1", projectId: "proj-1", overallScore: 55 } as any;
-      mockedApi.post.mockResolvedValue({ data: { risk: mockRisk } });
+      mockedApi.post.mockResolvedValue({ risk: mockRisk });
 
       const result = await riskApi.recalculateOne("proj-1");
 

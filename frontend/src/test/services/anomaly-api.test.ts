@@ -71,7 +71,8 @@ describe("anomalyApi", () => {
   describe("stats", () => {
     it("returns the stats data from the response", async () => {
       const mockStats = { total: 10, open: 5, critical: 2, high: 3, medium: 4, low: 1, byCategory: [] };
-      mockedApi.get.mockResolvedValue({ data: mockStats });
+      // api.get() already unwraps the response envelope, so mock returns the inner data directly
+      mockedApi.get.mockResolvedValue(mockStats);
 
       const result = await anomalyApi.stats();
 
@@ -82,7 +83,8 @@ describe("anomalyApi", () => {
   describe("acknowledge", () => {
     it("posts to the acknowledge endpoint", async () => {
       const mockAnomaly = { id: "anom-1", title: "Test Anomaly", status: "ACKNOWLEDGED" } as any;
-      mockedApi.post.mockResolvedValue({ data: { anomaly: mockAnomaly } });
+      // api.get/post already unwraps, so mock returns { anomaly: mockAnomaly } directly
+      mockedApi.post.mockResolvedValue({ anomaly: mockAnomaly });
 
       const result = await anomalyApi.acknowledge("anom-1");
 
@@ -94,7 +96,7 @@ describe("anomalyApi", () => {
   describe("resolve", () => {
     it("posts resolution to the resolve endpoint", async () => {
       const mockAnomaly = { id: "anom-1", status: "RESOLVED" } as any;
-      mockedApi.post.mockResolvedValue({ data: { anomaly: mockAnomaly } });
+      mockedApi.post.mockResolvedValue({ anomaly: mockAnomaly });
 
       const result = await anomalyApi.resolve("anom-1", "Fixed by inspection");
 
@@ -106,7 +108,7 @@ describe("anomalyApi", () => {
   describe("scan", () => {
     it("posts to the scan endpoint and returns the result", async () => {
       const mockResult = { newAnomalies: 3, totalAnomalies: 10, ruleCounts: { "cost-outlier": 2 } };
-      mockedApi.post.mockResolvedValue({ data: mockResult });
+      mockedApi.post.mockResolvedValue(mockResult);
 
       const result = await anomalyApi.scan();
 
@@ -118,7 +120,7 @@ describe("anomalyApi", () => {
   describe("listRules", () => {
     it("returns rules from the API", async () => {
       const mockRules = [{ id: "rule-1", name: "Cost Outlier", enabled: true }] as any;
-      mockedApi.get.mockResolvedValue({ data: { rules: mockRules } });
+      mockedApi.get.mockResolvedValue({ rules: mockRules });
 
       const result = await anomalyApi.listRules();
 
@@ -130,7 +132,7 @@ describe("anomalyApi", () => {
   describe("updateRule", () => {
     it("puts enabled state to the correct endpoint", async () => {
       const mockRule = { id: "rule-1", enabled: false } as any;
-      mockedApi.put.mockResolvedValue({ data: { rule: mockRule } });
+      mockedApi.put.mockResolvedValue({ rule: mockRule });
 
       const result = await anomalyApi.updateRule("rule-1", false);
 
