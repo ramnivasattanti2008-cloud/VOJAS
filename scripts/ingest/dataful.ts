@@ -179,10 +179,6 @@ async function main() {
     }
     expBuffer.length = 0;
   }
-      }
-    });
-    expBuffer.length = 0;
-  }
 
   for await (const row of parseCSV(LOCAL_PATH, ",")) {
     lineNum++;
@@ -314,7 +310,6 @@ async function main() {
     expBuffer.push({
       source: SOURCE,
       sourceTxnId: String(lineNum),
-      sourceRef: JSON.stringify(row),
       projectId,
       amount,
       category: "OTHER" as any,
@@ -324,8 +319,11 @@ async function main() {
       paidOn: expDate,
       expenditureDate: expDate,
       paymentStatus: paymentStatus || null,
-      status: paymentStatus.toLowerCase().includes("success")
+      // Only mark PAID if the date is in the past — future dates are AUTHORIZED at most
+      status: paymentStatus.toLowerCase().includes("success") && expDate <= new Date()
         ? ("PAID" as any)
+        : paymentStatus.toLowerCase().includes("success")
+        ? ("AUTHORIZED" as any)
         : ("PENDING" as any),
     });
 

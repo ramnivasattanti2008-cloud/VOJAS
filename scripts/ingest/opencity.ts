@@ -111,9 +111,12 @@ async function ingestTerm(
   const iAmount = pickColumn(cols, ["amount", "expenditure_amount", "sanctioned_amount", "allocation"]);
   const iDate = pickColumn(cols, ["date", "expenditure_date", "transaction_date", "paid_on"]);
 
-  if (iState < 0 || iMP < 0) {
-    console.log(`   ! missing required columns (state, mp). Got: ${cols.join(", ")}`);
+  if (iMP < 0) {
+    console.log(`   ! missing required column (mp). Got: ${cols.join(", ")}`);
     return { rows: 0, projects: 0, expenditures: 0, vendors: 0, mps: 0, skipped: 0 };
+  }
+  if (iState < 0) {
+    console.log(`   ! no state column — will infer from constituency name`);
   }
   console.log(`   columns: state@${iState} mp@${iMP} district@${iDistrict} const@${iConstituency} work@${iWork} vendor@${iVendor} amount@${iAmount} date@${iDate}`);
 
@@ -121,7 +124,8 @@ async function ingestTerm(
     let i = 0;
     for await (const r of parseCSV(localPath, ",")) {
       if (i > 3) break;
-      console.log(`   sample[${i}]: MP=${r[iMP]} | state=${r[iState]}`);
+      const sampleState = iState >= 0 ? r[iState] : normalizeStateName(r[iConstituency]) || "(inferred)";
+      console.log(`   sample[${i}]: MP=${r[iMP]} | state=${sampleState}`);
       i++;
     }
     return { rows: 0, projects: 0, expenditures: 0, vendors: 0, mps: 0, skipped: 0 };
@@ -193,9 +197,11 @@ async function ingestTerm(
     lineNum++;
     if (lineNum === 1) continue;
 
-    const state = (row[iState] || "").trim();
     const district = iDistrict >= 0 ? (row[iDistrict] || "").trim() : "";
     const constituency = iConstituency >= 0 ? (row[iConstituency] || "").trim() : "";
+    const state = iState >= 0
+      ? (row[iState] || "").trim()
+      : normalizeStateName(constituency) || "UNKNOWN";  // fallback: use constituency name as state (some 17th LS rows have only constituency)
     const mpName = (row[iMP] || "").trim();
     const workDesc = iWork >= 0 ? (row[iWork] || "").trim() : "";
     const vendorName = iVendor >= 0 ? (row[iVendor] || "").trim() : "";
@@ -308,7 +314,6 @@ async function ingestTerm(
     expBuffer.push({
       source: "OPENCITY",
       sourceTxnId: `${source.term}-${lineNum}`,
-      sourceRef: JSON.stringify(row),
       projectId,
       amount,
       category: "OTHER" as any,
