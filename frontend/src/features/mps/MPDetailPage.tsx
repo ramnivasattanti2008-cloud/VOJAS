@@ -1,8 +1,9 @@
 /**
  * VOJAS — MP Detail Page
  *
- * Shows complete MP profile + all their projects + analytics.
- * Tabs: Overview, Projects (enhanced), MPLADS Spending, Weekly Progress, Satellite
+ * IBM Carbon–inspired light theme. Professional data-management layout.
+ * No glassmorphism, no gradients, no glow effects, no decorative animations.
+ * All data from real hooks (no fake numbers).
  */
 
 import { useState } from "react";
@@ -48,6 +49,9 @@ import {
   getHouseLabel,
 } from "@/types";
 import WorksBreakdown from "@/features/projects/WorksBreakdown";
+import { cn } from "@/lib/utils";
+
+// ── Formatters ──────────────────────────────────────────────────────────────
 
 function formatINR(amount: number): string {
   if (amount >= 1_00_00_000) return `₹${(amount / 1_00_00_000).toFixed(3)} Cr`;
@@ -74,6 +78,83 @@ const CONSTRUCTION_SECTORS: ProjectSector[] = [
   "PUBLIC_INFRASTRUCTURE", "HOUSING", "WATER_SANITATION", "HEALTH",
   "EDUCATION", "TRANSPORT", "ENERGY",
 ];
+
+// ── Shared Components ────────────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  accent = "blue",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: "blue" | "green" | "amber" | "red" | "slate";
+}) {
+  const barColor: Record<string, string> = {
+    blue:  "bg-blue-500",
+    green: "bg-green-500",
+    amber: "bg-amber-500",
+    red:   "bg-red-500",
+    slate: "bg-gray-400",
+  };
+  return (
+    <div className="bg-white border border-gray-200 rounded-md p-3 hover:border-gray-300 transition-all">
+      <div className={cn("h-0.5 rounded-t mb-2", barColor[accent])} aria-hidden />
+      <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
+      <p className="text-lg font-semibold text-gray-900 tabular-nums">{value}</p>
+      {sub && <p className="text-[10px] text-gray-500 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function Field({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  if (!value || value === "—") return null;
+  return (
+    <div>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className={cn("text-xs text-gray-700", mono ? "font-mono" : "")}>{value}</p>
+    </div>
+  );
+}
+
+function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
+  return (
+    <div>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</p>
+      <p className={cn("text-sm font-semibold", accent)}>{value}</p>
+    </div>
+  );
+}
+
+function Sep() { return <div className="w-px h-7 bg-gray-200" />; }
+
+function Metric({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div>
+      <p className="text-[9px] text-gray-500 uppercase tracking-wider">{label}</p>
+      <p className={cn("text-lg font-semibold font-mono", color)}>{value}</p>
+    </div>
+  );
+}
+
+function Bar({ label, amount, max, color }: { label: string; amount: number; max: number; color: string }) {
+  const pct = max > 0 ? (amount / max) * 100 : 0;
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[11px] mb-0.5">
+        <span className="text-gray-700">{label}</span>
+        <span className="font-mono text-gray-500">{formatINR(amount)}</span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MPDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -106,41 +187,41 @@ export default function MPDetailPage() {
   const utilization = totalApproved > 0 ? (totalSpent / totalApproved) * 100 : 0;
 
   return (
-    <div className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
+    <div className="space-y-4">
       {/* Back button */}
       <button
         onClick={() => navigate("/mps")}
-        className="flex items-center gap-2 text-xs text-slate-500 hover:text-white transition-colors group"
+        className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors group"
       >
-        <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-        <span>MPs</span>
+        <ArrowLeft className="w-3.5 h-3.5" />
+        <span>Back to MPs</span>
       </button>
 
       {/* Hero header */}
-      <div className="glass rounded-xl p-5 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-electric-500/40 to-transparent" />
+      <div className="bg-white border border-gray-200 rounded-md p-5">
+        <div className="h-0.5 bg-blue-500 rounded-t mb-4" aria-hidden />
         <div className="flex items-start gap-5 flex-wrap">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-electric-500/20 to-blue-700/20 border border-electric-500/30 flex items-center justify-center shrink-0">
-            <User className="w-10 h-10 text-electric-400" />
+          <div className="w-20 h-20 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+            <User className="w-10 h-10 text-blue-600" />
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-electric-500/30 bg-electric-500/10 text-electric-400">
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-600">
                 {mp.party || "Independent"}
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-white/10 bg-white/5 text-slate-400">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-gray-200 bg-gray-50 text-gray-500">
                 {getHouseLabel(mp.house)} · {getTermLabel(mp.term)}
               </span>
               {satelliteData && satelliteData.activeConstruction > 0 && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 flex items-center gap-1">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-200 bg-cyan-50 text-cyan-600 flex items-center gap-1">
                   <Satellite className="w-2.5 h-2.5" />
                   {satelliteData.activeConstruction} active sites
                 </span>
               )}
             </div>
-            <h1 className="text-xl font-bold text-white leading-tight">{mp.name}</h1>
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500 flex-wrap">
+            <h1 className="text-xl font-semibold text-gray-900 leading-tight">{mp.name}</h1>
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500 flex-wrap">
               <span className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
                 {mp.constituency}, {mp.state}
@@ -152,7 +233,7 @@ export default function MPDetailPage() {
                 </span>
               )}
               {mp.attendance && (
-                <span className="flex items-center gap-1 text-emerald-400">
+                <span className="flex items-center gap-1 text-green-600">
                   <Activity className="w-3 h-3" />
                   {mp.attendance} attendance
                 </span>
@@ -161,28 +242,28 @@ export default function MPDetailPage() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0 text-right">
-            <Stat label="Projects" value={String(totalProjects)} accent="text-electric-400" />
+            <Stat label="Projects" value={String(totalProjects)} accent="text-blue-600" />
             <Sep />
-            <Stat label="Approved" value={formatINR(totalApproved)} accent="text-white" />
+            <Stat label="Approved" value={formatINR(totalApproved)} accent="text-gray-900" />
             <Sep />
             <Stat
               label="Spent"
               value={formatINR(totalSpent)}
-              accent={totalSpent > totalApproved ? "text-red-400" : "text-saffron-400"}
+              accent={totalSpent > totalApproved ? "text-red-600" : "text-amber-600"}
             />
             <Sep />
             <Stat
               label="Util %"
               value={`${utilization.toFixed(0)}%`}
-              accent={utilization > 100 ? "text-red-400" : utilization > 80 ? "text-emerald-400" : "text-saffron-400"}
+              accent={utilization > 100 ? "text-red-600" : utilization > 80 ? "text-green-600" : "text-amber-600"}
             />
           </div>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="sticky top-0 z-10 -mx-4 md:-mx-5 px-4 md:px-5 bg-navy-950/80 backdrop-blur-xl border-b border-white/5">
-        <div role="tablist" className="flex items-center gap-1 overflow-x-auto">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div role="tablist" className="flex items-center gap-1 overflow-x-auto px-1">
           {[
             { key: "overview", label: "Overview", icon: User },
             { key: "projects", label: `Projects (${totalProjects})`, icon: Briefcase },
@@ -195,11 +276,12 @@ export default function MPDetailPage() {
               role="tab"
               aria-selected={activeTab === key}
               onClick={() => setActiveTab(key as Tab)}
-              className={`flex items-center gap-2 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-all shrink-0 ${
+              className={cn(
+                "flex items-center gap-2 px-3 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors shrink-0",
                 activeTab === key
-                  ? "border-electric-500 text-electric-400"
-                  : "border-transparent text-slate-500 hover:text-slate-300"
-              }`}
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              )}
             >
               <Icon className="w-3.5 h-3.5" />
               {label}
@@ -250,15 +332,17 @@ export default function MPDetailPage() {
   );
 }
 
-// ── Overview Tab ──────────────────────────────────────────────────────────
+// ── Overview Tab ────────────────────────────────────────────────────────────
 
 function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: any) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 space-y-3">
-        <div className="glass rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <User className="w-4 h-4 text-electric-400" />
+      <div className="lg:col-span-2 space-y-4">
+        {/* MP Profile Card */}
+        <div className="bg-white border border-gray-200 rounded-md p-5">
+          <div className="h-0.5 bg-blue-500 rounded-t mb-4" aria-hidden />
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <User className="w-4 h-4 text-blue-600" />
             MP Profile
           </h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
@@ -277,9 +361,9 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
 
         {/* Sector breakdown */}
         {stats?.bySector && Object.keys(stats.bySector).length > 0 && (
-          <div className="glass rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-electric-400" />
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-blue-600" />
               Projects by Sector
             </h3>
             <div className="space-y-2">
@@ -288,17 +372,17 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
                 .map(([sector, count]) => {
                   const pct = ((count as number) / totalProjects) * 100;
                   const sectorKey = sector as ProjectSector;
-                  const colorClass = SECTOR_COLORS[sectorKey] ?? "bg-slate-500/10 text-slate-400";
+                  const colorClass = SECTOR_COLORS[sectorKey] ?? "bg-gray-100 text-gray-500";
                   return (
                     <div key={sector}>
                       <div className="flex items-center justify-between text-[11px] mb-0.5">
-                        <span className="text-slate-300 capitalize">
+                        <span className="text-gray-700 capitalize">
                           {sector.toLowerCase().replace(/_/g, " ")}
                         </span>
-                        <span className="text-slate-500 font-mono">{count as number} ({pct.toFixed(0)}%)</span>
+                        <span className="text-gray-500 font-mono">{count as number} ({pct.toFixed(0)}%)</span>
                       </div>
-                      <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${colorClass.split(" ")[0]?.replace("/10", "") ?? "bg-electric-500"}`} style={{ width: `${pct}%` }} />
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all", colorClass.split(" ")[0]?.replace("/10", "/100") ?? "bg-blue-500")} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -309,33 +393,33 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
 
         {/* Recent weekly snapshot */}
         {weeklyData?.series && (
-          <div className="glass rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-electric-400" />
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-blue-600" />
               Last 4 Weeks Activity
             </h3>
             <div className="space-y-1.5">
               {weeklyData.series.slice(-4).reverse().map((w: any) => (
-                <div key={w.weekStart} className="flex items-center justify-between text-[11px] py-1 border-b border-white/[0.03] last:border-0">
-                  <span className="text-slate-400 font-mono">Wk of {shortDate(w.weekStart)}</span>
+                <div key={w.weekStart} className="flex items-center justify-between text-[11px] py-1 border-b border-gray-100 last:border-0">
+                  <span className="text-gray-500 font-mono">Wk of {shortDate(w.weekStart)}</span>
                   <div className="flex items-center gap-3 text-[10px]">
                     {w.projectsCompleted > 0 && (
-                      <span className="text-emerald-400">✓ {w.projectsCompleted} done</span>
+                      <span className="text-green-600">+ {w.projectsCompleted} done</span>
                     )}
                     {w.projectsStarted > 0 && (
-                      <span className="text-electric-400">▶ {w.projectsStarted} started</span>
+                      <span className="text-blue-600">+ {w.projectsStarted} started</span>
                     )}
                     {w.expenditure > 0 && (
-                      <span className="text-saffron-400 font-mono">{formatINR(w.expenditure)}</span>
+                      <span className="text-amber-600 font-mono">{formatINR(w.expenditure)}</span>
                     )}
                     {w.newAnomalies > 0 && (
-                      <span className="text-red-400">⚠ {w.newAnomalies}</span>
+                      <span className="text-red-600">{w.newAnomalies} issues</span>
                     )}
                     {w.newReports > 0 && (
-                      <span className="text-blue-400">📋 {w.newReports}</span>
+                      <span className="text-gray-600">{w.newReports} reports</span>
                     )}
                     {w.projectsCompleted === 0 && w.projectsStarted === 0 && w.expenditure === 0 && w.newAnomalies === 0 && w.newReports === 0 && (
-                      <span className="text-slate-600">no activity</span>
+                      <span className="text-gray-400">no activity</span>
                     )}
                   </div>
                 </div>
@@ -345,24 +429,25 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {/* Satellite quick view */}
         {satelliteData && (
-          <div className="glass rounded-xl p-4">
-            <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
-              <Satellite className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="bg-white border border-gray-200 rounded-md p-4">
+            <div className="h-0.5 bg-cyan-500 rounded-t mb-3" aria-hidden />
+            <h3 className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+              <Satellite className="w-3.5 h-3.5 text-cyan-600" />
               Satellite Overview
             </h3>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <Metric label="Active Sites" value={String(satelliteData.activeConstruction)} color="text-cyan-400" />
-              <Metric label="Avg Score" value={`${satelliteData.avgDevelopmentScore}%`} color="text-electric-400" />
+              <Metric label="Active Sites" value={String(satelliteData.activeConstruction)} color="text-cyan-600" />
+              <Metric label="Avg Score" value={`${satelliteData.avgDevelopmentScore}%`} color="text-blue-600" />
             </div>
             {Object.keys(satelliteData.byStatusLabel).length > 0 && (
               <div className="mt-3 space-y-1">
                 {Object.entries(satelliteData.byStatusLabel).map(([label, count]) => (
                   <div key={label} className="flex items-center justify-between text-[10px]">
-                    <span className="text-slate-400">{label}</span>
-                    <span className="font-mono text-slate-300">{count as number}</span>
+                    <span className="text-gray-500">{label}</span>
+                    <span className="font-mono text-gray-700">{count as number}</span>
                   </div>
                 ))}
               </div>
@@ -371,22 +456,23 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
         )}
 
         {stats && (
-          <div className="glass rounded-xl p-4">
-            <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+          <div className="bg-white border border-gray-200 rounded-md p-4">
+            <div className={cn("h-0.5 rounded-t mb-3", stats.anomalyCount > 0 ? "bg-red-500" : "bg-green-500")} aria-hidden />
+            <h3 className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
               Anomalies Detected
             </h3>
-            <p className={`text-2xl font-bold ${stats.anomalyCount > 0 ? "text-red-400" : "text-emerald-400"}`}>
+            <p className={cn("text-2xl font-bold", stats.anomalyCount > 0 ? "text-red-600" : "text-green-600")}>
               {stats.anomalyCount}
             </p>
-            <p className="text-[10px] text-slate-500 mt-1">across {totalProjects} projects</p>
+            <p className="text-[10px] text-gray-500 mt-1">across {totalProjects} projects</p>
           </div>
         )}
 
         {stats?.byStatus && Object.keys(stats.byStatus).length > 0 && (
-          <div className="glass rounded-xl p-4">
-            <h3 className="text-xs font-semibold text-white mb-2 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-electric-400" />
+          <div className="bg-white border border-gray-200 rounded-md p-4">
+            <h3 className="text-xs font-semibold text-gray-900 mb-2 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-blue-600" />
               Status Breakdown
             </h3>
             <div className="space-y-1">
@@ -396,11 +482,11 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
                   const style = STATUS_COLORS[status as ProjectStatus];
                   return (
                     <div key={status} className="flex items-center justify-between text-[11px]">
-                      <span className={`flex items-center gap-1.5 ${style?.text || "text-slate-400"}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${style?.dot || "bg-slate-500"}`} />
+                      <span className={cn("flex items-center gap-1.5", style?.text || "text-gray-500")}>
+                        <span className={cn("w-1.5 h-1.5 rounded-full", style?.dot || "bg-gray-400")} />
                         {PROJECT_STATUSES.find((s) => s.value === (status as ProjectStatus))?.label ?? status}
                       </span>
-                      <span className="font-mono text-slate-300">{count as number}</span>
+                      <span className="font-mono text-gray-700">{count as number}</span>
                     </div>
                   );
                 })}
@@ -408,8 +494,8 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
           </div>
         )}
 
-        <div className="glass rounded-xl p-4">
-          <h3 className="text-xs font-semibold text-white mb-2.5">External Links</h3>
+        <div className="bg-white border border-gray-200 rounded-md p-4">
+          <h3 className="text-xs font-semibold text-gray-900 mb-2.5">External Links</h3>
           <div className="space-y-1">
             {[
               { label: "PRS Legislative", url: `https://prsindia.org/mptrack/${mp.id}` },
@@ -421,7 +507,7 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-[11px] text-slate-400 hover:text-electric-400 transition-colors group py-1"
+                className="flex items-center gap-2 text-[11px] text-gray-500 hover:text-blue-600 transition-colors group py-1"
               >
                 <ExternalLink className="w-3 h-3 shrink-0" />
                 <span className="flex-1">{label}</span>
@@ -435,7 +521,7 @@ function OverviewTab({ mp, stats, totalProjects, satelliteData, weeklyData }: an
   );
 }
 
-// ── Projects Tab (enhanced) ──────────────────────────────────────────────
+// ── Projects Tab (enhanced) ────────────────────────────────────────────────
 
 function ProjectsTab({ projectsData, isLoading, page, onPageChange, onProjectClick }: any) {
   if (isLoading) return <LoadingState message="Loading projects..." />;
@@ -445,16 +531,16 @@ function ProjectsTab({ projectsData, isLoading, page, onPageChange, onProjectCli
 
   if (items.length === 0) {
     return (
-      <div className="glass rounded-xl p-12 text-center">
-        <Briefcase className="w-10 h-10 mx-auto text-slate-500 mb-3" />
-        <p className="text-sm text-slate-400">No projects found for this MP</p>
+      <div className="bg-white border border-gray-200 rounded-md p-12 text-center">
+        <Briefcase className="w-10 h-10 mx-auto text-gray-400 mb-3" />
+        <p className="text-sm text-gray-500">No projects found for this MP</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500">{total} projects</p>
+      <p className="text-xs text-gray-500">{total} projects</p>
       <div className="space-y-1.5">
         {items.map((p: any) => (
           <ProjectCard key={p.id} project={p} onClick={() => onProjectClick(p.id)} />
@@ -465,17 +551,17 @@ function ProjectsTab({ projectsData, isLoading, page, onPageChange, onProjectCli
           <button
             disabled={page === 1}
             onClick={() => onPageChange(page - 1)}
-            className="px-3 py-1.5 text-xs rounded border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30"
+            className="px-3 py-1.5 text-xs rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            ← Previous
+            Previous
           </button>
-          <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
+          <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
           <button
             disabled={page === totalPages}
             onClick={() => onPageChange(page + 1)}
-            className="px-3 py-1.5 text-xs rounded border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 disabled:opacity-30"
+            className="px-3 py-1.5 text-xs rounded border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Next →
+            Next
           </button>
         </div>
       )}
@@ -494,47 +580,47 @@ function ProjectCard({ project, onClick }: { project: any; onClick: () => void }
   const isConstruction = CONSTRUCTION_SECTORS.includes(sectorKey);
   const score = project.satellite?.score ?? 0;
   const scoreColor =
-    score >= 80 ? "text-emerald-400" :
-    score >= 50 ? "text-cyan-400" :
-    score >= 20 ? "text-saffron-400" : "text-slate-500";
+    score >= 80 ? "text-green-600" :
+    score >= 50 ? "text-cyan-600" :
+    score >= 20 ? "text-amber-600" : "text-gray-500";
   const isOverdue = project.expectedEndDate && project.status !== "COMPLETED" && project.status !== "VERIFIED" && new Date(project.expectedEndDate) < new Date();
 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left glass rounded-xl p-4 border border-white/5 hover:border-electric-500/30 transition-all group"
+      className="w-full text-left bg-white border border-gray-200 rounded-md p-4 hover:border-blue-300 hover:shadow-sm transition-all group"
     >
       <div className="flex items-start gap-3 mb-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${style?.bg} ${style?.text}`}>
-              <span className={`w-1 h-1 rounded-full ${style?.dot}`} />
+            <span className={cn("flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border", style?.bg ?? "bg-gray-100", style?.text ?? "text-gray-600")}>
+              <span className={cn("w-1 h-1 rounded-full", style?.dot ?? "bg-gray-400")} />
               {PROJECT_STATUSES.find((s) => s.value === project.status)?.label ?? project.status}
             </span>
-            <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${sectorClass}`}>
+            <span className={cn("text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded", sectorClass)}>
               {sectorLabel}
             </span>
             {isConstruction && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 flex items-center gap-1">
+              <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 flex items-center gap-1">
                 <Hammer className="w-2.5 h-2.5" />
                 Construction
               </span>
             )}
             {isOverdue && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 flex items-center gap-1">
+              <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100 text-red-700 flex items-center gap-1">
                 <Clock className="w-2.5 h-2.5" />
                 Overdue
               </span>
             )}
           </div>
-          <p className="text-sm font-medium text-slate-200 group-hover:text-electric-400 transition-colors line-clamp-2 leading-snug">
+          <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
             {project.name}
           </p>
-          <p className="text-[10px] text-slate-500 mt-0.5">{project.district}, {project.state}</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">{project.district}, {project.state}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-electric-400 font-mono">{formatINR(approved)}</p>
-          <p className={`text-[10px] font-mono ${utilPct > 100 ? "text-red-400" : utilPct > 80 ? "text-emerald-400" : "text-saffron-400"}`}>
+          <p className="text-sm font-semibold text-blue-600 font-mono">{formatINR(approved)}</p>
+          <p className={cn("text-[10px] font-mono", utilPct > 100 ? "text-red-600" : utilPct > 80 ? "text-green-600" : "text-amber-600")}>
             {utilPct}% util
           </p>
         </div>
@@ -543,14 +629,12 @@ function ProjectCard({ project, onClick }: { project: any; onClick: () => void }
       {/* Budget progress bar */}
       <div className="mb-2">
         <div className="flex items-center justify-between text-[10px] mb-1">
-          <span className="text-slate-500">Spent: <span className="text-slate-300 font-mono">{formatINR(spent)}</span></span>
-          <span className="text-slate-500">Approved: <span className="text-slate-300 font-mono">{formatINR(approved)}</span></span>
+          <span className="text-gray-500">Spent: <span className="text-gray-700 font-mono">{formatINR(spent)}</span></span>
+          <span className="text-gray-500">Approved: <span className="text-gray-700 font-mono">{formatINR(approved)}</span></span>
         </div>
-        <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${
-              utilPct > 100 ? "bg-red-500" : utilPct > 80 ? "bg-emerald-500" : "bg-saffron-500"
-            }`}
+            className={cn("h-full rounded-full transition-all", utilPct > 100 ? "bg-red-500" : utilPct > 80 ? "bg-green-500" : "bg-amber-500")}
             style={{ width: `${Math.min(100, utilPct)}%` }}
           />
         </div>
@@ -558,17 +642,17 @@ function ProjectCard({ project, onClick }: { project: any; onClick: () => void }
 
       {/* Works breakdown (compact) */}
       {project.works && project.works.length > 0 && (
-        <div className="mb-2 pb-2 border-b border-white/[0.03]">
+        <div className="mb-2 pb-2 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1.5">
-            <Hammer className="w-2.5 h-2.5 text-orange-400" />
-            <span className="text-[9px] font-bold uppercase tracking-wider text-orange-400">Works</span>
+            <Hammer className="w-2.5 h-2.5 text-orange-600" />
+            <span className="text-[9px] font-semibold uppercase tracking-wider text-orange-600">Works</span>
             <WorksBreakdown works={project.works} variant="compact" className="ml-1" />
           </div>
         </div>
       )}
 
       {/* Footer: timeline + satellite + risk indicators */}
-      <div className="flex items-center gap-3 text-[10px] text-slate-500 flex-wrap">
+      <div className="flex items-center gap-3 text-[10px] text-gray-500 flex-wrap">
         {project.startDate && (
           <span className="flex items-center gap-1">
             <Calendar className="w-2.5 h-2.5" />
@@ -576,31 +660,31 @@ function ProjectCard({ project, onClick }: { project: any; onClick: () => void }
           </span>
         )}
         {project.satellite?.hasCoordinates && (
-          <span className={`flex items-center gap-1 ${scoreColor}`}>
+          <span className={cn("flex items-center gap-1", scoreColor)}>
             <Satellite className="w-2.5 h-2.5" />
             {project.satellite.statusLabel} · {score}%
           </span>
         )}
         {project.anomalyCount > 0 && (
-          <span className="flex items-center gap-1 text-red-400">
+          <span className="flex items-center gap-1 text-red-600">
             <AlertTriangle className="w-2.5 h-2.5" />
-            {project.anomalyCount} {project.criticalAnomalies > 0 && <span className="font-bold">({project.criticalAnomalies} critical)</span>}
+            {project.anomalyCount} {project.criticalAnomalies > 0 && <span className="font-semibold">({project.criticalAnomalies} critical)</span>}
           </span>
         )}
         {project.risk?.overallScore > 50 && (
-          <span className="flex items-center gap-1 text-red-400">
+          <span className="flex items-center gap-1 text-red-600">
             <ShieldAlert className="w-2.5 h-2.5" />
             Risk {project.risk.overallScore}
           </span>
         )}
         {project.expenditureSummary?.count > 0 && (
-          <span className="flex items-center gap-1 text-slate-500">
+          <span className="flex items-center gap-1 text-gray-500">
             <IndianRupee className="w-2.5 h-2.5" />
             {project.expenditureSummary.count} txns
           </span>
         )}
         {project.documentSummary?.total > 0 && (
-          <span className="flex items-center gap-1 text-slate-500">
+          <span className="flex items-center gap-1 text-gray-500">
             <FileText className="w-2.5 h-2.5" />
             {project.documentSummary.total} docs
           </span>
@@ -610,7 +694,7 @@ function ProjectCard({ project, onClick }: { project: any; onClick: () => void }
   );
 }
 
-// ── Weekly Progress Tab ──────────────────────────────────────────────────
+// ── Weekly Progress Tab ─────────────────────────────────────────────────────
 
 function WeeklyProgressTab({ weeklyData, isLoading }: any) {
   if (isLoading) return <LoadingState message="Computing weekly activity..." />;
@@ -625,16 +709,17 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
     <div className="space-y-4">
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPI label="Total Expenditure" value={formatINR(summary.totalExpenditure)} sub={`${weeklyData.weeks} weeks`} accent="text-emerald-400" />
-        <KPI label="Projects Completed" value={String(summary.totalCompleted)} sub={`across ${weeklyData.weeks} weeks`} accent="text-electric-400" />
-        <KPI label="Projects Started" value={String(summary.totalStarted)} sub={`across ${weeklyData.weeks} weeks`} accent="text-saffron-400" />
-        <KPI label="Anomalies" value={String(summary.totalAnomalies)} sub={`total flagged`} accent={summary.totalAnomalies > 0 ? "text-red-400" : "text-emerald-400"} />
+        <KpiCard label="Total Expenditure" value={formatINR(summary.totalExpenditure)} sub={`${weeklyData.weeks} weeks`} accent="green" />
+        <KpiCard label="Projects Completed" value={String(summary.totalCompleted)} sub={`across ${weeklyData.weeks} weeks`} accent="blue" />
+        <KpiCard label="Projects Started" value={String(summary.totalStarted)} sub={`across ${weeklyData.weeks} weeks`} accent="amber" />
+        <KpiCard label="Anomalies" value={String(summary.totalAnomalies)} sub="total flagged" accent={summary.totalAnomalies > 0 ? "red" : "green"} />
       </div>
 
       {/* Expenditure bar chart */}
-      <div className="glass rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <IndianRupee className="w-4 h-4 text-emerald-400" />
+      <div className="bg-white border border-gray-200 rounded-md p-5">
+        <div className="h-0.5 bg-green-500 rounded-t mb-4" aria-hidden />
+        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <IndianRupee className="w-4 h-4 text-green-600" />
           Weekly Expenditure
         </h3>
         <div className="flex items-end gap-1 h-32">
@@ -642,14 +727,14 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
             const heightPct = maxExp > 0 ? (w.expenditure / maxExp) * 100 : 0;
             return (
               <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1 group">
-                <div className="text-[9px] font-mono text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="text-[9px] font-mono text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
                   {formatINR(w.expenditure)}
                 </div>
                 <div
-                  className="w-full bg-gradient-to-t from-emerald-500/40 to-emerald-400 rounded-t transition-all group-hover:from-emerald-500/60 group-hover:to-emerald-300"
+                  className="w-full bg-green-500 rounded-t transition-all group-hover:bg-green-600"
                   style={{ height: `${Math.max(2, heightPct)}%` }}
                 />
-                <div className="text-[8px] text-slate-500 font-mono">{shortDate(w.weekStart)}</div>
+                <div className="text-[8px] text-gray-500 font-mono">{shortDate(w.weekStart)}</div>
               </div>
             );
           })}
@@ -658,9 +743,10 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Projects completed bar chart */}
-        <div className="glass rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="bg-white border border-gray-200 rounded-md p-5">
+          <div className="h-0.5 bg-green-500 rounded-t mb-3" aria-hidden />
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
             Projects Completed per Week
           </h3>
           <div className="flex items-end gap-1 h-24">
@@ -668,8 +754,8 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
               const h = maxCompleted > 0 ? (w.projectsCompleted / maxCompleted) * 100 : 0;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                  <div className="text-[9px] font-mono text-emerald-400">{w.projectsCompleted || ""}</div>
-                  <div className="w-full bg-emerald-500/50 rounded-t" style={{ height: `${Math.max(2, h)}%` }} />
+                  <div className="text-[9px] font-mono text-green-600">{w.projectsCompleted || ""}</div>
+                  <div className="w-full bg-green-500 rounded-t" style={{ height: `${Math.max(2, h)}%` }} />
                 </div>
               );
             })}
@@ -677,9 +763,10 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
         </div>
 
         {/* Anomalies bar chart */}
-        <div className="glass rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
+        <div className="bg-white border border-gray-200 rounded-md p-5">
+          <div className="h-0.5 bg-red-500 rounded-t mb-3" aria-hidden />
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
             Anomalies per Week
           </h3>
           <div className="flex items-end gap-1 h-24">
@@ -687,8 +774,8 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
               const h = maxAnomalies > 0 ? (w.newAnomalies / maxAnomalies) * 100 : 0;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
-                  <div className="text-[9px] font-mono text-red-400">{w.newAnomalies || ""}</div>
-                  <div className="w-full bg-red-500/50 rounded-t" style={{ height: `${Math.max(2, h)}%` }} />
+                  <div className="text-[9px] font-mono text-red-600">{w.newAnomalies || ""}</div>
+                  <div className="w-full bg-red-500 rounded-t" style={{ height: `${Math.max(2, h)}%` }} />
                 </div>
               );
             })}
@@ -697,15 +784,15 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
       </div>
 
       {/* Weekly table */}
-      <div className="glass rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-          <Layers className="w-4 h-4 text-electric-400" />
+      <div className="bg-white border border-gray-200 rounded-md p-5">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <Layers className="w-4 h-4 text-blue-600" />
           Weekly Summary Table
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+              <tr className="text-[10px] text-gray-500 uppercase tracking-wider border-b border-gray-100">
                 <th className="text-left py-2 pr-3">Week</th>
                 <th className="text-right py-2 px-2">Started</th>
                 <th className="text-right py-2 px-2">Completed</th>
@@ -716,15 +803,15 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
             </thead>
             <tbody>
               {series.map((w: any) => (
-                <tr key={w.weekStart} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
-                  <td className="py-2 pr-3 font-mono text-slate-300">{fmtDate(w.weekStart)}</td>
-                  <td className="text-right py-2 px-2 font-mono text-electric-400">{w.projectsStarted || "—"}</td>
-                  <td className="text-right py-2 px-2 font-mono text-emerald-400">{w.projectsCompleted || "—"}</td>
-                  <td className="text-right py-2 px-2 font-mono text-saffron-400">{formatINR(w.expenditure)}</td>
-                  <td className="text-right py-2 px-2 font-mono text-blue-400">{w.newReports || "—"}</td>
+                <tr key={w.weekStart} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="py-2 pr-3 font-mono text-gray-700">{fmtDate(w.weekStart)}</td>
+                  <td className="text-right py-2 px-2 font-mono text-blue-600">{w.projectsStarted || "—"}</td>
+                  <td className="text-right py-2 px-2 font-mono text-green-600">{w.projectsCompleted || "—"}</td>
+                  <td className="text-right py-2 px-2 font-mono text-amber-600">{formatINR(w.expenditure)}</td>
+                  <td className="text-right py-2 px-2 font-mono text-gray-600">{w.newReports || "—"}</td>
                   <td className="text-right py-2 pl-2 font-mono">
                     {w.newAnomalies > 0 ? (
-                      <span className={w.criticalAnomalies > 0 ? "text-red-400" : "text-orange-400"}>
+                      <span className={w.criticalAnomalies > 0 ? "text-red-600" : "text-orange-600"}>
                         {w.newAnomalies} {w.criticalAnomalies > 0 && `(${w.criticalAnomalies} crit)`}
                       </span>
                     ) : "—"}
@@ -739,7 +826,7 @@ function WeeklyProgressTab({ weeklyData, isLoading }: any) {
   );
 }
 
-// ── Satellite Tab ────────────────────────────────────────────────────────
+// ── Satellite Tab ────────────────────────────────────────────────────────────
 
 function SatelliteTab({ satelliteData, isLoading, onProjectClick }: any) {
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
@@ -759,18 +846,19 @@ function SatelliteTab({ satelliteData, isLoading, onProjectClick }: any) {
     <div className="space-y-4">
       {/* Satellite KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KPI label="Total Projects" value={String(totalProjects)} sub="tracked" accent="text-electric-400" />
-        <KPI label="Geocoded" value={String(withCoordinates)} sub="with coordinates" accent="text-cyan-400" />
-        <KPI label="Active Sites" value={String(activeConstruction)} sub="under construction" accent="text-orange-400" />
-        <KPI label="Completed" value={String(completed)} sub="near or done" accent="text-emerald-400" />
-        <KPI label="Avg Score" value={`${avgDevelopmentScore}%`} sub="development" accent="text-saffron-400" />
+        <KpiCard label="Total Projects" value={String(totalProjects)} sub="tracked" accent="blue" />
+        <KpiCard label="Geocoded" value={String(withCoordinates)} sub="with coordinates" accent="slate" />
+        <KpiCard label="Active Sites" value={String(activeConstruction)} sub="under construction" accent="amber" />
+        <KpiCard label="Completed" value={String(completed)} sub="near or done" accent="green" />
+        <KpiCard label="Avg Score" value={`${avgDevelopmentScore}%`} sub="development" accent="amber" />
       </div>
 
       {/* Status label distribution */}
       {Object.keys(byStatusLabel).length > 0 && (
-        <div className="glass rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-cyan-400" />
+        <div className="bg-white border border-gray-200 rounded-md p-5">
+          <div className="h-0.5 bg-cyan-500 rounded-t mb-3" aria-hidden />
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-cyan-600" />
             Status Distribution (from satellite imagery)
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -778,10 +866,10 @@ function SatelliteTab({ satelliteData, isLoading, onProjectClick }: any) {
               const total = Object.values(byStatusLabel).reduce((s: number, c: any) => s + c, 0) as number;
               const pct = total > 0 ? (Number(count) / total) * 100 : 0;
               return (
-                <div key={label} className="bg-navy-900/40 rounded-lg p-3 border border-white/5">
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-                  <p className="text-lg font-bold font-mono text-white">{count as number}</p>
-                  <div className="h-1 bg-navy-800 rounded-full overflow-hidden mt-1.5">
+                <div key={label} className="bg-gray-50 rounded p-3 border border-gray-100">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{label}</p>
+                  <p className="text-lg font-semibold font-mono text-gray-900">{count as number}</p>
+                  <div className="h-1 bg-gray-200 rounded-full overflow-hidden mt-1.5">
                     <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -801,11 +889,12 @@ function SatelliteTab({ satelliteData, isLoading, onProjectClick }: any) {
           <button
             key={key}
             onClick={() => setFilter(key as any)}
-            className={`px-3 py-1.5 text-[11px] rounded border transition-colors ${
+            className={cn(
+              "px-3 py-1.5 text-[11px] rounded border transition-colors",
               filter === key
-                ? "border-electric-500/40 bg-electric-500/15 text-electric-400"
-                : "border-white/10 bg-white/5 text-slate-400 hover:text-slate-200"
-            }`}
+                ? "border-blue-300 bg-blue-50 text-blue-600"
+                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            )}
           >
             {label}
           </button>
@@ -815,40 +904,42 @@ function SatelliteTab({ satelliteData, isLoading, onProjectClick }: any) {
       {/* Top projects grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {filtered.length === 0 ? (
-          <div className="col-span-2 glass rounded-xl p-8 text-center text-slate-500 text-sm">
-            <Satellite className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <div className="col-span-2 bg-white border border-gray-200 rounded-md p-8 text-center text-gray-500 text-sm">
+            <Satellite className="w-8 h-8 mx-auto mb-2 text-gray-400" />
             No projects match this filter
           </div>
         ) : (
           filtered.map((p: any) => {
             const score = p.score ?? 0;
             const scoreColor =
-              score >= 80 ? "bg-emerald-500" :
-              score >= 50 ? "bg-cyan-500" :
-              score >= 20 ? "bg-saffron-500" : "bg-slate-500";
+              score >= 80 ? "bg-green-500 text-green-600" :
+              score >= 50 ? "bg-cyan-500 text-cyan-600" :
+              score >= 20 ? "bg-amber-500 text-amber-600" : "bg-gray-500 text-gray-600";
+            const scoreBg = scoreColor.split(" ")[0];
+            const scoreText = scoreColor.split(" ")[1];
             return (
               <button
                 key={p.id}
                 onClick={() => onProjectClick(p.id)}
-                className="glass rounded-xl p-4 border border-white/5 hover:border-cyan-500/30 transition-all text-left group"
+                className="bg-white border border-gray-200 rounded-md p-4 hover:border-cyan-300 hover:shadow-sm transition-all text-left group"
               >
                 <div className="flex items-start gap-3 mb-2">
-                  <div className={`w-12 h-12 rounded-lg ${scoreColor}/20 border ${scoreColor}/30 flex items-center justify-center shrink-0`}>
-                    <span className={`text-sm font-bold font-mono ${scoreColor.replace("bg-", "text-")}`}>{score}</span>
+                  <div className={cn("w-12 h-12 rounded-lg border flex items-center justify-center shrink-0", scoreBg + "/10", scoreBg + "/20")}>
+                    <span className={cn("text-sm font-bold font-mono", scoreText)}>{score}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-slate-200 group-hover:text-cyan-400 transition-colors line-clamp-2 leading-snug">
+                    <p className="text-xs font-medium text-gray-900 group-hover:text-cyan-600 transition-colors line-clamp-2 leading-snug">
                       {p.name}
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-1">{p.district}, {p.state}</p>
+                    <p className="text-[10px] text-gray-500 mt-1">{p.district}, {p.state}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-[10px] mb-1.5">
-                  <span className="text-slate-500">{p.statusLabel}</span>
-                  <span className="text-slate-400 font-mono">{formatINR(p.approvedAmount)}</span>
+                  <span className="text-gray-500">{p.statusLabel}</span>
+                  <span className="text-gray-700 font-mono">{formatINR(p.approvedAmount)}</span>
                 </div>
-                <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden">
-                  <div className={`h-full ${scoreColor} rounded-full transition-all`} style={{ width: `${score}%` }} />
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all", scoreBg)} style={{ width: `${score}%` }} />
                 </div>
               </button>
             );
@@ -859,7 +950,7 @@ function SatelliteTab({ satelliteData, isLoading, onProjectClick }: any) {
   );
 }
 
-// ── MPLADS Spending Panel (unchanged) ──────────────────────────────────────
+// ── MPLADS Spending Panel ────────────────────────────────────────────────────
 
 function MPLADSSpending({ mp, totalApproved, totalSpent }: { mp: any; totalApproved: number; totalSpent: number }) {
   const mpladExp = mp.mpladExpenditure ?? 0;
@@ -878,50 +969,48 @@ function MPLADSSpending({ mp, totalApproved, totalSpent }: { mp: any; totalAppro
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPI label="Entitlement" value={formatINR(entINR)} sub="GOI allocation" accent="text-electric-400" />
-        <KPI label="Received" value={formatINR(recINR)} sub="From Govt of India" accent="text-blue-400" />
-        <KPI label="Works Cost" value={formatINR(worksINR)} sub="Sanctioned works" accent="text-saffron-400" />
-        <KPI label="Actual Spent" value={formatINR(expINR)} sub="Real expenditure" accent="text-emerald-400" />
+        <KpiCard label="Entitlement" value={formatINR(entINR)} sub="GOI allocation" accent="blue" />
+        <KpiCard label="Received" value={formatINR(recINR)} sub="From Govt of India" accent="slate" />
+        <KpiCard label="Works Cost" value={formatINR(worksINR)} sub="Sanctioned works" accent="amber" />
+        <KpiCard label="Actual Spent" value={formatINR(expINR)} sub="Real expenditure" accent="green" />
       </div>
 
-      <div className="lg:col-span-2 glass rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-electric-400" />
+      <div className="lg:col-span-2 bg-white border border-gray-200 rounded-md p-5">
+        <div className="h-0.5 bg-blue-500 rounded-t mb-3" aria-hidden />
+        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-blue-600" />
           Utilization Performance
         </h3>
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-slate-400">Utilization over Release</span>
-              <span className={`font-mono font-bold ${mpladUtil > 100 ? "text-red-400" : mpladUtil > 80 ? "text-emerald-400" : "text-saffron-400"}`}>
+              <span className="text-gray-600">Utilization over Release</span>
+              <span className={cn("font-mono font-semibold", mpladUtil > 100 ? "text-red-600" : mpladUtil > 80 ? "text-green-600" : "text-amber-600")}>
                 {mpladUtil.toFixed(1)}%
               </span>
             </div>
-            <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${
-                  mpladUtil > 100 ? "bg-red-500" :
-                  mpladUtil > 80 ? "bg-emerald-500" :
-                  "bg-saffron-500"
-                }`}
+                className={cn("h-full rounded-full transition-all", mpladUtil > 100 ? "bg-red-500" : mpladUtil > 80 ? "bg-green-500" : "bg-amber-500")}
                 style={{ width: `${Math.min(100, mpladUtil)}%` }}
               />
             </div>
           </div>
 
-          <div className="pt-3 space-y-2 border-t border-white/5">
-            <Bar label="Entitlement" amount={entINR} max={entINR} color="bg-electric-500" />
-            <Bar label="Received" amount={recINR} max={entINR} color="bg-blue-500" />
-            <Bar label="Works Cost" amount={worksINR} max={entINR} color="bg-saffron-500" />
-            <Bar label="Actual Spent" amount={expINR} max={entINR} color="bg-emerald-500" />
+          <div className="pt-3 space-y-2 border-t border-gray-100">
+            <Bar label="Entitlement" amount={entINR} max={entINR} color="bg-blue-500" />
+            <Bar label="Received" amount={recINR} max={entINR} color="bg-gray-400" />
+            <Bar label="Works Cost" amount={worksINR} max={entINR} color="bg-amber-500" />
+            <Bar label="Actual Spent" amount={expINR} max={entINR} color="bg-green-500" />
             <Bar label="Unspent" amount={unspentINR} max={entINR} color="bg-red-500" />
           </div>
         </div>
       </div>
 
-      <div className="glass rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-electric-400" />
+      <div className="bg-white border border-gray-200 rounded-md p-5">
+        <div className="h-0.5 bg-blue-500 rounded-t mb-3" aria-hidden />
+        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-blue-600" />
           VOJAS Project Records
         </h3>
         <div className="space-y-2">
@@ -936,68 +1025,18 @@ function MPLADSSpending({ mp, totalApproved, totalSpent }: { mp: any; totalAppro
           )}
         </div>
         {mpladExp > 0 && totalSpent > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/5">
-            <p className="text-[10px] text-slate-500">
-              Government figures: ₹{mpladExp.toFixed(2)} Cr actual expenditure
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-[10px] text-gray-500">
+              Government figures: {mpladExp.toFixed(2)} Cr actual expenditure
             </p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[10px] text-gray-500">
               VOJAS tracked: {formatINR(totalSpent)}
             </p>
-            <p className="text-[10px] text-slate-400 mt-1 italic">
+            <p className="text-[10px] text-gray-600 mt-1 italic">
               Differences are normal — VOJAS tracks project-level disbursements.
             </p>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
-  return (
-    <div>
-      <p className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</p>
-      <p className={`text-sm font-bold ${accent}`}>{value}</p>
-    </div>
-  );
-}
-function Sep() { return <div className="w-px h-7 bg-white/10" />; }
-function Metric({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div>
-      <p className="text-[9px] text-slate-500 uppercase tracking-wider">{label}</p>
-      <p className={`text-lg font-bold font-mono ${color}`}>{value}</p>
-    </div>
-  );
-}
-function Field({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
-  if (!value || value === "—") return null;
-  return (
-    <div>
-      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-xs text-slate-200 ${mono ? "font-mono" : ""}`}>{value}</p>
-    </div>
-  );
-}
-function KPI({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
-  return (
-    <div className="glass rounded-xl p-4">
-      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-lg font-bold font-mono ${accent}`}>{value}</p>
-      <p className="text-[10px] text-slate-600 mt-0.5">{sub}</p>
-    </div>
-  );
-}
-function Bar({ label, amount, max, color }: { label: string; amount: number; max: number; color: string }) {
-  const pct = max > 0 ? (amount / max) * 100 : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between text-[11px] mb-0.5">
-        <span className="text-slate-300">{label}</span>
-        <span className="font-mono text-slate-400">{formatINR(amount)}</span>
-      </div>
-      <div className="h-1.5 bg-navy-800 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

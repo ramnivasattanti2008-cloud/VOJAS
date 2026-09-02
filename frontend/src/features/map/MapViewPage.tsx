@@ -1,3 +1,12 @@
+/**
+ * MapViewPage — VOJAS 2.0 Project Map
+ *
+ * IBM Carbon–inspired light theme for surrounding UI.
+ * Map canvas stays dark (Leaflet/OpenStreetMap constraint).
+ * No gradients, no glassmorphism, no glow effects.
+ * All data from real hooks.
+ */
+
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 
@@ -16,6 +25,11 @@ import { useAnomalies } from "@/hooks/useAnomalies";
 import { useMapOverview } from "@/hooks/useMap";
 import { riskApi, type RiskLevel } from "@/services/risk-api";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
+import { MapLegend } from "./MapLegend";
+import { BoundariesLayer } from "./BoundariesLayer";
+import { DistrictsLayer } from "./DistrictsLayer";
+import { ClusterLayer, AnomalyHeatmap, MapLayersControl, type LayerMode, type TileMode } from "./MapLayers";
+import { cn } from "@/lib/utils";
 import {
   MapPin,
   Search,
@@ -31,38 +45,7 @@ import {
   Layers,
   Briefcase,
 } from "lucide-react";
-import { ClusterLayer, AnomalyHeatmap, MapLayersControl, type LayerMode, type TileMode } from "./MapLayers";
-import { MapLegend } from "./MapLegend";
-import { BoundariesLayer } from "./BoundariesLayer";
-import { DistrictsLayer } from "./DistrictsLayer";
 
-/** Zoom-aware districts wrapper — only renders DistrictsLayer when zoom >= 9 */
-function DistrictsBoundary({
-  showDistricts,
-  districtCounts,
-  highlightedState,
-}: {
-  showDistricts: boolean;
-  districtCounts?: Record<string, number>;
-  highlightedState: string;
-}) {
-  const map = useMap();
-  const [zoom, setZoom] = useState(map.getZoom());
-
-  useEffect(() => {
-    const onZoom = () => setZoom(map.getZoom());
-    map.on("zoom", onZoom);
-    return () => { map.off("zoom", onZoom); };
-  }, [map]);
-
-  if (!showDistricts || zoom < 9) return null;
-  return (
-    <DistrictsLayer
-      districtCounts={districtCounts}
-      highlightedState={highlightedState}
-    />
-  );
-}
 const INDIA_CENTER: [number, number] = [22.5937, 78.9629];
 const INDIA_ZOOM = 5;
 
@@ -91,7 +74,35 @@ function getStatusLabel(v: ProjectStatus): string {
   return PROJECT_STATUSES.find((s) => s.value === v)?.label ?? v;
 }
 
-// Recenter map when filters change
+// ── Zoom-aware districts boundary ────────────────────────────────────────────
+
+function DistrictsBoundary({
+  showDistricts,
+  districtCounts,
+  highlightedState,
+}: {
+  showDistricts: boolean;
+  districtCounts?: Record<string, number>;
+  highlightedState: string;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on("zoom", onZoom);
+    return () => { map.off("zoom", onZoom); };
+  }, [map]);
+  if (!showDistricts || zoom < 9) return null;
+  return (
+    <DistrictsLayer
+      districtCounts={districtCounts}
+      highlightedState={highlightedState}
+    />
+  );
+}
+
+// ── Recenter map when filters change ─────────────────────────────────────────
+
 function RecenterOnFit({ markers }: { markers: MapMarker[] }) {
   const map = useMap();
   useEffect(() => {
@@ -111,6 +122,75 @@ function RecenterOnFit({ markers }: { markers: MapMarker[] }) {
   return null;
 }
 
+// ── KPI chip (compact, light theme) ──────────────────────────────────────────
+
+function StatChip({
+  icon: Icon,
+  value,
+  label,
+  accent = "blue",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  value: number | string;
+  label: string;
+  accent?: "blue" | "green" | "amber";
+}) {
+  const colors: Record<string, { icon: string; text: string }> = {
+    blue:  { icon: "text-blue-600", text: "text-gray-900" },
+    green: { icon: "text-green-600", text: "text-gray-900" },
+    amber: { icon: "text-amber-600", text: "text-gray-900" },
+  };
+  const c = colors[accent] ?? colors.blue;
+  return (
+    <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded px-3 py-1.5">
+      <Icon className={cn("w-3.5 h-3.5 shrink-0", c.icon)} aria-hidden="true" />
+      <span className={cn("font-semibold text-sm tabular-nums", c.text)}>{value}</span>
+      <span className="text-xs text-gray-500">{label}</span>
+    </div>
+  );
+}
+
+// ── Filter chip ──────────────────────────────────────────────────────────────
+
+function FilterChip({
+  label,
+  count,
+  isActive,
+  color,
+  onClick,
+}: {
+  label: string;
+  count?: number;
+  isActive: boolean;
+  color?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={isActive}
+      className={cn(
+        "flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded border transition-colors",
+        isActive
+          ? "bg-blue-50 border-blue-200 text-blue-700 font-medium"
+          : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+      )}
+    >
+      {color && (
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      )}
+      {label}
+      {count !== undefined && (
+        <span className={cn("text-[10px] tabular-nums", isActive ? "text-blue-500" : "text-gray-400")}>
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+
 type EnrichedMarker = MapMarker & {
   anomalyCount: number;
   riskLevel?: RiskLevel;
@@ -119,16 +199,13 @@ type EnrichedMarker = MapMarker & {
 export default function MapViewPage() {
   const navigate = useNavigate();
 
-  // Layer mode
   const [layerMode, setLayerMode] = useState<LayerMode>("markers");
-
-  // Tile mode (base map)
   const [tileMode, setTileMode] = useState<TileMode>("map");
 
-  // Filters
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "">("");
   const [stateFilter, setStateFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [riskLevelFilter, setRiskLevelFilter] = useState<RiskLevel | "">("");
   const [sectorFilter, setSectorFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -138,13 +215,9 @@ export default function MapViewPage() {
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [showDistricts, setShowDistricts] = useState(false);
 
-  // Per-project risk cache: projectId → riskLevel
   const riskCache = useRef<Map<string, RiskLevel>>(new Map());
-
-  // Trigger recenter when filters change
   const [recenterToken, setRecenterToken] = useState(0);
 
-  // React Query: server-state caching for map overview + open anomalies
   const overviewQuery = useMapOverview({
     status: (statusFilter || undefined) as ProjectStatus | undefined,
     state: stateFilter || undefined,
@@ -156,7 +229,6 @@ export default function MapViewPage() {
   const loading = overviewQuery.isLoading;
   const error = overviewQuery.error?.message ?? null;
 
-  // Lazy-fetch risk for a project; returns the cached or freshly-fetched level.
   const getProjectRisk = async (projectId: string): Promise<RiskLevel | undefined> => {
     if (riskCache.current.has(projectId)) {
       return riskCache.current.get(projectId);
@@ -170,54 +242,35 @@ export default function MapViewPage() {
     }
   };
 
-  // Anomaly count by projectId (only those with location data)
   const anomalyCountByProject = useMemo(() => {
     const m = new Map<string, number>();
     for (const a of anomalies) {
-      if (a.projectId) {
-        m.set(a.projectId, (m.get(a.projectId) ?? 0) + 1);
-      }
+      if (a.projectId) m.set(a.projectId, (m.get(a.projectId) ?? 0) + 1);
     }
     return m;
   }, [anomalies]);
 
-  // Build a flat anomaly list with location data for the heatmap.
-  // Anomalies may not have lat/lng — synthesize from the matching project marker.
   const heatmapAnomalies = useMemo(() => {
-    if (!overview) return [] as (Pick<Anomaly, "id" | "projectId" | "severity"> & {
-      latitude: number;
-      longitude: number;
-    })[];
-
-    // Build project-id → marker location map
+    if (!overview) return [] as (Pick<Anomaly, "id" | "projectId" | "severity"> & { latitude: number; longitude: number })[];
     const locByProject = new Map<string, { lat: number; lng: number }>();
     for (const m of overview.markers) {
       locByProject.set(m.project.id, { lat: m.latitude, lng: m.longitude });
     }
-
     return anomalies
       .map((a) => {
         if (!a.projectId) return null;
         const loc = locByProject.get(a.projectId);
         if (!loc) return null;
-        return {
-          id: a.id,
-          projectId: a.projectId,
-          severity: a.severity,
-          latitude: loc.lat,
-          longitude: loc.lng,
-        };
+        return { id: a.id, projectId: a.projectId, severity: a.severity, latitude: loc.lat, longitude: loc.lng };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
   }, [anomalies, overview]);
 
-  // Unique states for the dropdown
   const states = useMemo(() => {
     if (!overview) return [] as string[];
     return Array.from(new Set(overview.markers.map((m) => m.project.state))).sort();
   }, [overview]);
 
-  // Apply client-side search + state + risk + anomaly filters
   const enrichedMarkers: EnrichedMarker[] = useMemo(() => {
     if (!overview) return [];
     return overview.markers.map((m) => ({
@@ -229,9 +282,7 @@ export default function MapViewPage() {
 
   const filtered = useMemo(() => {
     let list = enrichedMarkers;
-    if (stateFilter) {
-      list = list.filter((m) => m.project.state === stateFilter);
-    }
+    if (stateFilter) list = list.filter((m) => m.project.state === stateFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter((m) =>
@@ -240,30 +291,18 @@ export default function MapViewPage() {
         (m.label ?? "").toLowerCase().includes(q)
       );
     }
-    if (riskLevelFilter) {
-      // Opportunistic: only filter when we know the risk level for that project.
-      // Projects not yet in cache (no popup opened) are hidden when a risk filter is active.
-      list = list.filter((m) => m.riskLevel === riskLevelFilter);
-    }
-    if (sectorFilter) {
-      list = list.filter((m) => m.project.sector === sectorFilter);
-    }
+    if (riskLevelFilter) list = list.filter((m) => m.riskLevel === riskLevelFilter);
+    if (sectorFilter) list = list.filter((m) => m.project.sector === sectorFilter);
     if (dateFrom) {
       const from = new Date(dateFrom).getTime();
-      list = list.filter((m) => {
-        if (!m.project.startDate) return false;
-        return new Date(m.project.startDate).getTime() >= from;
-      });
+      list = list.filter((m) => m.project.startDate && new Date(m.project.startDate).getTime() >= from);
     }
     if (dateTo) {
       const to = new Date(dateTo).getTime();
-      list = list.filter((m) => {
-        if (!m.project.expectedEndDate) return false;
-        return new Date(m.project.expectedEndDate).getTime() <= to;
-      });
+      list = list.filter((m) => m.project.expectedEndDate && new Date(m.project.expectedEndDate).getTime() <= to);
     }
     if (budgetMin) {
-      const min = parseFloat(budgetMin) * 1_000_000; // convert crores → rupees
+      const min = parseFloat(budgetMin) * 1_000_000;
       list = list.filter((m) => m.project.approvedAmount >= min);
     }
     if (budgetMax) {
@@ -273,7 +312,6 @@ export default function MapViewPage() {
     return list;
   }, [enrichedMarkers, stateFilter, search, riskLevelFilter, sectorFilter, dateFrom, dateTo, budgetMin, budgetMax]);
 
-  // Status counts (across full overview, before status filter)
   const statusCounts = useMemo(() => {
     if (!overview) return {} as Record<ProjectStatus, number>;
     const counts: Record<string, number> = {};
@@ -283,7 +321,6 @@ export default function MapViewPage() {
     return counts as Record<ProjectStatus, number>;
   }, [overview]);
 
-  // How many projects have any open anomaly (header chip)
   const withAnomaliesCount = useMemo(
     () => enrichedMarkers.filter((m) => m.anomalyCount > 0).length,
     [enrichedMarkers]
@@ -292,6 +329,7 @@ export default function MapViewPage() {
   const clearFilters = () => {
     setStatusFilter("");
     setStateFilter("");
+    setSearchInput("");
     setSearch("");
     setRiskLevelFilter("");
     setSectorFilter("");
@@ -304,98 +342,84 @@ export default function MapViewPage() {
     !!statusFilter || !!stateFilter || !!search || !!riskLevelFilter ||
     !!sectorFilter || !!dateFrom || !!dateTo || !!budgetMin || !!budgetMax;
 
-  // Marker click — fetch risk lazily, refresh marker list to surface the badge
   const handleMarkerClick = async (projectId: string) => {
     const cached = riskCache.current.has(projectId);
     if (!cached) {
       await getProjectRisk(projectId);
-      // Trigger a re-render so the freshly cached riskLevel is shown in popup/sidebar.
       setRecenterToken((t) => t + 1);
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-[1600px]">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <MapIcon className="w-6 h-6 text-electric-400" />
+          <h1 className="text-2xl font-semibold text-gray-900 leading-tight flex items-center gap-2">
+            <MapIcon className="w-6 h-6 text-blue-600" />
             Project Map
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-gray-600 mt-1">
             Geographic distribution of MPLAD projects across India
           </p>
         </div>
         {overview && (
-          <div className="flex items-center gap-3 text-xs text-slate-400">
-            <div className="glass rounded-xl px-3 py-1.5 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-electric-400" />
-              <span className="text-white font-medium">{overview.total}</span> total
-            </div>
-            <div className="glass rounded-xl px-3 py-1.5 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-white font-medium">
-                {overview.markers.filter((m) => m.verified).length}
-              </span>{" "}
-              verified
-            </div>
-            <div className="glass rounded-xl px-3 py-1.5 flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
-              <span className="text-white font-medium">{withAnomaliesCount}</span> with anomalies
-            </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <StatChip icon={MapPin} value={overview.total} label="total" accent="blue" />
+            <StatChip icon={CheckCircle2} value={overview.markers.filter((m) => m.verified).length} label="verified" accent="green" />
+            <StatChip icon={AlertTriangle} value={withAnomaliesCount} label="with anomalies" accent="amber" />
           </div>
         )}
       </div>
 
-      {/* Filters bar */}
-      <div className="glass rounded-xl p-4 space-y-3">
+      {/* Filters */}
+      <div className="bg-white border border-gray-200 rounded-md p-4 space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Search */}
           <form
             role="search"
             aria-label="Search projects on map"
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={(e) => { e.preventDefault(); setSearch(searchInput.trim()); }}
             className="relative flex-1 min-w-[220px]"
           >
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" aria-hidden="true" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+              aria-hidden="true"
+            />
             <input
               type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by project, district, or label..."
-              aria-label="Search projects by name, district, or label"
-              className="w-full bg-navy-800/60 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-electric-500/50 focus:ring-1 focus:ring-electric-500/20 transition-all"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by project, district, or label…"
+              className="w-full border border-gray-200 rounded px-3 py-2 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
             />
           </form>
 
+          {/* State filter */}
           <select
             value={stateFilter}
             onChange={(e) => setStateFilter(e.target.value)}
-            aria-label="Filter by state"
-            className="bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-electric-500/50 transition-colors cursor-pointer"
+            className="border border-gray-200 rounded px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer bg-white"
           >
             <option value="">All states</option>
-            {states.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
+            {states.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
 
+          {/* Status filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ProjectStatus | "")}
-            aria-label="Filter by project status"
-            className="bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-electric-500/50 transition-colors cursor-pointer"
+            className="border border-gray-200 rounded px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer bg-white"
           >
             <option value="">All statuses</option>
-            {PROJECT_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
+            {PROJECT_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
 
+          {/* Clear */}
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 px-3 py-2 border border-gray-200 rounded hover:border-gray-300 hover:bg-gray-50 transition-colors"
             >
               <X className="w-3.5 h-3.5" />
               Clear
@@ -403,162 +427,105 @@ export default function MapViewPage() {
           )}
         </div>
 
-        {/* Status quick-filter chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">Status:</span>
-          {PROJECT_STATUSES.map((s) => {
-            const isActive = statusFilter === s.value;
-            const count = statusCounts[s.value] ?? 0;
-            return (
-              <button
-                key={s.value}
-                onClick={() => setStatusFilter(isActive ? "" : s.value)}
-                aria-pressed={isActive}
-                className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-all ${
-                  isActive
-                    ? "bg-electric-500/15 border-electric-500/30 text-electric-400"
-                    : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
-                }`}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: statusHex(s.value) }}
-                />
-                {s.label}
-                <span className={`text-[10px] ${isActive ? "text-electric-300" : "text-slate-500"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+        {/* Status chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
+          <span className="text-[11px] text-gray-500 uppercase tracking-wider font-medium mr-1">Status:</span>
+          {PROJECT_STATUSES.map((s) => (
+            <FilterChip
+              key={s.value}
+              label={s.label}
+              count={statusCounts[s.value] ?? 0}
+              isActive={statusFilter === s.value}
+              color={statusHex(s.value)}
+              onClick={() => setStatusFilter(statusFilter === s.value ? "" : s.value as ProjectStatus)}
+            />
+          ))}
         </div>
 
-        {/* Risk-level quick-filter chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <AlertTriangle className="w-3.5 h-3.5 text-slate-500" />
-          <span
-            className="text-[10px] text-slate-500 uppercase tracking-wider mr-1"
-            title="Risk filter applies to projects whose risk has been viewed in this session."
-          >
-            Risk:
-          </span>
-          {RISK_FILTER_LEVELS.map((level) => {
-            const isActive = riskLevelFilter === level;
-            const color = RISK_COLORS[level];
-            return (
-              <button
-                key={level}
-                onClick={() => setRiskLevelFilter(isActive ? "" : level)}
-                aria-pressed={isActive}
-                className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-all ${
-                  isActive
-                    ? "border-electric-500/30 text-electric-400"
-                    : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
-                }`}
-                style={
-                  isActive
-                    ? { backgroundColor: `${color}25` }
-                    : undefined
-                }
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                {level}
-              </button>
-            );
-          })}
+        {/* Risk chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <AlertTriangle className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
+          <span className="text-[11px] text-gray-500 uppercase tracking-wider font-medium mr-1">Risk:</span>
+          {RISK_FILTER_LEVELS.map((level) => (
+            <FilterChip
+              key={level}
+              label={level}
+              isActive={riskLevelFilter === level}
+              color={RISK_COLORS[level]}
+              onClick={() => setRiskLevelFilter(riskLevelFilter === level ? "" : level)}
+            />
+          ))}
           {riskLevelFilter && (
-            <span className="text-[10px] text-slate-600 italic ml-1">
-              (applies to projects with cached risk)
-            </span>
+            <span className="text-[10px] text-gray-400 italic ml-1">(applies to cached risk)</span>
           )}
         </div>
 
-        {/* Sector + budget + date range filters (Phase 5B) */}
-        <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-white/5">
-          <Briefcase className="w-3.5 h-3.5 text-slate-500" />
+        {/* Sector + budget + date */}
+        <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-100">
+          <Briefcase className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
           <select
             value={sectorFilter}
             onChange={(e) => setSectorFilter(e.target.value)}
-            aria-label="Filter by project sector"
-            className="bg-navy-800/60 border border-white/10 rounded-md px-2.5 py-1.5 text-[11px] text-slate-200 focus:outline-none focus:border-electric-500/50 transition-colors cursor-pointer"
+            className="border border-gray-200 rounded px-2.5 py-1.5 text-[11px] text-gray-700 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer bg-white"
           >
             <option value="">All sectors</option>
-            {PROJECT_SECTORS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
+            {PROJECT_SECTORS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
 
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider ml-2 flex items-center gap-1">
-            <IndianRupee className="w-3 h-3" aria-hidden="true" /> Budget (₹Cr)
+          <span className="text-[11px] text-gray-500 ml-2 flex items-center gap-1">
+            <IndianRupee className="w-3 h-3" aria-hidden="true" />
+            Budget (₹Cr)
           </span>
           <input
-            type="number"
-            value={budgetMin}
-            onChange={(e) => setBudgetMin(e.target.value)}
-            placeholder="Min"
-            min="0"
-            step="0.1"
-            aria-label="Minimum budget in crore"
-            className="w-16 bg-navy-800/60 border border-white/10 rounded-md px-2 py-1.5 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-electric-500/50"
+            type="number" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)}
+            placeholder="Min" min="0" step="0.1"
+            className="w-16 border border-gray-200 rounded px-2 py-1.5 text-[11px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500"
           />
-          <span className="text-slate-600 text-[10px]" aria-hidden="true">–</span>
+          <span className="text-gray-400 text-[11px]">–</span>
           <input
-            type="number"
-            value={budgetMax}
-            onChange={(e) => setBudgetMax(e.target.value)}
-            placeholder="Max"
-            min="0"
-            step="0.1"
-            aria-label="Maximum budget in crore"
-            className="w-16 bg-navy-800/60 border border-white/10 rounded-md px-2 py-1.5 text-[11px] text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-electric-500/50"
+            type="number" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)}
+            placeholder="Max" min="0" step="0.1"
+            className="w-16 border border-gray-200 rounded px-2 py-1.5 text-[11px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500"
           />
 
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider ml-2 flex items-center gap-1">
-            <Calendar className="w-3 h-3" aria-hidden="true" /> Period
+          <span className="text-[11px] text-gray-500 ml-2 flex items-center gap-1">
+            <Calendar className="w-3 h-3" aria-hidden="true" />
+            Period
           </span>
           <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            aria-label="Start date filter"
-            className="bg-navy-800/60 border border-white/10 rounded-md px-2 py-1.5 text-[11px] text-slate-200 focus:outline-none focus:border-electric-500/50 [color-scheme:dark]"
+            type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="border border-gray-200 rounded px-2 py-1.5 text-[11px] text-gray-800 focus:outline-none focus:border-blue-500 [color-scheme:light]"
           />
-          <span className="text-slate-600 text-[10px]" aria-hidden="true">→</span>
+          <span className="text-gray-400 text-[11px]">→</span>
           <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            aria-label="End date filter"
-            className="bg-navy-800/60 border border-white/10 rounded-md px-2 py-1.5 text-[11px] text-slate-200 focus:outline-none focus:border-electric-500/50 [color-scheme:dark]"
+            type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="border border-gray-200 rounded px-2 py-1.5 text-[11px] text-gray-800 focus:outline-none focus:border-blue-500 [color-scheme:light]"
           />
 
+          {/* Boundary toggles */}
           <button
             onClick={() => setShowBoundaries((v) => !v)}
             aria-pressed={showBoundaries}
-            className={`ml-auto flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-md border transition-all ${
+            className={cn(
+              "ml-auto flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded border transition-colors",
               showBoundaries
-                ? "bg-electric-500/15 border-electric-500/30 text-electric-400"
-                : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
-            }`}
-            title="Toggle India state boundaries"
+                ? "bg-blue-50 border-blue-200 text-blue-700 font-medium"
+                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+            )}
           >
             <Layers className="w-3 h-3" aria-hidden="true" />
             {showBoundaries ? "States on" : "States"}
           </button>
-
           <button
             onClick={() => setShowDistricts((v) => !v)}
             aria-pressed={showDistricts}
-            className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-md border transition-all ${
+            className={cn(
+              "flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded border transition-colors",
               showDistricts
-                ? "bg-electric-500/15 border-electric-500/30 text-electric-400"
-                : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
-            }`}
-            title="Toggle India district boundaries (visible at zoom ≥ 9)"
+                ? "bg-blue-50 border-blue-200 text-blue-700 font-medium"
+                : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+            )}
           >
             <Layers className="w-3 h-3" aria-hidden="true" />
             {showDistricts ? "Districts on" : "Districts"}
@@ -566,19 +533,19 @@ export default function MapViewPage() {
         </div>
       </div>
 
-      {/* Map + sidebar layout */}
+      {/* Map + sidebar */}
       {loading ? (
-        <div className="glass rounded-xl" style={{ height: 560 }}>
-          <LoadingState message="Loading map data..." />
+        <div className="bg-white border border-gray-200 rounded-md" style={{ height: 560 }}>
+          <LoadingState message="Loading map data…" />
         </div>
       ) : error ? (
-        <div className="glass rounded-xl" style={{ height: 560 }}>
+        <div className="bg-white border border-gray-200 rounded-md" style={{ height: 560 }}>
           <ErrorState message={error} onRetry={() => overviewQuery.refetch()} />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-          {/* Map */}
-          <div className="glass rounded-xl overflow-hidden relative" style={{ height: 560 }}>
+          {/* Map (dark canvas stays dark) */}
+          <div className="rounded-md overflow-hidden relative border border-gray-200" style={{ height: 560 }}>
             <MapContainer
               center={INDIA_CENTER}
               zoom={INDIA_ZOOM}
@@ -594,16 +561,13 @@ export default function MapViewPage() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {/* Satellite layer (only when in satellite or hybrid mode) */}
               {(tileMode === "satellite" || tileMode === "hybrid") && (
                 <TileLayer
-                  attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+                  attribution="Tiles © Esri"
                   url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  maxNativeZoom={19}
-                  maxZoom={19}
+                  maxNativeZoom={19} maxZoom={19}
                 />
               )}
-              {/* Semi-transparent OSM overlay for hybrid mode */}
               {tileMode === "hybrid" && (
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -617,31 +581,23 @@ export default function MapViewPage() {
                 <BoundariesLayer
                   highlightedState={stateFilter}
                   stateCounts={overview?.stateCounts}
-                  onStateClick={(state) => {
-                    setStateFilter((prev) => (prev === state ? "" : state));
-                  }}
+                  onStateClick={(state) => setStateFilter((prev) => (prev === state ? "" : state))}
                 />
               )}
-
               <DistrictsBoundary
                 showDistricts={showDistricts}
                 districtCounts={overview?.districtCounts}
                 highlightedState={stateFilter}
               />
-
               {(layerMode === "markers" || layerMode === "both") && (
-                <ClusterLayer
-                  markers={filtered}
-                  onMarkerClick={handleMarkerClick}
-                />
+                <ClusterLayer markers={filtered} onMarkerClick={handleMarkerClick} />
               )}
-
               {(layerMode === "heatmap" || layerMode === "both") && (
                 <AnomalyHeatmap anomalies={heatmapAnomalies} />
               )}
             </MapContainer>
 
-            {/* Floating layer control (top-right) */}
+            {/* Floating layer control */}
             <MapLayersControl
               mode={layerMode}
               onChange={setLayerMode}
@@ -649,22 +605,25 @@ export default function MapViewPage() {
               onTileModeChange={setTileMode}
             />
 
-            {/* Floating count badge (top-left) — announced to assistive tech */}
+            {/* Floating count badge */}
             <div
               role="status"
               aria-live="polite"
-              className="absolute top-3 left-3 z-[1000] glass rounded-lg px-3 py-1.5 text-xs text-slate-300 pointer-events-none"
+              className="absolute top-3 left-3 z-[1000] bg-white border border-gray-200 rounded px-3 py-1.5 text-xs text-gray-700 pointer-events-none shadow-sm"
             >
-              Showing <span className="text-white font-medium">{filtered.length}</span> of{" "}
-              <span className="text-white font-medium">{overview?.total ?? 0}</span>
+              Showing <span className="font-semibold">{filtered.length}</span> of{" "}
+              <span className="font-semibold">{overview?.total ?? 0}</span>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="glass rounded-xl p-4 space-y-3" style={{ height: 560, overflowY: "auto" }}>
+          {/* Sidebar (light theme) */}
+          <div
+            className="bg-white border border-gray-200 rounded-md p-4 space-y-3"
+            style={{ height: 560, overflowY: "auto" }}
+          >
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-electric-400" />
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-600" />
                 Projects ({filtered.length})
               </h2>
             </div>
@@ -678,45 +637,50 @@ export default function MapViewPage() {
             ) : (
               <div className="space-y-2">
                 {filtered.map((m) => {
-                  const statusStyle = STATUS_COLORS[m.project.status];
+                  const statusStyle = STATUS_COLORS[m.project.status] ?? {
+                    bg: "bg-gray-100",
+                    text: "text-gray-700",
+                    dot: "bg-gray-400",
+                  };
                   return (
                     <button
                       key={m.id}
                       onClick={() => navigate(`/projects/${m.project.id}`)}
-                      className="w-full text-left p-3 rounded-lg bg-navy-800/40 border border-white/5 hover:border-white/15 hover:bg-navy-800/70 transition-all group"
+                      className="w-full text-left p-3 rounded-md bg-gray-50 border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors group"
                     >
                       <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <span
-                          className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border border-white/5 ${statusStyle.bg} ${statusStyle.text}`}
-                        >
-                          <span className={`w-1 h-1 rounded-full ${statusStyle.dot}`} />
+                        <span className={cn(
+                          "flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider",
+                          statusStyle.bg, statusStyle.text
+                        )}>
+                          <span className={cn("w-1 h-1 rounded-full", statusStyle.dot)} />
                           {getStatusLabel(m.project.status)}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {m.anomalyCount > 0 && (
-                            <span className="flex items-center gap-0.5 text-[9px] text-orange-400 font-semibold">
+                            <span className="flex items-center gap-0.5 text-[9px] text-amber-600 font-semibold">
                               <AlertTriangle className="w-2.5 h-2.5" />
                               {m.anomalyCount}
                             </span>
                           )}
                           {m.riskLevel && (
                             <span
-                              className="w-2 h-2 rounded-full"
+                              className="w-2 h-2 rounded-full shrink-0"
                               style={{ backgroundColor: RISK_COLORS[m.riskLevel] }}
                               title={`${m.riskLevel} risk`}
                             />
                           )}
                           {m.verified && (
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
                           )}
                         </div>
                       </div>
-                      <p className="text-xs font-semibold text-slate-200 group-hover:text-electric-300 transition-colors line-clamp-2 leading-snug">
+                      <p className="text-xs font-semibold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 leading-snug">
                         {m.project.name}
                       </p>
-                      <div className="mt-1.5 flex items-center gap-2 text-[10px] text-slate-500">
+                      <div className="mt-1.5 flex items-center gap-2 text-[10px] text-gray-500">
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-2.5 h-2.5" />
+                          <MapPin className="w-2.5 h-2.5 shrink-0" />
                           {m.project.district}
                         </span>
                         {m.label && (
@@ -726,12 +690,15 @@ export default function MapViewPage() {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <IndianRupee className="w-2.5 h-2.5" />
-                          <span className="text-slate-400">Verified location</span>
+                      <div className="mt-1.5 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-500">
+                          <IndianRupee className="w-2.5 h-2.5 inline" />
+                          {(m.project.approvedAmount / 1_00_00_000).toFixed(2)} Cr
                         </span>
-                        <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-electric-400 group-hover:translate-x-0.5 transition-all" />
+                        <div className="flex items-center gap-1 text-gray-400 group-hover:text-blue-600 transition-colors">
+                          <span className="text-[10px]">View</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </div>
                       </div>
                     </button>
                   );

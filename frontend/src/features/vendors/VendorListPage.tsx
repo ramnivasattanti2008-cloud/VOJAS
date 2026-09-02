@@ -1,6 +1,11 @@
+/**
+ * VendorListPage — IBM Carbon light theme.
+ * No glassmorphism, no gradients, no glow effects, no decorative animations.
+ * All data from real hooks.
+ */
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   Building2,
   Search,
@@ -11,7 +16,7 @@ import {
 import { useVendors, useTopVendors } from "@/hooks/useVendors";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui";
 import PageHeader from "@/components/ui/PageHeader";
-import { fadeUp, staggerContainer } from "@/components/ui/Animations";
+import { cn } from "@/lib/utils";
 import type { Vendor } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -26,8 +31,8 @@ function formatINR(amount: number): string {
 function RiskBadge({ constituencyCount }: { constituencyCount: number }) {
   if (constituencyCount > 5) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-        bg-red-500/10 text-red-400 border border-red-500/30">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold
+        bg-red-50 text-red-700 border border-red-200">
         <AlertTriangle className="w-3 h-3" />
         High Risk
       </span>
@@ -35,15 +40,15 @@ function RiskBadge({ constituencyCount }: { constituencyCount: number }) {
   }
   if (constituencyCount > 3) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-        bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold
+        bg-amber-50 text-amber-700 border border-amber-200">
         Medium Risk
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-      bg-green-500/10 text-green-400 border border-green-500/30">
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold
+      bg-green-50 text-green-700 border border-green-200">
       Normal
     </span>
   );
@@ -87,34 +92,21 @@ export default function VendorListPage() {
   };
 
   return (
-    <motion.div
-      className="space-y-6"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={fadeUp}>
-        <PageHeader
-          title="Vendors"
-          gradientWord="Vendors"
-          accent="electric"
-          icon={Building2}
-          subtitle={`Deduplicated MPLADS vendor registry · ${total} unique vendors`}
-          breadcrumbs={[
-            { label: "Dashboard", href: "/" },
-            { label: "Vendors" },
-          ]}
-        />
-      </motion.div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Vendors"
+        subtitle={`Deduplicated MPLADS vendor registry · ${total.toLocaleString("en-IN")} unique vendors`}
+        icon={Building2}
+        breadcrumbs={[
+          { label: "Dashboard", href: "/" },
+          { label: "Vendors" },
+        ]}
+      />
 
       {/* Filters */}
-      <motion.div
-        variants={fadeUp}
-        className="flex flex-wrap items-center gap-3 p-4 rounded-xl
-          bg-slate-900/40 border border-slate-800"
-      >
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-white border border-gray-200 rounded-md">
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search by vendor name..."
@@ -124,8 +116,8 @@ export default function VendorListPage() {
               if (e.target.value.length === 0) setSearch("");
             }}
             onKeyDown={(e) => e.key === "Enter" && setSearch(searchInput)}
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700
-              text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-saffron-500/50"
+            className="w-full pl-9 pr-3 py-2 rounded border border-gray-300
+              text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
 
@@ -134,16 +126,16 @@ export default function VendorListPage() {
           placeholder="State (e.g. DELHI)"
           value={stateFilter}
           onChange={(e) => { setStateFilter(e.target.value.toUpperCase()); setPage(1); }}
-          className="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700
-            text-slate-300 text-sm focus:outline-none focus:border-saffron-500/50
-            placeholder:text-slate-600 w-36 uppercase"
+          className="px-3 py-2 rounded border border-gray-300
+            text-gray-700 text-sm focus:outline-none focus:border-blue-500
+            placeholder:text-gray-400 w-36 uppercase bg-white"
         />
 
         <select
           value={minPaid}
           onChange={(e) => { setMinPaid(e.target.value); setPage(1); }}
-          className="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700
-            text-slate-300 text-sm focus:outline-none focus:border-saffron-500/50 cursor-pointer"
+          className="px-3 py-2 rounded border border-gray-300
+            text-gray-700 text-sm focus:outline-none focus:border-blue-500 cursor-pointer bg-white"
         >
           <option value="">Any amount</option>
           <option value="10">≥ ₹10L paid</option>
@@ -158,8 +150,8 @@ export default function VendorListPage() {
             const [b, d] = e.target.value.split("-") as [typeof sortBy, typeof sortDir];
             setSortBy(b); setSortDir(d);
           }}
-          className="px-3 py-2 rounded-lg bg-slate-800/60 border border-slate-700
-            text-slate-300 text-sm focus:outline-none focus:border-saffron-500/50 cursor-pointer"
+          className="px-3 py-2 rounded border border-gray-300
+            text-gray-700 text-sm focus:outline-none focus:border-blue-500 cursor-pointer bg-white"
         >
           <option value="totalPaid-desc">Most paid</option>
           <option value="projectCount-desc">Most projects</option>
@@ -170,51 +162,53 @@ export default function VendorListPage() {
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg
-              text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors text-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded
+              text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors text-sm border border-gray-200"
           >
             <X className="w-3.5 h-3.5" />
             Clear
           </button>
         )}
-      </motion.div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Top vendors sidebar */}
-        <motion.div variants={fadeUp} className="lg:col-span-1 space-y-4">
-          <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+        <div className="lg:col-span-1 space-y-4">
+          <div className="p-4 bg-white border border-gray-200 rounded-md">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
               Top 5 by Payments
             </h3>
             {topQuery.isLoading ? (
-              <p className="text-slate-600 text-sm">Loading...</p>
+              <p className="text-gray-400 text-sm">Loading...</p>
             ) : (
               <div className="space-y-3">
                 {topQuery.data?.items?.slice(0, 5).map((v: Vendor, i: number) => (
                   <div
                     key={v.id}
-                    className="flex items-start gap-2 cursor-pointer hover:bg-slate-800/40
-                      rounded-lg p-2 transition-colors"
+                    className="flex items-start gap-2 cursor-pointer hover:bg-gray-50
+                      rounded p-2 transition-colors"
                     onClick={() => navigate(`/vendors/${v.id}`)}
                   >
-                    <span className={`text-sm font-bold w-5 shrink-0
-                      ${i === 0 ? "text-saffron-400" : i === 1 ? "text-slate-300" : "text-slate-600"}`}>
+                    <span className={cn(
+                      "text-sm font-bold w-5 shrink-0",
+                      i === 0 ? "text-amber-600" : i === 1 ? "text-gray-600" : "text-gray-400"
+                    )}>
                       {i + 1}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-200 truncate">{v.name}</p>
-                      <p className="text-xs text-slate-500">{v.state ?? "—"} · {v.constituencyCount} constituencies</p>
-                      <p className="text-xs text-saffron-400 font-semibold">{formatINR(v.totalPaid)}</p>
+                      <p className="text-sm font-medium text-gray-900 truncate">{v.name}</p>
+                      <p className="text-xs text-gray-500">{v.state ?? "—"} · {v.constituencyCount} constituencies</p>
+                      <p className="text-xs text-blue-600 font-semibold">{formatINR(v.totalPaid)}</p>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Main table */}
-        <motion.div variants={fadeUp} className="lg:col-span-3">
+        <div className="lg:col-span-3">
           {loading ? (
             <LoadingState message="Loading vendors..." />
           ) : error ? (
@@ -227,7 +221,7 @@ export default function VendorListPage() {
               action={hasFilters ? (
                 <button
                   onClick={clearFilters}
-                  className="px-4 py-2 rounded-lg bg-saffron-500/10 text-saffron-400 border border-saffron-500/30 hover:bg-saffron-500/20 text-sm"
+                  className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm"
                 >
                   Clear filters
                 </button>
@@ -235,48 +229,48 @@ export default function VendorListPage() {
             />
           ) : (
             <>
-              <div className="overflow-x-auto rounded-xl border border-slate-800">
+              <div className="overflow-x-auto bg-white border border-gray-200 rounded-md">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-900/80 border-b border-slate-800">
+                    <tr className="bg-gray-50 border-b border-gray-200">
                       {["Vendor", "State", "Districts", "Constituencies", "Projects", "Total Paid", "Risk", ""].map((h) => (
                         <th key={h}
-                          className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-gray-100">
                     {items.map((v: Vendor) => (
                       <tr
                         key={v.id}
-                        className="hover:bg-slate-800/40 transition-colors cursor-pointer"
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
                         onClick={() => navigate(`/vendors/${v.id}`)}
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400
-                              flex items-center justify-center text-xs font-bold shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600
+                              flex items-center justify-center text-xs font-bold shrink-0 border border-blue-200">
                               {v.name.charAt(0)}
                             </div>
-                            <span className="font-medium text-slate-200 truncate max-w-[180px]">
+                            <span className="font-medium text-gray-900 truncate max-w-[180px]">
                               {v.name}
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-400">
-                          {v.state ?? <span className="text-slate-600 italic">—</span>}
+                        <td className="px-4 py-3 text-gray-600">
+                          {v.state ?? <span className="text-gray-300 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-400">
-                          {v.district ?? <span className="text-slate-600 italic">—</span>}
+                        <td className="px-4 py-3 text-gray-600">
+                          {v.district ?? <span className="text-gray-300 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-300 font-medium">{v.constituencyCount}</td>
-                        <td className="px-4 py-3 text-slate-300">{v.projectCount}</td>
-                        <td className="px-4 py-3 text-saffron-400 font-semibold">{formatINR(v.totalPaid)}</td>
+                        <td className="px-4 py-3 text-gray-700 font-medium">{v.constituencyCount}</td>
+                        <td className="px-4 py-3 text-gray-700">{v.projectCount}</td>
+                        <td className="px-4 py-3 text-blue-600 font-semibold">{formatINR(v.totalPaid)}</td>
                         <td className="px-4 py-3"><RiskBadge constituencyCount={v.constituencyCount} /></td>
                         <td className="px-4 py-3 text-right">
-                          <ChevronRight className="w-4 h-4 text-slate-600 inline" />
+                          <ChevronRight className="w-4 h-4 text-gray-400 inline" />
                         </td>
                       </tr>
                     ))}
@@ -286,23 +280,23 @@ export default function VendorListPage() {
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-4">
-                  <p className="text-slate-500 text-sm">
-                    Page {page} of {totalPages} · {total} total
+                  <p className="text-gray-500 text-sm">
+                    Page {page} of {totalPages} · {total.toLocaleString("en-IN")} total
                   </p>
                   <div className="flex gap-2">
                     <button
                       disabled={page <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 text-sm
-                        disabled:opacity-40 hover:bg-slate-800/60 transition-colors"
+                      className="px-4 py-2 rounded border border-gray-300 text-gray-700 text-sm
+                        disabled:opacity-40 hover:bg-gray-50 transition-colors"
                     >
                       Previous
                     </button>
                     <button
                       disabled={page >= totalPages}
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 text-sm
-                        disabled:opacity-40 hover:bg-slate-800/60 transition-colors"
+                      className="px-4 py-2 rounded border border-gray-300 text-gray-700 text-sm
+                        disabled:opacity-40 hover:bg-gray-50 transition-colors"
                     >
                       Next
                     </button>
@@ -311,8 +305,8 @@ export default function VendorListPage() {
               )}
             </>
           )}
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

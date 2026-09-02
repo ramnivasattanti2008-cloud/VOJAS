@@ -1,9 +1,20 @@
-import { motion } from "framer-motion";
+/**
+ * MPAnalyticsPage — VOJAS 2.0 MP Performance Analytics
+ *
+ * IBM Carbon–inspired light theme. White cards, gray borders, semantic colors.
+ * No glassmorphism, no glow, no gradients, no decorative animations.
+ * All data from real hooks (no fabricated numbers).
+ *
+ * Layout: Page header → 4-col KPI strip → [Bar chart + Donut] → Horizontal bar chart → Anomaly context
+ */
+
 import {
   Users,
   TrendingUp,
   AlertTriangle,
+  type LucideIcon,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   useMPOverview,
   useMPTrends,
@@ -12,23 +23,105 @@ import {
 } from "@/hooks/useAnalyticsExtended";
 import { useMPs } from "@/hooks/useMPs";
 import { LoadingState, ErrorState } from "@/components/ui";
-import PageHeader from "@/components/ui/PageHeader";
-import { fadeUp, staggerContainer } from "@/components/ui/Animations";
 import { BarChart, type BarChartItem } from "@/components/charts/BarChart";
 import { DonutChart, type DonutItem } from "@/components/charts/DonutChart";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 const TERM_COLORS: Record<string, string> = {
-  FIFTEENTH: "#94a3b8",
-  SIXTEENTH: "#3b82f6",
+  FIFTEENTH:  "#94a3b8",
+  SIXTEENTH:   "#3b82f6",
   SEVENTEENTH: "#10b981",
-  EIGHTEENTH: "#f59e0b",
+  EIGHTEENTH:  "#f59e0b",
 };
 
 const HOUSE_COLORS: Record<string, string> = {
-  LOK_SABHA: "#3b82f6",
+  LOK_SABHA:  "#3b82f6",
   RAJYA_SABHA: "#8b5cf6",
 };
+
+// ── Section header (IBM Carbon pattern) ──────────────────────────────────────
+
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="mb-3">
+      <h2 className="text-base font-semibold text-gray-900 leading-tight">{title}</h2>
+      {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+    </div>
+  );
+}
+
+// ── KPI card (Carbon pattern) ────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  Icon,
+  accent = "blue",
+}: {
+  label: string;
+  value: string | number;
+  Icon: LucideIcon;
+  accent?: "blue" | "red" | "amber" | "green" | "slate";
+}) {
+  const iconBg: Record<string, string> = {
+    blue:  "bg-blue-50 text-blue-600",
+    red:   "bg-red-50 text-red-600",
+    amber: "bg-amber-50 text-amber-600",
+    green: "bg-green-50 text-green-600",
+    slate: "bg-gray-100 text-gray-600",
+  };
+  const bar: Record<string, string> = {
+    blue:  "bg-blue-500",
+    red:   "bg-red-500",
+    amber: "bg-amber-500",
+    green: "bg-green-500",
+    slate: "bg-gray-400",
+  };
+
+  return (
+    <div className="relative bg-white border border-gray-200 rounded-md p-4 hover:border-gray-300 hover:shadow-sm transition-all h-full">
+      <div className={cn("absolute top-0 left-0 right-0 h-0.5 rounded-t-md", bar[accent])} aria-hidden />
+      <div className="flex items-start justify-between mb-2">
+        <div className={cn("w-8 h-8 rounded flex items-center justify-center", iconBg[accent])}>
+          <Icon className="w-4 h-4" aria-hidden />
+        </div>
+      </div>
+      <p className="text-2xl font-semibold text-gray-900 tabular-nums leading-none">
+        {typeof value === "number" ? value.toLocaleString("en-IN") : value}
+      </p>
+      <p className="text-sm text-gray-700 font-medium mt-1.5">{label}</p>
+    </div>
+  );
+}
+
+// ── Chart card wrapper (Carbon pattern) ──────────────────────────────────────
+
+function ChartCard({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-md p-5 h-full">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {sub && <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function MPAnalyticsPage() {
   const overview = useMPOverview();
@@ -60,7 +153,7 @@ export default function MPAnalyticsPage() {
       }))
     : [];
 
-  // Selected MP term trends
+  // Selected MP term trends (suppress unused variable warning)
   const _trendItems: BarChartItem[] = mpTrends.data?.byTerm.map((t) => ({
     label: TERM_LABELS[t.term]?.replace(/\s\(.*?\)/, "") ?? t.term,
     value: t.totalSanctioned,
@@ -69,26 +162,24 @@ export default function MPAnalyticsPage() {
   void _trendItems;
 
   return (
-    <motion.div
-      className="space-y-6"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={fadeUp}>
-        <PageHeader
-          title="MP"
-          gradientWord="MP Analytics"
-          accent="saffron"
-          icon={Users}
-          subtitle="MPLADS Member of Parliament performance, utilization & longitudinal trends"
-          breadcrumbs={[
-            { label: "Dashboard", href: "/" },
-            { label: "Analytics" },
-            { label: "MP" },
-          ]}
-        />
-      </motion.div>
+    <div className="space-y-5 max-w-[1400px]">
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900 leading-tight flex items-center gap-2">
+          <Users className="w-6 h-6 text-gray-700" aria-hidden />
+          MP Analytics
+        </h1>
+        <p className="text-sm text-gray-600 mt-1">
+          MPLADS Member of Parliament performance, utilization & longitudinal trends
+        </p>
+        <nav className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
+          <Link to="/" className="hover:text-gray-700">Dashboard</Link>
+          <span>/</span>
+          <Link to="/analytics" className="hover:text-gray-700">Analytics</Link>
+          <span>/</span>
+          <span className="text-gray-900">MP</span>
+        </nav>
+      </div>
 
       {isLoading ? (
         <LoadingState message="Loading MP analytics..." />
@@ -97,49 +188,45 @@ export default function MPAnalyticsPage() {
       ) : data ? (
         <>
           {/* KPI strip */}
-          <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              {
-                label: "Total MPs",
-                value: data.totalMPs.toLocaleString(),
-                accent: "text-saffron-400",
-                icon: Users,
-              },
-              {
-                label: "Avg Projects/MP",
-                value: data.avgProjectsPerMP.toString(),
-                accent: "text-blue-400",
-                icon: TrendingUp,
-              },
-              {
-                label: "Lok Sabha",
-                value: data.byHouse["LOK_SABHA"]?.toLocaleString() ?? "—",
-                accent: "text-blue-400",
-                icon: Users,
-              },
-              {
-                label: "Rajya Sabha",
-                value: data.byHouse["RAJYA_SABHA"]?.toLocaleString() ?? "—",
-                accent: "text-purple-400",
-                icon: Users,
-              },
-            ].map((k) => (
-              <div
-                key={k.label}
-                className="p-4 rounded-xl bg-slate-900/40 border border-slate-800"
-              >
-                <p className="text-slate-500 text-xs font-medium mb-1">{k.label}</p>
-                <p className={`text-2xl font-bold ${k.accent}`}>{k.value}</p>
-              </div>
-            ))}
-          </motion.div>
+          <div>
+            <SectionHeader
+              title="MP Overview"
+              description="Aggregate MP count and distribution"
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiCard
+                label="Total MPs"
+                value={data.totalMPs.toLocaleString()}
+                Icon={Users}
+                accent="blue"
+              />
+              <KpiCard
+                label="Avg Projects/MP"
+                value={data.avgProjectsPerMP.toString()}
+                Icon={TrendingUp}
+                accent="green"
+              />
+              <KpiCard
+                label="Lok Sabha"
+                value={data.byHouse["LOK_SABHA"]?.toLocaleString() ?? "—"}
+                Icon={Users}
+                accent="slate"
+              />
+              <KpiCard
+                label="Rajya Sabha"
+                value={data.byHouse["RAJYA_SABHA"]?.toLocaleString() ?? "—"}
+                Icon={Users}
+                accent="slate"
+              />
+            </div>
+          </div>
 
-          {/* Charts row */}
-          <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* MPs by Lok Sabha term */}
-            <div className="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-300 mb-1">MPs by Lok Sabha Term</h3>
-              <p className="text-xs text-slate-600 mb-4">Distribution across 15th–18th Lok Sabha</p>
+          {/* Charts: term bar + house donut */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ChartCard
+              title="MPs by Lok Sabha Term"
+              sub="Distribution across 15th–18th Lok Sabha"
+            >
               {termItems.length > 0 ? (
                 <BarChart
                   data={termItems}
@@ -147,66 +234,76 @@ export default function MPAnalyticsPage() {
                   formatValue={(v: number) => `${v} MPs`}
                 />
               ) : (
-                <p className="text-slate-600 text-sm py-8 text-center">No term data yet.</p>
+                <p className="text-gray-500 text-sm py-8 text-center italic">No term data yet</p>
               )}
-            </div>
+            </ChartCard>
 
-            {/* House breakdown */}
-            <div className="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-300 mb-1">House Distribution</h3>
-              <p className="text-xs text-slate-600 mb-4">Lok Sabha vs Rajya Sabha</p>
+            <ChartCard
+              title="House Distribution"
+              sub="Lok Sabha vs Rajya Sabha"
+            >
               {houseItems.length > 0 ? (
-                <DonutChart data={houseItems} />
+                <div className="flex justify-center">
+                  <DonutChart
+                    data={houseItems}
+                    size={140}
+                    centerText={data.totalMPs.toString()}
+                    centerSubtext="MPs"
+                    formatValue={(v) => v.toString()}
+                  />
+                </div>
               ) : (
-                <p className="text-slate-600 text-sm py-8 text-center">No house data yet.</p>
+                <p className="text-gray-500 text-sm py-8 text-center italic">No house data yet</p>
               )}
-            </div>
-          </motion.div>
+            </ChartCard>
+          </div>
 
-          {/* Top states */}
-          <motion.div variants={fadeUp} className="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">
-              Top States by MP Count
-            </h3>
-            <div className="space-y-2">
+          {/* Top states horizontal bars */}
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <SectionHeader
+              title="Top States by MP Count"
+              description="Top 10 states with highest number of MPs"
+            />
+            <div className="space-y-2.5">
               {data.topStates.slice(0, 10).map((s, i) => {
                 const max = data.topStates[0]?.count ?? 1;
                 const pct = Math.round((s.count / max) * 100);
                 return (
                   <div key={s.state} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500 w-5 shrink-0">{i + 1}</span>
-                    <span className="text-sm text-slate-300 w-36 truncate">{s.state}</span>
-                    <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+                    <span className="text-xs text-gray-400 w-5 shrink-0 tabular-nums">{i + 1}</span>
+                    <span className="text-sm text-gray-700 w-36 truncate">{s.state}</span>
+                    <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-saffron-500/80 to-saffron-400/60"
+                        className="h-full rounded-full bg-amber-500"
                         style={{ width: `${pct}%` }}
+                        aria-hidden
                       />
                     </div>
-                    <span className="text-xs text-slate-500 w-8 text-right">{s.count}</span>
+                    <span className="text-xs text-gray-600 w-8 text-right tabular-nums">{s.count}</span>
                   </div>
                 );
               })}
             </div>
-          </motion.div>
+          </div>
 
           {/* Anomaly context */}
-          <motion.div variants={fadeUp} className="p-5 rounded-xl bg-red-950/10 border border-red-500/20">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
             <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
-              <h3 className="text-sm font-semibold text-red-400">Anomaly Detection Context</h3>
+              <AlertTriangle className="w-4 h-4 text-red-600" aria-hidden />
+              <h3 className="text-sm font-semibold text-red-800">Anomaly Detection Context</h3>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
+            <p className="text-xs text-red-700 leading-relaxed">
               MP analytics feeds into 7 anomaly rules:{" "}
-              <span className="text-slate-400">MP_VOLUME_OUTLIER</span> flags MPs with sanctioned
+              <span className="font-medium">MP_VOLUME_OUTLIER</span> flags MPs with sanctioned
               totals exceeding 2× the term median.{" "}
-              <span className="text-slate-400">GHOST_PROJECT</span> catches approved/in-progress
+              <span className="font-medium">GHOST_PROJECT</span> catches approved/in-progress
               projects with no expenditure 12+ months after recommendation.{" "}
-              <span className="text-slate-400">PAYMENT_TO_OLD_WORK</span> flags payments made
+              <span className="font-medium">PAYMENT_TO_OLD_WORK</span> flags payments made
               2+ years after recommendation. All results require officer verification.
             </p>
-          </motion.div>
+          </div>
         </>
       ) : null}
-    </motion.div>
+    </div>
   );
 }

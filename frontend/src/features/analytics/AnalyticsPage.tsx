@@ -1,4 +1,13 @@
-import { motion } from "framer-motion";
+/**
+ * AnalyticsPage — VOJAS 2.0 Cross-Platform Analytics
+ *
+ * IBM Carbon–inspired light theme. White cards, gray borders, semantic colors.
+ * No glassmorphism, no glow, no gradients, no decorative animations.
+ * All data from real hooks (no fabricated numbers).
+ *
+ * Layout: Hub → KPI strip → 2×3 distribution grid → 2×1 timeline → Reports → Anomalies → Financials → Risk
+ */
+
 import { Link } from "react-router-dom";
 import {
   BarChart3,
@@ -8,20 +17,13 @@ import {
   IndianRupee,
   Shield,
   RefreshCw,
-  Activity,
   ArrowRight,
-  PieChart,
   Loader2,
   Users,
   Building2,
   LineChart as LineChartIcon,
+  type LucideIcon,
 } from "lucide-react";
-
-const SUB_ANALYTICS: { title: string; desc: string; path: string; icon: React.ElementType; accent: string }[] = [
-  { title: "MP Analytics", desc: "MPLADS Member of Parliament performance, utilization & longitudinal trends", path: "/analytics/mp", icon: Users, accent: "saffron" },
-  { title: "Vendor Analytics", desc: "Vendor concentration, cross-constituency risk & payment benchmark", path: "/analytics/vendor", icon: Building2, accent: "electric" },
-  { title: "Longitudinal Trends", desc: "MPLADS utilization across 15th–18th Lok Sabha", path: "/analytics/longitudinal", icon: LineChartIcon, accent: "saffron" },
-];
 import { useAnalyticsSummary } from "@/hooks/useAnalytics";
 import type {
   ProjectStatusCount,
@@ -32,12 +34,16 @@ import type {
   TopRiskProject,
 } from "@/services/analytics-api";
 import { LoadingState, ErrorState } from "@/components/ui";
-import PageHeader from "@/components/ui/PageHeader";
-import SectionTitle from "@/components/ui/SectionTitle";
-import { fadeUp, staggerContainer, EASE } from "@/components/ui/Animations";
 import { BarChart, type BarChartItem } from "@/components/charts/BarChart";
 import { DonutChart, type DonutItem } from "@/components/charts/DonutChart";
 import { LineChart, type LineSeries } from "@/components/charts/LineChart";
+import { cn } from "@/lib/utils";
+
+const SUB_ANALYTICS: { title: string; desc: string; path: string; icon: LucideIcon; accent: "blue" | "amber" }[] = [
+  { title: "MP Analytics", desc: "MPLADS Member of Parliament performance, utilization & longitudinal trends", path: "/analytics/mp", icon: Users, accent: "amber" },
+  { title: "Vendor Analytics", desc: "Vendor concentration, cross-constituency risk & payment benchmark", path: "/analytics/vendor", icon: Building2, accent: "blue" },
+  { title: "Longitudinal Trends", desc: "MPLADS utilization across 15th–18th Lok Sabha", path: "/analytics/longitudinal", icon: LineChartIcon, accent: "amber" },
+];
 
 // ── Color palettes ───────────────────────────────────────────────────────────
 
@@ -86,63 +92,121 @@ const SECTOR_COLORS: string[] = [
   "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#a855f7",
 ];
 
-// ── Stat tile ────────────────────────────────────────────────────────────────
+// ── Section header (IBM Carbon pattern) ──────────────────────────────────────
 
-function StatTile({ label, value, sub, icon: Icon, accent, glow }: {
-  label: string; value: string | number; sub?: string;
-  icon: React.ElementType; accent: string; glow?: string;
+function SectionHeader({
+  title,
+  description,
+  badge,
+  action,
+}: {
+  title: string;
+  description?: string;
+  badge?: number | string;
+  action?: { label: string; href: string };
 }) {
-  const IconTyped = Icon as React.ComponentType<{ className?: string }>;
   return (
-    <motion.div
-      variants={fadeUp}
-      whileHover={{ y: -3, scale: 1.02 }}
-      className="glass rounded-2xl p-5 border ring-1 ring-white/5 relative overflow-hidden group cursor-default"
-    >
-      <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${accent}`} />
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">{label}</span>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent.replace("from-", "bg-").replace(" to-", "-")}`}
-          style={{ background: `${accent.includes("electric") ? "rgba(6,182,212,0.15)" : accent.includes("saffron") ? "rgba(251,146,60,0.15)" : accent.includes("red") ? "rgba(239,68,68,0.15)" : accent.includes("green") ? "rgba(16,185,129,0.15)" : "rgba(59,130,246,0.15)"}` }}>
-          <IconTyped className={`w-4 h-4 ${accent.includes("electric") ? "text-electric-400" : accent.includes("saffron") ? "text-saffron-400" : accent.includes("red") ? "text-red-400" : accent.includes("green") ? "text-green-400" : "text-blue-400"}`} />
-        </div>
+    <div className="flex items-end justify-between gap-3 mb-3">
+      <div>
+        <h2 className="text-base font-semibold text-gray-900 leading-tight flex items-center gap-2">
+          {title}
+          {badge !== undefined && (
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-semibold rounded bg-blue-50 text-blue-700 border border-blue-100">
+              {badge}
+            </span>
+          )}
+        </h2>
+        {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${accent.includes("electric") ? "text-electric-300" : accent.includes("saffron") ? "text-saffron-300" : accent.includes("red") ? "text-red-300" : accent.includes("green") ? "text-green-300" : "text-white"}`}
-        style={{ textShadow: glow ? `0 0 20px ${glow}` : "none" }}>
-        {value}
-      </p>
-      {sub && <p className="text-[11px] text-slate-500 mt-1">{sub}</p>}
-    </motion.div>
+      {action && (
+        <Link
+          to={action.href}
+          className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 shrink-0"
+        >
+          {action.label}
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      )}
+    </div>
   );
 }
 
-// ── Chart card wrapper ──────────────────────────────────────────────────────
+// ── KPI card (Carbon pattern) ────────────────────────────────────────────────
 
-function ChartCard({ title, sub, children, action, index }: {
-  title: string; sub?: string; children: React.ReactNode; action?: React.ReactNode; index?: number;
+function KpiCard({
+  label,
+  value,
+  sub,
+  Icon,
+  accent = "blue",
+}: {
+  label: string;
+  value: number | string;
+  sub?: string;
+  Icon: LucideIcon;
+  accent?: "blue" | "red" | "amber" | "green" | "slate";
+}) {
+  const iconBg: Record<string, string> = {
+    blue:  "bg-blue-50 text-blue-600",
+    red:   "bg-red-50 text-red-600",
+    amber: "bg-amber-50 text-amber-600",
+    green: "bg-green-50 text-green-600",
+    slate: "bg-gray-100 text-gray-600",
+  };
+  const bar: Record<string, string> = {
+    blue:  "bg-blue-500",
+    red:   "bg-red-500",
+    amber: "bg-amber-500",
+    green: "bg-green-500",
+    slate: "bg-gray-400",
+  };
+  return (
+    <div className="relative bg-white border border-gray-200 rounded-md p-4 hover:border-gray-300 hover:shadow-sm transition-all duration-200 h-full">
+      <div className={cn("absolute top-0 left-0 right-0 h-0.5 rounded-t-md", bar[accent])} aria-hidden />
+      <div className="flex items-start justify-between mb-2">
+        <div className={cn("w-8 h-8 rounded flex items-center justify-center", iconBg[accent])}>
+          <Icon className="w-4 h-4" aria-hidden="true" />
+        </div>
+      </div>
+      <p className="text-2xl font-semibold text-gray-900 tabular-nums leading-none">
+        {typeof value === "number" ? value.toLocaleString("en-IN") : value}
+      </p>
+      <p className="text-sm text-gray-700 font-medium mt-1.5">{label}</p>
+      {sub && <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Chart card wrapper (Carbon pattern) ──────────────────────────────────────
+
+function ChartCard({
+  title,
+  sub,
+  children,
+  action,
+}: {
+  title: string;
+  sub?: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
 }) {
   return (
-    <motion.div
-      variants={fadeUp}
-      custom={index}
-      className="glass rounded-2xl p-5 border ring-1 ring-white/5 relative overflow-hidden group"
-    >
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-electric-500 to-electric-400 opacity-60" />
+    <div className="bg-white border border-gray-200 rounded-md p-5 h-full">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
-          {sub && <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>}
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          {sub && <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>}
         </div>
         {action}
       </div>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 function EmptyChart() {
   return (
-    <div className="py-10 text-center text-slate-600 text-xs italic">
+    <div className="py-10 text-center text-gray-500 text-xs italic">
       No data available
     </div>
   );
@@ -234,121 +298,115 @@ export default function AnalyticsPage() {
   }];
 
   return (
-    <motion.div
-      className="space-y-6"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-    >
-      {/* Page header */}
-      <motion.div variants={fadeUp}>
-        <PageHeader
-          title="Analytics &"
-          gradientWord="Insights"
-          accent="electric"
-          icon={BarChart3}
-          subtitle="Cross-platform metrics across projects, reports, anomalies, and risk"
-          breadcrumbs={[
-            { label: "Dashboard", href: "/" },
-            { label: "Analytics" },
-          ]}
-          actions={
-            <button
-              onClick={() => analyticsQuery.refetch()}
-              className="flex items-center gap-2 px-4 py-2 glass rounded-lg text-slate-300 hover:text-white text-sm font-medium border border-white/10 hover:border-white/20 transition-all"
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              Refresh
-            </button>
-          }
-        />
-      </motion.div>
+    <div className="space-y-5 max-w-[1400px]">
+      {/* Page header (Carbon style — compact) */}
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 leading-tight flex items-center gap-2">
+            <BarChart3 className="w-6 h-6 text-gray-700" aria-hidden />
+            Analytics & Insights
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Cross-platform metrics across projects, reports, anomalies, and risk
+          </p>
+        </div>
+        <button
+          onClick={() => analyticsQuery.refetch()}
+          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-md text-gray-700 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 text-sm font-medium transition-colors"
+        >
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
+          Refresh
+        </button>
+      </div>
 
-      {/* Sub-analytics hub */}
-      <motion.div
-        variants={staggerContainer}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
+      {/* Sub-analytics hub — 3 column nav cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {SUB_ANALYTICS.map((s) => {
-          const Icon = s.icon as React.ComponentType<{ className?: string }>;
-          const accentBar = s.accent === "saffron"
-            ? "from-saffron-500 to-saffron-400"
-            : "from-electric-500 to-electric-400";
+          const Icon = s.icon;
+          const bar = s.accent === "amber" ? "bg-amber-500" : "bg-blue-500";
+          const iconBg = s.accent === "amber" ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600";
           return (
-            <motion.div key={s.path} variants={fadeUp}>
-              <Link
-                to={s.path}
-                className="block glass rounded-2xl p-5 border ring-1 ring-white/5 relative overflow-hidden group hover:ring-white/20 transition-all"
-              >
-                <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${accentBar} opacity-60`} />
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <Icon className={(s.accent === "saffron" ? "w-4 h-4 text-saffron-400" : "w-4 h-4 text-electric-400") as string} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
-                        {s.title}
-                      </p>
-                      <ArrowRight className="w-3 h-3 text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{s.desc}</p>
-                  </div>
+            <Link
+              key={s.path}
+              to={s.path}
+              className="relative block bg-white border border-gray-200 rounded-md p-4 hover:border-gray-300 hover:shadow-sm transition-all group"
+            >
+              <div className={cn("absolute top-0 left-0 right-0 h-0.5 rounded-t-md", bar)} aria-hidden />
+              <div className="flex items-start gap-3">
+                <div className={cn("w-9 h-9 rounded flex items-center justify-center shrink-0", iconBg)}>
+                  <Icon className="w-4 h-4" aria-hidden />
                 </div>
-              </Link>
-            </motion.div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                      {s.title}
+                    </p>
+                    <ArrowRight className="w-3 h-3 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            </Link>
           );
         })}
-      </motion.div>
+      </div>
 
       {/* Section 1 — Project KPIs */}
-      <section>
-        <motion.div variants={fadeUp} custom={0}>
-          <SectionTitle
-            icon={Activity}
-            title="Project Overview"
-            badge={data.projects.total}
-            badgeVariant="electric"
+      <div>
+        <SectionHeader
+          title="Project Overview"
+          description="Aggregate project portfolio health"
+          badge={data.projects.total}
+        />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <KpiCard
+            label="Total Projects"
+            value={data.projects.total}
+            Icon={FileText}
+            accent="blue"
+            sub={`Avg budget ₹${(data.projects.avgBudget / 1_000_000).toFixed(1)}L`}
           />
-        </motion.div>
-        <motion.div
-          variants={staggerContainer}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-3"
-        >
-          <StatTile label="Total Projects" value={data.projects.total} icon={FileText}
-            accent="from-electric-500 to-electric-400" glow="#06b6d4"
-            sub={`Avg budget ₹${(data.projects.avgBudget / 1_000_000).toFixed(1)}L`} />
-          <StatTile label="Avg Utilization" value={`${(((data.projects.avgSpent / Math.max(data.projects.avgBudget, 1)) * 100) || 0).toFixed(0)}%`} icon={TrendingUp}
-            accent="from-saffron-500 to-saffron-400" glow="#fb923c"
-            sub="Across all projects" />
-          <StatTile label="Total Reports" value={data.reports.total} icon={AlertTriangle}
-            accent="from-blue-500 to-blue-400" glow="#3b82f6"
-            sub={data.reports.avgResolutionDays !== null ? `Avg resolution ${data.reports.avgResolutionDays.toFixed(1)}d` : "No closed reports"} />
-          <StatTile label="Open Anomalies" value={data.anomalies.open} icon={Shield}
-            accent="from-red-500 to-red-400" glow="#ef4444"
-            sub={`${data.anomalies.total} total flagged`} />
-        </motion.div>
-      </section>
+          <KpiCard
+            label="Avg Utilization"
+            value={`${(((data.projects.avgSpent / Math.max(data.projects.avgBudget, 1)) * 100) || 0).toFixed(0)}%`}
+            Icon={TrendingUp}
+            accent="amber"
+            sub="Across all projects"
+          />
+          <KpiCard
+            label="Total Reports"
+            value={data.reports.total}
+            Icon={AlertTriangle}
+            accent="slate"
+            sub={data.reports.avgResolutionDays !== null ? `Avg resolution ${data.reports.avgResolutionDays.toFixed(1)}d` : "No closed reports"}
+          />
+          <KpiCard
+            label="Open Anomalies"
+            value={data.anomalies.open}
+            Icon={Shield}
+            accent="red"
+            sub={`${data.anomalies.total} total flagged`}
+          />
+        </div>
+      </div>
 
-      {/* Section 2 — Project charts */}
-      <section>
-        <motion.div variants={fadeUp} custom={2}>
-          <SectionTitle icon={PieChart} title="Project Distribution" />
-        </motion.div>
-        <motion.div
-          variants={staggerContainer}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3"
-        >
-          <ChartCard title="Status Distribution" sub="By lifecycle status" index={3}>
+      {/* Section 2 — Project distribution */}
+      <div>
+        <SectionHeader
+          title="Project Distribution"
+          description="Status, sector and budget allocation"
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <ChartCard title="Status Distribution" sub="By lifecycle status">
             {statusBars.length > 0 ? (
               <BarChart data={statusBars} color="#3b82f6" formatValue={(v) => v.toString()} />
             ) : <EmptyChart />}
           </ChartCard>
-          <ChartCard title="Sector Spread" sub="Projects by sector" index={4}>
+          <ChartCard title="Sector Spread" sub="Projects by sector">
             {sectorDonut.length > 0 ? (
               <div className="flex justify-center">
                 <DonutChart
@@ -361,7 +419,7 @@ export default function AnalyticsPage() {
               </div>
             ) : <EmptyChart />}
           </ChartCard>
-          <ChartCard title="Top Sectors by Budget" sub="Allocated ₹" index={5}>
+          <ChartCard title="Top Sectors by Budget" sub="Allocated ₹">
             {sectorBudgetBars.length > 0 ? (
               <BarChart
                 data={sectorBudgetBars}
@@ -370,24 +428,22 @@ export default function AnalyticsPage() {
               />
             ) : <EmptyChart />}
           </ChartCard>
-        </motion.div>
-      </section>
+        </div>
+      </div>
 
       {/* Section 3 — Timeline */}
-      <section>
-        <motion.div variants={fadeUp} custom={6}>
-          <SectionTitle icon={TrendingUp} title="Timeline" />
-        </motion.div>
-        <motion.div
-          variants={staggerContainer}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3"
-        >
-          <ChartCard title="Project Creation Trend" sub="New projects per month" index={7}>
+      <div>
+        <SectionHeader
+          title="Timeline"
+          description="Monthly trends in project creation and expenditure"
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <ChartCard title="Project Creation Trend" sub="New projects per month">
             {monthlyCreation[0].data.length > 0 ? (
               <LineChart series={monthlyCreation} height={180} formatValue={(v) => v.toString()} />
             ) : <EmptyChart />}
           </ChartCard>
-          <ChartCard title="Expenditure Trend" sub="Total ₹ per month" index={8}>
+          <ChartCard title="Expenditure Trend" sub="Total ₹ per month">
             {expenditureOverTime[0].data.length > 0 ? (
               <LineChart
                 series={expenditureOverTime}
@@ -396,19 +452,18 @@ export default function AnalyticsPage() {
               />
             ) : <EmptyChart />}
           </ChartCard>
-        </motion.div>
-      </section>
+        </div>
+      </div>
 
       {/* Section 4 — Citizen Reports */}
-      <section>
-        <motion.div variants={fadeUp} custom={9}>
-          <SectionTitle icon={AlertTriangle} title="Citizen Reports" badge={data.reports.total} badgeVariant="blue" />
-        </motion.div>
-        <motion.div
-          variants={staggerContainer}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3"
-        >
-          <ChartCard title="Report Status" sub="By review state" index={10}>
+      <div>
+        <SectionHeader
+          title="Citizen Reports"
+          description="Status and category breakdown of citizen submissions"
+          badge={data.reports.total}
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <ChartCard title="Report Status" sub="By review state">
             {reportStatusDonut.length > 0 ? (
               <div className="flex justify-center">
                 <DonutChart
@@ -421,7 +476,7 @@ export default function AnalyticsPage() {
               </div>
             ) : <EmptyChart />}
           </ChartCard>
-          <ChartCard title="Report Categories" sub="What citizens flag most" index={11}>
+          <ChartCard title="Report Categories" sub="What citizens flag most">
             {reportCategoryBars.length > 0 ? (
               <BarChart
                 data={reportCategoryBars}
@@ -430,19 +485,18 @@ export default function AnalyticsPage() {
               />
             ) : <EmptyChart />}
           </ChartCard>
-        </motion.div>
-      </section>
+        </div>
+      </div>
 
       {/* Section 5 — Anomalies */}
-      <section>
-        <motion.div variants={fadeUp} custom={12}>
-          <SectionTitle icon={Shield} title="Anomalies" badge={data.anomalies.total} badgeVariant="red" />
-        </motion.div>
-        <motion.div
-          variants={staggerContainer}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-3"
-        >
-          <ChartCard title="By Severity" sub="Detection rules firing" index={13}>
+      <div>
+        <SectionHeader
+          title="Anomalies"
+          description="Detection engine output by severity and category"
+          badge={data.anomalies.total}
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <ChartCard title="By Severity" sub="Detection rules firing">
             {anomalySeverityDonut.length > 0 ? (
               <div className="flex justify-center">
                 <DonutChart
@@ -455,7 +509,7 @@ export default function AnalyticsPage() {
               </div>
             ) : <EmptyChart />}
           </ChartCard>
-          <ChartCard title="By Category" sub="Rule types triggered" index={14}>
+          <ChartCard title="By Category" sub="Rule types triggered">
             {anomalyCategoryBars.length > 0 ? (
               <BarChart
                 data={anomalyCategoryBars}
@@ -464,44 +518,42 @@ export default function AnalyticsPage() {
               />
             ) : <EmptyChart />}
           </ChartCard>
-        </motion.div>
-      </section>
+        </div>
+      </div>
 
       {/* Section 6 — Financials */}
-      <section>
-        <motion.div variants={fadeUp} custom={15}>
-          <SectionTitle icon={IndianRupee} title="Financials" />
-        </motion.div>
-        <motion.div
-          variants={staggerContainer}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3"
-        >
-          <StatTile
+      <div>
+        <SectionHeader
+          title="Financials"
+          description="Budget, spending and category-level breakdown"
+        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <KpiCard
             label="Total Budget"
             value={`₹${(data.financial.totalBudget / 1_000_000).toFixed(2)}L`}
-            icon={IndianRupee}
-            accent="from-electric-500 to-electric-400" glow="#06b6d4"
+            Icon={IndianRupee}
+            accent="blue"
             sub="Allocated across all projects"
           />
-          <StatTile
+          <KpiCard
             label="Total Spent"
             value={`₹${(data.financial.totalSpent / 1_000_000).toFixed(2)}L`}
-            icon={IndianRupee}
-            accent="from-green-500 to-green-400" glow="#10b981"
+            Icon={IndianRupee}
+            accent="green"
             sub={`Utilization ${data.financial.utilization.toFixed(1)}%`}
           />
-          <StatTile
+          <KpiCard
             label="Authorized + Pending"
             value={`₹${((data.financial.totalAuthorized + data.financial.totalPending) / 1_000_000).toFixed(2)}L`}
-            icon={IndianRupee}
-            accent="from-saffron-500 to-saffron-400" glow="#fb923c"
+            Icon={IndianRupee}
+            accent="amber"
             sub={`${data.financial.totalAuthorized > 0 ? "Authorized" : ""}${data.financial.totalPending > 0 ? " · Pending" : ""}`}
           />
-        </motion.div>
+        </div>
 
         {data.financial.byCategory.length > 0 && (
-          <motion.div variants={fadeUp} custom={16} className="mt-4">
-            <ChartCard title="Expenditure by Category" sub="Where money flows" index={16}>
+          <div className="mt-3">
+            <ChartCard title="Expenditure by Category" sub="Where money flows">
               <BarChart
                 data={data.financial.byCategory.map((c) => ({
                   label: c.category,
@@ -517,20 +569,18 @@ export default function AnalyticsPage() {
                 formatValue={(v) => `₹${(v / 1_000_000).toFixed(1)}L`}
               />
             </ChartCard>
-          </motion.div>
+          </div>
         )}
-      </section>
+      </div>
 
-      {/* Section 7 — Risk */}
-      <section>
-        <motion.div variants={fadeUp} custom={17}>
-          <SectionTitle icon={Shield} title="Risk Scoring" />
-        </motion.div>
-        <motion.div
-          variants={staggerContainer}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3"
-        >
-          <ChartCard title="Risk Distribution" sub="Projects by risk tier" index={18}>
+      {/* Section 7 — Risk scoring */}
+      <div>
+        <SectionHeader
+          title="Risk Scoring"
+          description="Project risk distribution and top risk projects"
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <ChartCard title="Risk Distribution" sub="Projects by risk tier">
             {riskDonut.length > 0 ? (
               <div className="flex justify-center">
                 <DonutChart
@@ -544,62 +594,70 @@ export default function AnalyticsPage() {
             ) : <EmptyChart />}
           </ChartCard>
 
-          <motion.div variants={fadeUp} custom={19} className="lg:col-span-2">
+          <div className="lg:col-span-2">
             <ChartCard
               title="Top Risk Projects"
               sub={`Top ${Math.min(5, data.risk.topProjects.length)} by score`}
-              index={19}
               action={
-                <Link to="/risk" className="flex items-center gap-1 text-[11px] text-electric-400 hover:text-electric-300 transition-colors">
+                <Link
+                  to="/risk"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
                   View all <ArrowRight className="w-3 h-3" />
                 </Link>
               }
             >
               {data.risk.topProjects.length > 0 ? (
                 <div className="space-y-2">
-                  {data.risk.topProjects.slice(0, 5).map((p: TopRiskProject, idx: number) => (
-                    <motion.div
-                      key={p.projectId}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.06, duration: 0.4, ease: EASE }}
-                    >
-                      <Link to={`/projects/${p.projectId}`}
-                        className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-electric-500/30 hover:bg-electric-500/5 transition-all group">
+                  {data.risk.topProjects.slice(0, 5).map((p: TopRiskProject) => {
+                    const riskColor = RISK_COLORS[p.riskLevel] ?? "#94a3b8";
+                    const riskText: Record<string, string> = {
+                      LOW:      "text-green-700",
+                      MEDIUM:   "text-blue-700",
+                      HIGH:     "text-amber-700",
+                      CRITICAL: "text-red-700",
+                    };
+                    const riskBg: Record<string, string> = {
+                      LOW:      "bg-green-50 border-green-200",
+                      MEDIUM:   "bg-blue-50 border-blue-200",
+                      HIGH:     "bg-amber-50 border-amber-200",
+                      CRITICAL: "bg-red-50 border-red-200",
+                    };
+                    return (
+                      <Link
+                        key={p.projectId}
+                        to={`/projects/${p.projectId}`}
+                        className="flex items-center justify-between p-3 rounded border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 transition-colors group"
+                      >
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-200 truncate group-hover:text-electric-300 transition-colors">
+                          <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-700">
                             {p.projectName}
                           </p>
-                          <p className="text-[10px] text-slate-500">{p.district}, {p.state}</p>
+                          <p className="text-[10px] text-gray-500">{p.district}, {p.state}</p>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
-                            <p className={`text-lg font-bold tabular-nums ${p.riskLevel === "CRITICAL" ? "text-red-400" : p.riskLevel === "HIGH" ? "text-orange-400" : p.riskLevel === "MEDIUM" ? "text-amber-400" : "text-emerald-400"}`}
-                              style={{ textShadow: "0 0 12px currentColor" }}>
+                            <p className={cn("text-lg font-semibold tabular-nums", riskText[p.riskLevel] ?? "text-gray-700")}>
                               {p.overallScore}
                             </p>
-                            <p className="text-[9px] uppercase tracking-wider text-slate-500">score</p>
+                            <p className="text-[9px] uppercase tracking-wider text-gray-500">score</p>
                           </div>
                           <div
-                            className="px-2 py-1 rounded text-[10px] font-bold border"
-                            style={{
-                              color: RISK_COLORS[p.riskLevel] ?? "#94a3b8",
-                              borderColor: (RISK_COLORS[p.riskLevel] ?? "#94a3b8") + "60",
-                              backgroundColor: (RISK_COLORS[p.riskLevel] ?? "#94a3b8") + "15",
-                            }}
+                            className={cn("px-2 py-1 rounded text-[10px] font-semibold border", riskBg[p.riskLevel] ?? "bg-gray-50 border-gray-200")}
+                            style={{ color: riskColor }}
                           >
                             {p.riskLevel}
                           </div>
                         </div>
                       </Link>
-                    </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : <EmptyChart />}
             </ChartCard>
-          </motion.div>
-        </motion.div>
-      </section>
-    </motion.div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

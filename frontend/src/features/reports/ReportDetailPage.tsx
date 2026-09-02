@@ -1,3 +1,10 @@
+/**
+ * ReportDetailPage — VOJAS Reports
+ *
+ * IBM Carbon-inspired light theme. No glassmorphism, no gradients,
+ * no glow effects, no decorative animations. All functionality preserved.
+ */
+
 import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -35,22 +42,47 @@ import SatelliteTimeline from "@/components/satellite/SatelliteTimeline";
 import type {
   ReportStatus,
   ReportAttachment,
+  ReportSeverity,
 } from "@/types/report-types";
 import {
-  REPORT_STATUSES,
   REPORT_CATEGORIES,
   REPORT_SEVERITIES,
-  REPORT_STATUS_COLORS,
-  REPORT_CATEGORY_COLORS,
   STATUS_TRANSITIONS,
 } from "@/types/report-types";
 import { LoadingState, ErrorState, InlineToast } from "@/components/ui";
+import { cn } from "@/lib/utils";
+
+// ── Light-theme styles (override dark report-types tokens) ──────────────────
+
+const SEVERITY_STYLES: Record<ReportSeverity, { bg: string; color: string; dot: string; label: string }> = {
+  LOW:      { bg: "bg-gray-100 text-gray-700",  color: "text-gray-600",  dot: "bg-gray-500",   label: "Low" },
+  MEDIUM:   { bg: "bg-amber-50 text-amber-700", color: "text-amber-600", dot: "bg-amber-500",  label: "Medium" },
+  HIGH:     { bg: "bg-orange-50 text-orange-700", color: "text-orange-600", dot: "bg-orange-500", label: "High" },
+  CRITICAL: { bg: "bg-red-50 text-red-700",     color: "text-red-600",   dot: "bg-red-500",    label: "Critical" },
+};
+
+const LIGHT_STATUS_COLORS: Record<ReportStatus, { bg: string; text: string; dot: string; label: string }> = {
+  SUBMITTED:    { bg: "bg-gray-100 text-gray-700",   text: "text-gray-700",   dot: "bg-gray-500",   label: "Submitted" },
+  ACKNOWLEDGED: { bg: "bg-blue-50 text-blue-700",    text: "text-blue-700",   dot: "bg-blue-500",   label: "Acknowledged" },
+  UNDER_REVIEW: { bg: "bg-amber-50 text-amber-700",  text: "text-amber-700",  dot: "bg-amber-500",  label: "Under Review" },
+  RESOLVED:     { bg: "bg-green-50 text-green-700",  text: "text-green-700",  dot: "bg-green-500",  label: "Resolved" },
+  REJECTED:     { bg: "bg-red-50 text-red-700",     text: "text-red-700",    dot: "bg-red-500",    label: "Rejected" },
+  CLOSED:       { bg: "bg-gray-100 text-gray-500",   text: "text-gray-500",   dot: "bg-gray-400",   label: "Closed" },
+};
+
+const LIGHT_CATEGORY_COLORS: Record<string, string> = {
+  QUALITY:       "bg-purple-50 text-purple-700",
+  DELAY:         "bg-amber-50 text-amber-700",
+  CORRUPTION:    "bg-red-50 text-red-700",
+  SAFETY:        "bg-orange-50 text-orange-700",
+  ENVIRONMENT:   "bg-teal-50 text-teal-700",
+  FINANCIAL:     "bg-yellow-50 text-yellow-700",
+  DOCUMENTATION: "bg-cyan-50 text-cyan-700",
+  OTHER:         "bg-gray-100 text-gray-600",
+};
 
 function getStatusStyle(v: ReportStatus) {
-  return REPORT_STATUS_COLORS[v] ?? REPORT_STATUS_COLORS.SUBMITTED;
-}
-function getStatusLabel(v: ReportStatus) {
-  return REPORT_STATUSES.find((s) => s.value === v)?.label ?? v;
+  return LIGHT_STATUS_COLORS[v] ?? LIGHT_STATUS_COLORS.SUBMITTED;
 }
 function getCategoryLabel(v: string) {
   return REPORT_CATEGORIES.find((c) => c.value === v)?.label ?? v;
@@ -59,7 +91,8 @@ function getSeverityLabel(v: string) {
   return REPORT_SEVERITIES.find((s) => s.value === v)?.label ?? v;
 }
 function getSeverityStyle(v: string) {
-  return REPORT_SEVERITIES.find((s) => s.value === v) ?? REPORT_SEVERITIES[0];
+  const sev = REPORT_SEVERITIES.find((s) => s.value === v) ?? REPORT_SEVERITIES[0];
+  return SEVERITY_STYLES[sev.value] ?? SEVERITY_STYLES.LOW;
 }
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleString("en-IN", {
@@ -201,7 +234,7 @@ export default function ReportDetailPage() {
   const sev = getSeverityStyle(report.severity);
   const statusStyle = getStatusStyle(report.status);
   const isOpen = ["SUBMITTED", "ACKNOWLEDGED", "UNDER_REVIEW", "RESOLVED"].includes(report.status);
-  const catClass = REPORT_CATEGORY_COLORS[report.category] ?? REPORT_CATEGORY_COLORS.OTHER;
+  const catClass = LIGHT_CATEGORY_COLORS[report.category] ?? LIGHT_CATEGORY_COLORS.OTHER;
 
   // Phase 13 — detect redaction
   const isRedacted =
@@ -210,7 +243,7 @@ export default function ReportDetailPage() {
     report.reporterPhone === "[REDACTED]";
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-5 max-w-4xl">
       {toast && (
         <div className="fixed top-20 right-4 z-50 max-w-sm">
           <InlineToast message={toast} type="error" onDismiss={() => setToast(null)} />
@@ -220,7 +253,7 @@ export default function ReportDetailPage() {
       <div className="flex items-start gap-4">
         <button
           onClick={() => navigate("/reports")}
-          className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors mt-0.5 shrink-0"
+          className="w-9 h-9 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:border-gray-300 transition-colors mt-0.5 shrink-0"
           aria-label="Back to reports"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
@@ -228,8 +261,8 @@ export default function ReportDetailPage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-xl font-bold text-white">{report.title}</h1>
-              <p className="text-xs text-slate-500 font-mono mt-1">
+              <h1 className="text-xl font-semibold text-gray-900">{report.title}</h1>
+              <p className="text-xs text-gray-500 font-mono mt-1">
                 Report #{report.id.slice(0, 8).toUpperCase()} · Submitted{" "}
                 {formatDate(report.createdAt)}
               </p>
@@ -237,43 +270,43 @@ export default function ReportDetailPage() {
 
             <div className="flex items-center gap-2 flex-wrap">
               {/* Severity */}
-              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border ${sev.bg} ${sev.color}`}>
+              <span className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border", sev.bg)}>
                 <AlertTriangle className="w-3 h-3" />
                 {sev.label}
               </span>
               {/* Status */}
-              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider border ${statusStyle.bg} ${statusStyle.text}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                {getStatusLabel(report.status)}
+              <span className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border", statusStyle.bg)}>
+                <span className={cn("w-1.5 h-1.5 rounded-full", statusStyle.dot)} />
+                {statusStyle.label}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left: Main content */}
         <div className="lg:col-span-2 space-y-4">
 
           {/* Description */}
-          <div className="glass rounded-xl p-5 space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-2">
+          <div className="bg-white border border-gray-200 rounded-md p-5 space-y-3">
+            <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold flex items-center gap-2">
               <FileText className="w-3.5 h-3.5" />
               Description
             </h2>
-            <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
               {report.description}
             </p>
           </div>
 
           {/* Attachments */}
-          <div className="glass rounded-xl p-5 space-y-3">
+          <div className="bg-white border border-gray-200 rounded-md p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-2">
+              <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold flex items-center gap-2">
                 <Paperclip className="w-3.5 h-3.5" />
                 Attachments
                 {(report.attachments?.length ?? 0) > 0 && (
-                  <span className="text-[10px] text-slate-600 normal-case tracking-normal">
+                  <span className="text-[10px] text-gray-400 normal-case tracking-normal">
                     ({report.attachments!.length}/5)
                   </span>
                 )}
@@ -282,7 +315,7 @@ export default function ReportDetailPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[11px] text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-50 transition-all"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200 text-xs text-gray-700 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-all"
                   aria-label="Upload attachment"
                 >
                   <Upload className="w-3 h-3" aria-hidden="true" />
@@ -300,9 +333,9 @@ export default function ReportDetailPage() {
             </div>
 
             {uploadError && (
-              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
-                <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                <p className="text-[11px] text-red-300">{uploadError}</p>
+              <div className="flex items-center gap-2 p-2.5 rounded-md bg-red-50 border border-red-200">
+                <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                <p className="text-xs text-red-700">{uploadError}</p>
               </div>
             )}
 
@@ -319,20 +352,20 @@ export default function ReportDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-500 italic">No attachments uploaded yet.</p>
+              <p className="text-xs text-gray-500 italic">No attachments uploaded yet.</p>
             )}
           </div>
 
           {/* Location */}
           {report.locationDesc && (
-            <div className="glass rounded-xl p-5 space-y-2">
-              <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-2">
+            <div className="bg-white border border-gray-200 rounded-md p-5 space-y-2">
+              <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold flex items-center gap-2">
                 <MapPin className="w-3.5 h-3.5" />
                 Location
               </h2>
-              <p className="text-sm text-slate-300">{report.locationDesc}</p>
+              <p className="text-sm text-gray-700">{report.locationDesc}</p>
               {report.latitude && report.longitude && (
-                <p className="text-xs text-slate-600 font-mono">
+                <p className="text-xs text-gray-500 font-mono">
                   {report.latitude.toFixed(6)}, {report.longitude.toFixed(6)}
                 </p>
               )}
@@ -341,25 +374,26 @@ export default function ReportDetailPage() {
 
           {/* Resolution (if resolved/rejected) */}
           {(report.resolution || report.status === "RESOLVED" || report.status === "REJECTED") && (
-            <div className={`glass rounded-xl p-5 space-y-2 border ${
+            <div className={cn(
+              "bg-white border rounded-md p-5 space-y-2",
               report.status === "RESOLVED"
-                ? "border-green-500/20 bg-green-500/5"
+                ? "border-green-200"
                 : report.status === "REJECTED"
-                ? "border-red-500/20 bg-red-500/5"
-                : "border-white/5"
-            }`}>
-              <h2 className="text-xs uppercase tracking-widest font-semibold flex items-center gap-2">
+                ? "border-red-200"
+                : "border-gray-200"
+            )}>
+              <h2 className="text-xs uppercase tracking-widest font-semibold flex items-center gap-2 text-gray-700">
                 {report.status === "RESOLVED" ? (
-                  <><CheckCircle className="w-3.5 h-3.5 text-green-400" /> Resolution</>
+                  <><CheckCircle className="w-3.5 h-3.5 text-green-600" /> Resolution</>
                 ) : (
-                  <><XCircle className="w-3.5 h-3.5 text-red-400" /> Rejection Reason</>
+                  <><XCircle className="w-3.5 h-3.5 text-red-600" /> Rejection Reason</>
                 )}
               </h2>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <p className="text-sm text-gray-700 leading-relaxed">
                 {report.resolution || "No resolution details provided."}
               </p>
               {report.resolvedAt && (
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-gray-500">
                   Resolved on {formatDate(report.resolvedAt)}
                 </p>
               )}
@@ -368,17 +402,17 @@ export default function ReportDetailPage() {
 
           {/* Satellite Imagery — only when report is tied to a project */}
           {report.projectId && (
-            <div className="glass rounded-xl p-5 space-y-3">
+            <div className="bg-white border border-gray-200 rounded-md p-5 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-2">
-                  <Satellite className="w-3.5 h-3.5 text-cyan-400" />
+                <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold flex items-center gap-2">
+                  <Satellite className="w-3.5 h-3.5 text-cyan-600" />
                   Satellite Development Timeline
                 </h2>
-                <span className="text-[10px] text-slate-600 uppercase tracking-wider">
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider">
                   Weekly imagery · ESRI World Imagery
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
+              <p className="text-xs text-gray-500 leading-relaxed">
                 Independent satellite-based development tracking for the project under report. Each weekly
                 capture includes an automated development score, built-up area, vegetation cover, and
                 construction status derived from change detection.
@@ -389,36 +423,36 @@ export default function ReportDetailPage() {
 
           {/* Status Timeline */}
           {report.statusLogs && report.statusLogs.length > 0 && (
-            <div className="glass rounded-xl p-5 space-y-3">
-              <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-2">
+            <div className="bg-white border border-gray-200 rounded-md p-5 space-y-3">
+              <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5" />
                 Status History
               </h2>
               <div className="relative pl-4 space-y-0">
                 {/* Vertical line */}
-                <div className="absolute left-[7px] top-2 bottom-2 w-px bg-white/10" />
-                {report.statusLogs.map((log, i) => {
+                <div className="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200" />
+                {report.statusLogs.map((log) => {
                   const style = getStatusStyle(log.toStatus);
                   return (
                     <div key={log.id} className="relative flex items-start gap-4 py-3">
                       {/* Dot */}
-                      <div className={`absolute left-[3px] w-2.5 h-2.5 rounded-full border-2 border-navy-900 ${style.dot} ${i === 0 ? "animate-pulse" : ""}`} />
+                      <div className={cn("absolute left-[3px] w-2.5 h-2.5 rounded-full border-2 border-white", style.dot)} />
                       <div className="ml-5 flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-xs font-semibold ${style.text}`}>
-                            {getStatusLabel(log.toStatus)}
+                          <span className={cn("text-xs font-semibold", style.text)}>
+                            {style.label}
                           </span>
                           {log.fromStatus && (
-                            <span className="text-[10px] text-slate-600">
-                              from {getStatusLabel(log.fromStatus)}
+                            <span className="text-[10px] text-gray-500">
+                              from {LIGHT_STATUS_COLORS[log.fromStatus]?.label ?? log.fromStatus}
                             </span>
                           )}
-                          <span className="text-[10px] text-slate-600 ml-auto">
+                          <span className="text-[10px] text-gray-400 ml-auto">
                             {formatDate(log.createdAt)}
                           </span>
                         </div>
                         {log.notes && (
-                          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                          <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
                             {log.notes}
                           </p>
                         )}
@@ -434,48 +468,48 @@ export default function ReportDetailPage() {
         {/* Right: Sidebar */}
         <div className="space-y-4">
           {/* Quick facts */}
-          <div className="glass rounded-xl p-5 space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
+          <div className="bg-white border border-gray-200 rounded-md p-5 space-y-3">
+            <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold">
               Details
             </h2>
             <div className="space-y-2.5">
               <div className="flex items-start gap-2">
-                <Tag className="w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0" />
+                <Tag className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-slate-600">Category</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-md ${catClass}`}>
+                  <p className="text-[10px] text-gray-500">Category</p>
+                  <span className={cn("text-xs px-2 py-0.5 rounded-md", catClass)}>
                     {getCategoryLabel(report.category)}
                   </span>
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0" />
+                <AlertTriangle className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-slate-600">Severity</p>
-                  <span className={`text-xs font-semibold ${sev.color}`}>
+                  <p className="text-[10px] text-gray-500">Severity</p>
+                  <span className={cn("text-xs font-medium", sev.color)}>
                     {getSeverityLabel(report.severity)}
                   </span>
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <Shield className="w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0" />
+                <Shield className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-slate-600">Source</p>
-                  <span className="text-xs text-slate-300">{report.source}</span>
+                  <p className="text-[10px] text-gray-500">Source</p>
+                  <span className="text-xs text-gray-700">{report.source}</span>
                 </div>
               </div>
               {report.project && (
                 <div className="flex items-start gap-2">
-                  <FileText className="w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0" />
+                  <FileText className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-[10px] text-slate-600">Related Project</p>
+                    <p className="text-[10px] text-gray-500">Related Project</p>
                     <button
                       onClick={() => navigate(`/projects/${report.project!.id}`)}
-                      className="text-xs text-electric-400 hover:text-electric-300 transition-colors"
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                     >
                       {report.project.name}
                     </button>
-                    <p className="text-[10px] text-slate-600">
+                    <p className="text-[10px] text-gray-500">
                       {report.project.district}, {report.project.state}
                     </p>
                   </div>
@@ -483,11 +517,11 @@ export default function ReportDetailPage() {
               )}
               {report.assignedTo && (
                 <div className="flex items-start gap-2">
-                  <User className="w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0" />
+                  <User className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-[10px] text-slate-600">Assigned to</p>
-                    <p className="text-xs text-slate-200">{report.assignedTo.name}</p>
-                    <p className="text-[10px] text-slate-600">{report.assignedTo.role}</p>
+                    <p className="text-[10px] text-gray-500">Assigned to</p>
+                    <p className="text-xs text-gray-900">{report.assignedTo.name}</p>
+                    <p className="text-[10px] text-gray-500">{report.assignedTo.role}</p>
                   </div>
                 </div>
               )}
@@ -495,34 +529,34 @@ export default function ReportDetailPage() {
           </div>
 
           {/* Reporter */}
-          <div className="glass rounded-xl p-5 space-y-2">
-            <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-2">
+          <div className="bg-white border border-gray-200 rounded-md p-5 space-y-2">
+            <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold flex items-center gap-2">
               Reporter
               {isRedacted && (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
                   <Lock className="w-2.5 h-2.5" />
                   Confidential
                 </span>
               )}
             </h2>
             {report.isAnonymous ? (
-              <p className="text-xs text-slate-500 italic">Submitted anonymously</p>
+              <p className="text-xs text-gray-500 italic">Submitted anonymously</p>
             ) : isRedacted ? (
               <div className="space-y-2">
-                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                  <ShieldOff className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-amber-300/90 leading-relaxed">
+                <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 border border-amber-200">
+                  <ShieldOff className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-800 leading-relaxed">
                     Reporter information is hidden to protect citizen identity.
                     {report.hasReporterContact
                       ? " Reporter provided contact details — withheld for privacy."
                       : " Only administrators can view this data."}
                   </p>
                 </div>
-                <p className="text-xs text-slate-600 font-mono">[REDACTED]</p>
+                <p className="text-xs text-gray-500 font-mono">[REDACTED]</p>
                 {canInvestigate && (
                   <button
                     onClick={() => setShowOriginalModal(true)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-semibold hover:bg-amber-500/20 transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-300 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-all"
                   >
                     <Eye className="w-3.5 h-3.5" aria-hidden="true" />
                     View Original (Investigation Access)
@@ -532,13 +566,13 @@ export default function ReportDetailPage() {
             ) : (
               <div className="space-y-1">
                 {report.reporterName && (
-                  <p className="text-sm text-slate-200">{report.reporterName}</p>
+                  <p className="text-sm text-gray-900">{report.reporterName}</p>
                 )}
                 {report.reporterEmail && (
-                  <p className="text-xs text-slate-500">{report.reporterEmail}</p>
+                  <p className="text-xs text-gray-600">{report.reporterEmail}</p>
                 )}
                 {report.reporterPhone && (
-                  <p className="text-xs text-slate-500">{report.reporterPhone}</p>
+                  <p className="text-xs text-gray-600">{report.reporterPhone}</p>
                 )}
               </div>
             )}
@@ -547,21 +581,21 @@ export default function ReportDetailPage() {
           {/* Investigation Context Modal */}
           {showOriginalModal && (
             <div
-              className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
               role="dialog"
               aria-modal="true"
               aria-labelledby="investigation-modal-title"
             >
-              <div className="glass rounded-xl border border-amber-500/30 bg-navy-900/95 max-w-md w-full p-6 space-y-4">
+              <div className="bg-white border border-amber-200 rounded-md max-w-md w-full p-6 space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
-                    <Eye className="w-5 h-5 text-amber-400" aria-hidden="true" />
+                  <div className="w-10 h-10 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+                    <Eye className="w-5 h-5 text-amber-600" aria-hidden="true" />
                   </div>
                   <div>
-                    <h2 id="investigation-modal-title" className="text-sm font-semibold text-white">
+                    <h2 id="investigation-modal-title" className="text-sm font-semibold text-gray-900">
                       Access Original Reporter Data
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
                       You are about to view the original (un-redacted) reporter information
                       for this report. This access will be permanently recorded in the
                       audit log with your identity and the investigation context you provide.
@@ -570,8 +604,8 @@ export default function ReportDetailPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="investigation-context" className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
-                    Investigation Context <span className="text-red-400">*</span>
+                  <label htmlFor="investigation-context" className="text-xs text-gray-600 uppercase tracking-wider font-semibold">
+                    Investigation Context <span className="text-red-600">*</span>
                   </label>
                   <textarea
                     id="investigation-context"
@@ -579,17 +613,17 @@ export default function ReportDetailPage() {
                     onChange={(e) => setInvestigationContext(e.target.value)}
                     rows={4}
                     placeholder="e.g. Following up on complaint ref CMP-2026-44 — need to contact reporter for additional evidence."
-                    className="w-full bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all resize-none"
+                    className="w-full border border-gray-300 bg-white rounded-md px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 transition-all resize-none"
                   />
-                  <p className="text-[10px] text-slate-600">
+                  <p className="text-xs text-gray-500">
                     Minimum 10 characters. Required for audit trail.
                   </p>
                 </div>
 
                 {originalError && (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20" role="alert">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" aria-hidden="true" />
-                    <p className="text-[11px] text-red-300">{originalError}</p>
+                  <div className="flex items-center gap-2 p-2.5 rounded-md bg-red-50 border border-red-200" role="alert">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" aria-hidden="true" />
+                    <p className="text-xs text-red-700">{originalError}</p>
                   </div>
                 )}
 
@@ -601,14 +635,14 @@ export default function ReportDetailPage() {
                       setOriginalError(null);
                     }}
                     disabled={loadingOriginal}
-                    className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+                    className="flex-1 px-3 py-2 rounded-md bg-white border border-gray-200 text-xs text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleViewOriginal}
                     disabled={loadingOriginal || investigationContext.trim().length < 10}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-semibold hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-amber-600 border border-amber-600 text-white text-xs font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     {loadingOriginal ? "Accessing..." : "Access Original Data"}
                   </button>
@@ -619,24 +653,24 @@ export default function ReportDetailPage() {
 
           {/* Original Data Panel (visible after investigation access) */}
           {originalData && (
-            <div className="glass rounded-xl border-2 border-red-500/40 bg-red-500/5 p-5 space-y-3">
+            <div className="bg-white border-2 border-red-300 rounded-md p-5 space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-4 h-4 text-red-400" />
+                  <div className="w-9 h-9 rounded-md bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
                   </div>
                   <div>
-                    <h2 className="text-xs uppercase tracking-widest text-red-400 font-semibold">
+                    <h2 className="text-xs uppercase tracking-widest text-red-700 font-semibold">
                       Original Reporter Data — Audit Logged
                     </h2>
-                    <p className="text-[10px] text-red-300/80 mt-0.5">
+                    <p className="text-[10px] text-red-600 mt-0.5">
                       This view is investigation-only. Access recorded against your account.
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={closeOriginalPanel}
-                  className="text-[10px] text-slate-500 hover:text-slate-300 uppercase tracking-wider"
+                  className="text-[10px] text-gray-500 hover:text-gray-700 uppercase tracking-wider"
                   aria-label="Close original data panel"
                 >
                   Close
@@ -646,32 +680,32 @@ export default function ReportDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                 {originalData.reporterName && (
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Name</p>
-                    <p className="text-sm text-slate-100 font-mono">{originalData.reporterName}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Name</p>
+                    <p className="text-sm text-gray-900 font-mono">{originalData.reporterName}</p>
                   </div>
                 )}
                 {originalData.reporterEmail && (
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Email</p>
-                    <p className="text-sm text-slate-100 font-mono">{originalData.reporterEmail}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Email</p>
+                    <p className="text-sm text-gray-900 font-mono">{originalData.reporterEmail}</p>
                   </div>
                 )}
                 {originalData.reporterPhone && (
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">Phone</p>
-                    <p className="text-sm text-slate-100 font-mono">{originalData.reporterPhone}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Phone</p>
+                    <p className="text-sm text-gray-900 font-mono">{originalData.reporterPhone}</p>
                   </div>
                 )}
                 {originalData.ipAddress && (
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">IP Address</p>
-                    <p className="text-sm text-slate-100 font-mono">{originalData.ipAddress}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">IP Address</p>
+                    <p className="text-sm text-gray-900 font-mono">{originalData.ipAddress}</p>
                   </div>
                 )}
                 {originalData.userAgent && (
                   <div className="md:col-span-2">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider">User Agent</p>
-                    <p className="text-xs text-slate-300 font-mono break-all">{originalData.userAgent}</p>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">User Agent</p>
+                    <p className="text-xs text-gray-700 font-mono break-all">{originalData.userAgent}</p>
                   </div>
                 )}
               </div>
@@ -680,8 +714,8 @@ export default function ReportDetailPage() {
 
           {/* Actions */}
           {isOpen && availableTransitions.length > 0 && (
-            <div className="glass rounded-xl p-5 space-y-3">
-              <h2 className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
+            <div className="bg-white border border-gray-200 rounded-md p-5 space-y-3">
+              <h2 className="text-xs uppercase tracking-widest text-gray-500 font-semibold">
                 Actions
               </h2>
 
@@ -689,35 +723,37 @@ export default function ReportDetailPage() {
               {transitionOpen ? (
                 <div className="space-y-3">
                   {transitionError && (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20" role="alert">
-                      <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" aria-hidden="true" />
-                      <p className="text-xs text-red-300">{transitionError}</p>
+                    <div className="flex items-center gap-2 p-3 rounded-md bg-red-50 border border-red-200" role="alert">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" aria-hidden="true" />
+                      <p className="text-xs text-red-700">{transitionError}</p>
                     </div>
                   )}
 
                   {/* Status select */}
                   <div className="space-y-1">
-                    <p id="transition-status-label" className="text-[10px] text-slate-500 uppercase tracking-wider">
+                    <p id="transition-status-label" className="text-xs text-gray-600 uppercase tracking-wider">
                       Move to
                     </p>
                     <div role="radiogroup" aria-labelledby="transition-status-label" className="space-y-1">
                       {availableTransitions.map((s) => {
                         const style = getStatusStyle(s);
+                        const isSelected = selectedStatus === s;
                         return (
                           <button
                             key={s}
                             onClick={() => setSelectedStatus(s)}
                             role="radio"
-                            aria-checked={selectedStatus === s}
-                            aria-label={getStatusLabel(s)}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
-                              selectedStatus === s
-                                ? `${style.bg} ${style.text} border-current/20`
-                                : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
-                            }`}
+                            aria-checked={isSelected}
+                            aria-label={style.label}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-3 py-2 rounded-md border text-xs transition-all",
+                              isSelected
+                                ? `${style.bg} border-current`
+                                : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                            )}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} aria-hidden="true" />
-                            {getStatusLabel(s)}
+                            <span className={cn("w-1.5 h-1.5 rounded-full", style.dot)} aria-hidden="true" />
+                            {style.label}
                           </button>
                         );
                       })}
@@ -727,7 +763,7 @@ export default function ReportDetailPage() {
                   {/* Notes */}
                   {selectedStatus && (
                     <div className="space-y-1">
-                      <label htmlFor="transition-notes" className="text-[10px] text-slate-500 uppercase tracking-wider">
+                      <label htmlFor="transition-notes" className="text-xs text-gray-600 uppercase tracking-wider">
                         Notes {selectedStatus === "RESOLVED" || selectedStatus === "REJECTED" ? "(required)" : "(optional)"}
                       </label>
                       <textarea
@@ -736,7 +772,7 @@ export default function ReportDetailPage() {
                         onChange={(e) => setTransitionNotes(e.target.value)}
                         rows={3}
                         placeholder="Describe the action taken or reason..."
-                        className="w-full bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-electric-500/50 transition-all resize-none"
+                        className="w-full border border-gray-300 bg-white rounded-md px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all resize-none"
                       />
                     </div>
                   )}
@@ -744,8 +780,8 @@ export default function ReportDetailPage() {
                   {/* Resolution (required for RESOLVED/REJECTED) */}
                   {(selectedStatus === "RESOLVED" || selectedStatus === "REJECTED") && (
                     <div className="space-y-1">
-                      <label htmlFor="transition-resolution" className="text-[10px] text-slate-500 uppercase tracking-wider">
-                        Resolution Summary <span className="text-red-400">*</span>
+                      <label htmlFor="transition-resolution" className="text-xs text-gray-600 uppercase tracking-wider">
+                        Resolution Summary <span className="text-red-600">*</span>
                       </label>
                       <textarea
                         id="transition-resolution"
@@ -757,7 +793,7 @@ export default function ReportDetailPage() {
                             ? "How was this issue resolved?"
                             : "Why is this report being rejected?"
                         }
-                        className="w-full bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-electric-500/50 transition-all resize-none"
+                        className="w-full border border-gray-300 bg-white rounded-md px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all resize-none"
                       />
                     </div>
                   )}
@@ -766,7 +802,7 @@ export default function ReportDetailPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => { setTransitionOpen(false); setSelectedStatus(""); setTransitionNotes(""); setTransitionResolution(""); setTransitionError(null); }}
-                      className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-400 hover:text-white transition-colors"
+                      className="flex-1 px-3 py-2 rounded-md bg-white border border-gray-200 text-xs text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors"
                     >
                       Cancel
                     </button>
@@ -777,7 +813,7 @@ export default function ReportDetailPage() {
                         !selectedStatus ||
                         ((selectedStatus === "RESOLVED" || selectedStatus === "REJECTED") && !transitionResolution.trim())
                       }
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-electric-500/20 border border-electric-500/30 text-electric-400 text-xs font-semibold hover:bg-electric-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-blue-600 border border-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       {transitioning ? "Updating..." : "Confirm"}
                     </button>
@@ -786,7 +822,7 @@ export default function ReportDetailPage() {
               ) : (
                 <button
                   onClick={() => setTransitionOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-electric-500/10 border border-electric-500/20 text-electric-400 text-xs font-semibold hover:bg-electric-500/20 transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-blue-600 border border-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-all"
                 >
                   <Send className="w-3.5 h-3.5" aria-hidden="true" />
                   Update Status
@@ -823,9 +859,9 @@ function AttachmentCard({
       : `${(attachment.size / 1024 / 1024).toFixed(1)} MB`;
 
   return (
-    <div className="group relative rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden hover:border-electric-500/30 transition-all">
+    <div className="group relative rounded-md border border-gray-200 bg-white overflow-hidden hover:border-gray-300 transition-all">
       {/* Preview area */}
-      <div className="h-28 flex items-center justify-center overflow-hidden bg-navy-800/50">
+      <div className="h-28 flex items-center justify-center overflow-hidden bg-gray-100">
         {isImage ? (
           <img
             src={fileUrl}
@@ -836,26 +872,26 @@ function AttachmentCard({
             }}
           />
         ) : (
-          <File className="w-10 h-10 text-red-400/60" />
+          <File className="w-10 h-10 text-gray-400" />
         )}
       </div>
 
       {/* Info */}
       <div className="p-2.5 space-y-1">
-        <p className="text-[11px] text-slate-300 truncate leading-tight" title={attachment.originalName}>
+        <p className="text-xs text-gray-700 truncate leading-tight" title={attachment.originalName}>
           {attachment.originalName}
         </p>
-        <p className="text-[10px] text-slate-600">{sizeLabel}</p>
+        <p className="text-[10px] text-gray-500">{sizeLabel}</p>
       </div>
 
       {/* Hover overlay actions */}
-      <div className="absolute inset-0 bg-navy-900/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+      <div className="absolute inset-0 bg-white/95 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
         <a
           href={fileUrl}
           download={attachment.originalName}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-2 rounded-lg bg-white/10 text-slate-200 hover:bg-white/20 transition-colors"
+          className="p-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
           aria-label={`Download ${attachment.originalName}`}
         >
           <Download className="w-4 h-4" aria-hidden="true" />
@@ -864,7 +900,7 @@ function AttachmentCard({
           <button
             onClick={onDelete}
             disabled={deleting}
-            className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+            className="p-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
             aria-label={`Delete ${attachment.originalName}`}
           >
             <Trash2 className="w-4 h-4" aria-hidden="true" />

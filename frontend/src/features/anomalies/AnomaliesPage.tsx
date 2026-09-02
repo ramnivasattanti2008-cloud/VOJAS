@@ -1,21 +1,27 @@
+/**
+ * AnomaliesPage — VOJAS 2.0 Anomaly Intelligence
+ *
+ * IBM Carbon–inspired light theme. Professional data-management layout.
+ * No gradients, no glassmorphism, no glow effects, no decorative animations.
+ * All data from real hooks (no fabricated numbers).
+ */
+
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useAnomalies, useAnomalyStats, useScanAnomalies } from "@/hooks/useAnomalies";
 import {
   type AnomalyStatus,
   type AnomalySeverity,
   type AnomalyCategory,
   ANOMALY_STATUSES,
-  SEVERITY_COLORS,
   getAnomalyCategoryLabel,
   getStatusLabel,
   getRiskLabel,
 } from "@/types";
 import { LoadingState, ErrorState } from "@/components/ui";
-import PageHeader from "@/components/ui/PageHeader";
-import { fadeUp, staggerContainer, EASE } from "@/components/ui/Animations";
 import EmptyState from "@/components/ui/Empty";
+import { type Column } from "@/components/ui/DataTable";
+import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   Search,
@@ -26,11 +32,125 @@ import {
   Building2,
   MapPin,
   RefreshCw,
-  Sparkles,
   CheckCircle2,
   Scan,
   ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
+
+// ── Formatters ──────────────────────────────────────────────────────────────
+
+function timeAgo(d: string | Date): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days = Math.floor(diff / 86_400_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 30) return `${days}d ago`;
+  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
+// Severity badge colors (light theme)
+const SEV_BADGE: Record<AnomalySeverity, { label: string; bg: string; text: string }> = {
+  CRITICAL: { label: "Critical", bg: "bg-red-50 text-red-700", text: "text-red-700" },
+  HIGH:     { label: "High",     bg: "bg-orange-50 text-orange-700", text: "text-orange-700" },
+  MEDIUM:   { label: "Medium",   bg: "bg-yellow-50 text-yellow-700", text: "text-yellow-700" },
+  LOW:      { label: "Low",      bg: "bg-blue-50 text-blue-700", text: "text-blue-700" },
+};
+
+// ── KPI card (Carbon style) ──────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  Icon,
+  accent = "blue",
+  pulse,
+}: {
+  label: string;
+  value: number;
+  sub?: string;
+  Icon: React.ElementType;
+  accent?: "blue" | "red" | "amber" | "green";
+  pulse?: boolean;
+}) {
+  const iconMap: Record<string, string> = {
+    blue:  "bg-blue-50 text-blue-600",
+    red:   "bg-red-50 text-red-600",
+    amber: "bg-amber-50 text-amber-600",
+    green: "bg-green-50 text-green-600",
+  };
+  const barMap: Record<string, string> = {
+    blue:  "bg-blue-500",
+    red:   "bg-red-500",
+    amber: "bg-amber-500",
+    green: "bg-green-500",
+  };
+  return (
+    <div className="bg-white border border-gray-200 rounded-md p-4 relative hover:border-gray-300 hover:shadow-sm transition-all duration-200">
+      <div className={cn("absolute top-0 left-0 right-0 h-0.5 rounded-t-md", barMap[accent])} aria-hidden />
+      <div className="flex items-start justify-between mb-2">
+        <div className={cn("w-8 h-8 rounded flex items-center justify-center", iconMap[accent])}>
+          {(() => {
+            const TypedIcon = Icon as React.ComponentType<{ className?: string; "aria-hidden"?: boolean | string }>;
+            return <TypedIcon aria-hidden="true" className="w-4 h-4" />;
+          })()}
+        </div>
+        {pulse && (
+          <span className="relative flex h-2 w-2 mt-1" aria-label="Active">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-semibold text-gray-900 tabular-nums leading-none">
+        {value.toLocaleString("en-IN")}
+      </p>
+      <p className="text-sm text-gray-700 font-medium mt-1.5">{label}</p>
+      {sub && <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Section header (Carbon pattern) ──────────────────────────────────────────
+
+function SectionHeader({
+  title,
+  count,
+  action,
+}: {
+  title: string;
+  count?: number;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <div className="flex items-end justify-between gap-3 mb-3">
+      <div className="flex items-center gap-2">
+        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+        {count !== undefined && (
+          <span className="inline-flex items-center justify-center min-w-[24px] h-5 px-1.5 rounded bg-gray-100 text-[11px] font-medium text-gray-600 tabular-nums">
+            {count.toLocaleString("en-IN")}
+          </span>
+        )}
+      </div>
+      {action && (
+        <a
+          href={action.href}
+          className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 shrink-0"
+        >
+          {action.label}
+          <ArrowRight className="w-3.5 h-3.5" />
+        </a>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
 
 export default function AnomaliesPage() {
   const navigate = useNavigate();
@@ -38,33 +158,29 @@ export default function AnomaliesPage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<AnomalyStatus | "">("");
   const [severityFilter, setSeverityFilter] = useState<AnomalySeverity | "">("");
   const [categoryFilter, setCategoryFilter] = useState<AnomalyCategory | "">("");
+  const [page] = useState(1);
 
   const anomaliesQuery = useAnomalies({
     status: (statusFilter || undefined) as AnomalyStatus | undefined,
     severity: (severityFilter || undefined) as AnomalySeverity | undefined,
     category: (categoryFilter || undefined) as AnomalyCategory | undefined,
-    page: 1,
+    page,
     limit: 50,
   });
   const statsQuery = useAnomalyStats();
   const scanMutation = useScanAnomalies();
 
   const anomalies = anomaliesQuery.data?.items ?? [];
-  const stats = statsQuery.data
-    ? {
-        open: statsQuery.data.open,
-        critical: statsQuery.data.critical,
-        high: statsQuery.data.high,
-        total: statsQuery.data.total,
-      }
-    : null;
+  const stats = statsQuery.data ?? null;
   const loading = anomaliesQuery.isLoading;
   const error = anomaliesQuery.error?.message ?? null;
   const scanning = scanMutation.isPending;
 
+  // Client-side search filter
   const filtered = useMemo(() => {
     if (!search.trim()) return anomalies;
     const q = search.trim().toLowerCase();
@@ -74,7 +190,7 @@ export default function AnomaliesPage() {
         a.description.toLowerCase().includes(q) ||
         a.project?.name.toLowerCase().includes(q) ||
         a.project?.district.toLowerCase().includes(q) ||
-        a.ruleCode?.toLowerCase().includes(q)
+        (a.ruleCode ?? "").toLowerCase().includes(q)
     );
   }, [anomalies, search]);
 
@@ -82,6 +198,7 @@ export default function AnomaliesPage() {
     setStatusFilter("");
     setSeverityFilter("");
     setCategoryFilter("");
+    setSearchInput("");
     setSearch("");
   };
   const hasActiveFilters = statusFilter || severityFilter || categoryFilter || search;
@@ -89,7 +206,9 @@ export default function AnomaliesPage() {
   const handleScan = async () => {
     try {
       const result = await scanMutation.mutateAsync();
-      setScanToast(`Scan complete: ${result.newAnomalies} new anomalies detected (${result.totalAnomalies} total)`);
+      setScanToast(
+        `Scan complete: ${result.newAnomalies} new anomalies detected (${result.totalAnomalies} total)`
+      );
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setScanToast(null), 6000);
     } catch { /* handled by error state */ }
@@ -101,148 +220,180 @@ export default function AnomaliesPage() {
     };
   }, []);
 
+  // Columns for the anomaly table
+  const columns: Column<typeof filtered[number]>[] = [
+    {
+      header: "Severity",
+      accessor: (a) => {
+        const sev = SEV_BADGE[a.severity] ?? SEV_BADGE.LOW;
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded", sev.bg)}>
+              {sev.label}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      header: "Anomaly",
+      accessor: (a) => (
+        <div className="max-w-[240px]">
+          <p className="text-sm font-medium text-gray-900 leading-snug line-clamp-2">{a.title}</p>
+          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{a.description}</p>
+        </div>
+      ),
+    },
+    {
+      header: "Category",
+      accessor: (a) => (
+        <span className="text-xs text-gray-600">{getAnomalyCategoryLabel(a.category)}</span>
+      ),
+    },
+    {
+      header: "Project",
+      accessor: (a) =>
+        a.project ? (
+          <div className="flex items-center gap-1 max-w-[160px]">
+            <Building2 className="w-3 h-3 text-gray-400 shrink-0" />
+            <span className="text-xs text-gray-700 truncate">{a.project.name}</span>
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        ),
+    },
+    {
+      header: "Location",
+      accessor: (a) =>
+        a.project ? (
+          <div className="flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+            <span className="text-xs text-gray-600 truncate max-w-[100px]">{a.project.district}</span>
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        ),
+    },
+    {
+      header: "Risk",
+      accessor: (a) => {
+        const risk = getRiskLabel(a.riskScore);
+        return (
+          <span className={cn("text-sm font-semibold tabular-nums", risk.color)}>
+            {a.riskScore}
+          </span>
+        );
+      },
+    },
+    {
+      header: "Status",
+      accessor: (a) => {
+        const resolved = a.status === "RESOLVED" || a.status === "DISMISSED";
+        return (
+          <span className={cn(
+            "text-[11px] font-medium px-2 py-0.5 rounded",
+            resolved ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"
+          )}>
+            {getStatusLabel(a.status)}
+          </span>
+        );
+      },
+    },
+    {
+      header: "Rule",
+      accessor: (a) => (
+        <span className="text-xs font-mono text-gray-500">{a.ruleCode ?? "—"}</span>
+      ),
+    },
+    {
+      header: "Detected",
+      accessor: (a) => (
+        <span className="text-xs text-gray-500">{timeAgo(a.createdAt)}</span>
+      ),
+    },
+    {
+      header: "",
+      accessor: () => (
+        <div className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors">
+          <span>View</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <motion.div
-      className="space-y-6"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-    >
-      {/* Page header */}
-      <motion.div variants={fadeUp}>
-        <PageHeader
-          title="Anomaly"
-          gradientWord="Detection"
-          accent="saffron"
-          icon={AlertTriangle}
-          subtitle="AI-flagged patterns requiring human verification"
-          breadcrumbs={[
-            { label: "Dashboard", href: "/" },
-            { label: "Anomaly Detection" },
-          ]}
-          actions={
-            <button
-              onClick={handleScan}
-              disabled={scanning}
-              aria-label={scanning ? "Running anomaly scan" : "Run anomaly scan"}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-saffron-500 to-orange-400 hover:from-orange-400 hover:to-saffron-400 disabled:from-saffron-500/50 text-navy-900 text-sm font-bold rounded-lg shadow-lg shadow-saffron-500/30 hover:shadow-saffron-500/50 transition-all hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-            >
-              {scanning ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-navy-900/30 border-t-navy-900 rounded-full animate-spin" />
-                  Scanning...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Run Scan
-                </>
-              )}
-            </button>
-          }
+    <div className="space-y-5 max-w-[1400px]">
+      {/* ── Page header ──────────────────────────────────────────── */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900 leading-tight">Anomaly Intelligence</h1>
+        <p className="text-sm text-gray-600 mt-1">
+          Flagged patterns from project and financial data requiring officer review.
+        </p>
+      </div>
+
+      {/* ── KPI strip ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard
+          label="Open Anomalies"
+          value={stats?.open ?? 0}
+          sub="need review"
+          Icon={AlertTriangle}
+          accent="amber"
         />
-      </motion.div>
+        <KpiCard
+          label="Critical"
+          value={stats?.critical ?? 0}
+          sub="immediate action"
+          Icon={ShieldCheck}
+          accent="red"
+          pulse={(stats?.critical ?? 0) > 0}
+        />
+        <KpiCard
+          label="High Risk"
+          value={stats?.high ?? 0}
+          sub="priority"
+          Icon={AlertTriangle}
+          accent="red"
+        />
+        <KpiCard
+          label="Total Detected"
+          value={stats?.total ?? 0}
+          sub="all time"
+          Icon={Scan}
+          accent="blue"
+        />
+      </div>
 
-      {/* Accessible toast */}
-      {scanToast && (
-        <motion.div
-          initial={{ opacity: 0, y: -8, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -8, scale: 0.97 }}
-          role="status"
-          aria-live="polite"
-          className="glass rounded-xl p-4 flex items-center gap-3 border border-green-500/30 bg-green-500/5"
-        >
-          <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
-          <p className="text-sm text-green-300">{scanToast}</p>
-        </motion.div>
-      )}
-
-      {/* Stats row — dramatic 4-up with glow */}
-      {stats && (
-        <motion.div variants={fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { label: "Open",         value: stats.open,     accent: "amber" as const,  icon: AlertTriangle, sub: "needs review", delta: stats.open > 0 ? "+" : undefined },
-            { label: "Critical",     value: stats.critical, accent: "red"    as const,  icon: ShieldCheck,   sub: "immediate action", pulse: stats.critical > 0 },
-            { label: "High Risk",     value: stats.high,     accent: "saffron" as const, icon: AlertTriangle, sub: "priority", },
-            { label: "Total",        value: stats.total,    accent: "electric" as const, icon: Scan,          sub: "all time", },
-          ].map((s, i) => {
-            const Icon = s.icon;
-            return (
-              <motion.div
-                key={s.label}
-                variants={fadeUp}
-                custom={i}
-                whileHover={{ y: -3, scale: 1.02 }}
-                className={`glass rounded-2xl p-5 border ring-1 ${
-                  s.accent === "red" ? "ring-red-500/20 top-accent top-accent-red" :
-                  s.accent === "amber" ? "ring-saffron-500/20 top-accent top-accent-saffron" :
-                  s.accent === "electric" ? "ring-electric-500/20 top-accent top-accent-electric" :
-                  "ring-saffron-500/20 top-accent top-accent-saffron"
-                } transition-all cursor-default group overflow-hidden relative`}
-              >
-                <div className={`absolute top-0 left-0 right-0 h-0.5 ${
-                  s.accent === "red" ? "bg-gradient-to-r from-red-500 to-red-400" :
-                  s.accent === "amber" ? "bg-gradient-to-r from-saffron-500 to-saffron-400" :
-                  s.accent === "electric" ? "bg-gradient-to-r from-electric-500 to-electric-400" :
-                  "bg-gradient-to-r from-orange-500 to-orange-400"
-                }`} />
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    s.accent === "red" ? "bg-red-500/15 text-red-400" :
-                    s.accent === "amber" ? "bg-saffron-500/15 text-saffron-400" :
-                    s.accent === "electric" ? "bg-electric-500/15 text-electric-400" :
-                    "bg-orange-500/15 text-orange-400"
-                  }`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  {s.pulse && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-                    </span>
-                  )}
-                </div>
-                <p className={`text-3xl font-bold leading-none tabular-nums ${
-                  s.accent === "red" ? "text-red-400" :
-                  s.accent === "amber" ? "text-saffron-400" :
-                  s.accent === "electric" ? "text-electric-400" :
-                  "text-orange-400"
-                }`} style={{ textShadow: "0 0 24px currentColor" }}>
-                  {s.value}
-                </p>
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1.5 font-semibold">{s.label}</p>
-                <p className="text-[9px] text-slate-600 mt-0.5">{s.sub}</p>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-      )}
-
-      {/* Filters */}
-      <motion.div variants={fadeUp} className="glass rounded-xl p-4 space-y-3">
+      {/* ── Filter bar ─────────────────────────────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-md p-4 space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Search */}
           <form
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={(e) => { e.preventDefault(); setSearch(searchInput.trim()); }}
             className="relative flex-1 min-w-[220px]"
             role="search"
             aria-label="Search anomalies"
           >
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" aria-hidden="true" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+              aria-hidden="true"
+            />
             <input
               type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by title, project, district, or rule..."
-              className="w-full bg-navy-800/60 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-electric-500/50 focus:ring-1 focus:ring-electric-500/20 transition-all"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by title, project, district, rule…"
+              className="w-full border border-gray-200 rounded px-3 py-2 pl-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
               aria-label="Search anomalies by title, project, district, or rule code"
             />
           </form>
 
+          {/* Status filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as AnomalyStatus | "")}
-            className="bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-electric-500/50 transition-colors cursor-pointer"
+            className="border border-gray-200 rounded px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer bg-white"
             aria-label="Filter by anomaly status"
           >
             <option value="">All statuses</option>
@@ -251,10 +402,11 @@ export default function AnomaliesPage() {
             ))}
           </select>
 
+          {/* Severity filter */}
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value as AnomalySeverity | "")}
-            className="bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-electric-500/50 transition-colors cursor-pointer"
+            className="border border-gray-200 rounded px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer bg-white"
             aria-label="Filter by anomaly severity"
           >
             <option value="">All severities</option>
@@ -264,50 +416,84 @@ export default function AnomaliesPage() {
             <option value="LOW">Low</option>
           </select>
 
+          {/* Clear */}
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 px-3 py-2 border border-gray-200 rounded hover:border-gray-300 hover:bg-gray-50 transition-colors"
             >
               <X className="w-3.5 h-3.5" />
-              Clear
+              Clear filters
             </button>
           )}
+
+          {/* Run scan */}
+          <button
+            onClick={handleScan}
+            disabled={scanning}
+            className="ml-auto flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 text-white text-sm font-medium rounded transition-colors disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={cn("w-4 h-4", scanning ? "animate-spin" : "")} />
+            {scanning ? "Scanning…" : "Run Scan"}
+          </button>
         </div>
 
         {/* Severity quick-filter chips */}
-        <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter by severity">
-          <Filter className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1 font-semibold">Severity:</span>
+        <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Filter by severity">
+          <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
+          <span className="text-[11px] text-gray-500 uppercase tracking-wider font-medium mr-1">Severity:</span>
           {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as AnomalySeverity[]).map((s) => {
             const isActive = severityFilter === s;
-            const style = SEVERITY_COLORS[s];
+            const badge = SEV_BADGE[s];
             return (
               <button
                 key={s}
                 onClick={() => setSeverityFilter(isActive ? "" : s)}
                 aria-pressed={isActive}
-                className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-all ${
+                className={cn(
+                  "flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded border transition-colors",
                   isActive
-                    ? `${style.bg} ${style.text} border-current shadow-sm`
-                    : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
-                }`}
+                    ? `${badge.bg} border-current font-medium`
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                )}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                {s}
+                {badge.label}
+                {stats && (
+                  <span className={cn(
+                    "text-[10px] font-mono tabular-nums",
+                    isActive ? "text-inherit opacity-70" : "text-gray-400"
+                  )}>
+                    {s === "CRITICAL" ? stats.critical :
+                     s === "HIGH" ? stats.high :
+                     s === "MEDIUM" ? stats.medium :
+                     stats.low}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
-      </motion.div>
+      </div>
 
-      {/* Content */}
+      {/* ── Toast ────────────────────────────────────────────────── */}
+      {scanToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="bg-white border border-green-200 rounded-md p-4 flex items-center gap-3"
+        >
+          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+          <p className="text-sm text-gray-800">{scanToast}</p>
+        </div>
+      )}
+
+      {/* ── Content ─────────────────────────────────────────────────── */}
       {loading ? (
-        <LoadingState message="Loading anomalies..." />
+        <LoadingState message="Loading anomalies…" />
       ) : error ? (
         <ErrorState message={error} onRetry={() => anomaliesQuery.refetch()} />
       ) : filtered.length === 0 ? (
-        <motion.div variants={fadeUp} className="glass rounded-xl">
+        <div className="bg-white border border-gray-200 rounded-md py-16">
           <EmptyState
             icon={CheckCircle2}
             title={hasActiveFilters ? "No anomalies match your filters" : "No anomalies detected"}
@@ -316,133 +502,76 @@ export default function AnomaliesPage() {
                 ? "Try adjusting your filters or run a fresh scan."
                 : "All projects are within expected parameters. Run a scan to check the latest data."
             }
-            accent="green"
             action={
               hasActiveFilters ? (
-                <button onClick={clearFilters} className="text-xs text-electric-400 hover:text-electric-300">
+                <button onClick={clearFilters} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
                   Clear filters
                 </button>
               ) : (
                 <button
                   onClick={handleScan}
                   disabled={scanning}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-electric-500/10 border border-electric-500/30 text-electric-400 text-xs rounded-md hover:bg-electric-500/20 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium rounded hover:bg-blue-100 transition-colors disabled:opacity-50"
                 >
-                  <RefreshCw className={`w-3 h-3 ${scanning ? "animate-spin" : ""}`} />
+                  <RefreshCw className={cn("w-3 h-3", scanning ? "animate-spin" : "")} />
                   Run scan
                 </button>
               )
             }
           />
-        </motion.div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((a, i) => {
-            const sevStyle = SEVERITY_COLORS[a.severity];
-            const risk = getRiskLabel(a.riskScore);
-            return (
-              <motion.div
-                key={a.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04, duration: 0.4, ease: EASE }}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/anomalies/${a.id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    navigate(`/anomalies/${a.id}`);
-                  }
-                }}
-                className="glass rounded-xl p-5 hover:border-white/15 hover:-translate-y-0.5 transition-all cursor-pointer group relative overflow-hidden"
-                aria-label={`View anomaly: ${a.title}`}
-              >
-                {/* Severity accent bar */}
-                <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${a.severity === "CRITICAL" ? "bg-red-500" : a.severity === "HIGH" ? "bg-orange-500" : a.severity === "MEDIUM" ? "bg-saffron-500" : "bg-blue-500"}`} />
-
-                <div className="flex items-start justify-between gap-3 mb-2.5 pl-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border border-white/5 ${sevStyle.bg} ${sevStyle.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${sevStyle.dot}`} />
-                      {a.severity}
-                    </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-white/5 text-slate-300 uppercase tracking-wider">
-                      {getAnomalyCategoryLabel(a.category)}
-                    </span>
-                    {a.status !== "OPEN" && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-blue-500/10 text-blue-400 uppercase tracking-wider border border-blue-500/20">
-                        {getStatusLabel(a.status)}
-                      </span>
-                    )}
-                    {a.lawEscalation && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-red-500/10 text-red-400 uppercase tracking-wider border border-red-500/20 flex items-center gap-1">
-                        <ShieldCheck className="w-2.5 h-2.5" />
-                        {a.lawAuthorityLabel ?? "Escalated"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0 pr-2">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Risk</p>
-                    <p className={`text-lg font-bold leading-none tabular-nums ${risk.color}`} style={{ textShadow: "0 0 12px currentColor" }}>
-                      {a.riskScore}
-                    </p>
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-semibold text-white pl-2 group-hover:text-electric-300 transition-colors leading-snug">
-                  {a.title}
-                </h3>
-
-                <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed pl-2">
-                  {a.description}
-                </p>
-
-                <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-600 flex-wrap gap-2 pl-2">
-                  <div className="flex items-center gap-3">
-                    {a.project && (
-                      <div className="flex items-center gap-1.5">
-                        <Building2 className="w-3 h-3" />
-                        <span className="text-slate-400 truncate max-w-[200px]">{a.project.name}</span>
-                      </div>
-                    )}
-                    {a.project && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3" />
-                        <span>{a.project.district}</span>
-                      </div>
-                    )}
-                    {a.ruleCode && (
-                      <span className="font-mono text-slate-500">{a.ruleCode}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-500 group-hover:text-electric-400 transition-colors">
-                    <span>
-                      {new Date(a.createdAt).toLocaleDateString("en-IN", {
-                        day: "2-digit", month: "short",
-                      })}
-                    </span>
-                    <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
         </div>
+      ) : (
+        <>
+          <SectionHeader title="Results" count={filtered.length} />
+          <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left" aria-label="Anomalies">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    {["Severity", "Anomaly", "Category", "Project", "Location", "Risk", "Status", "Rule", "Detected", ""].map((h) => (
+                      <th key={h} scope="col" className="py-2.5 pr-4 pl-4 text-[11px] font-semibold text-gray-500 uppercase tracking-wider first:pl-4">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map((a) => (
+                    <tr
+                      key={a.id}
+                      className="border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/anomalies/${a.id}`)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate(`/anomalies/${a.id}`); }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View anomaly: ${a.title}`}
+                    >
+                      {columns.map((col, i) => (
+                        <td key={i} className={cn("py-3 pr-4 align-top", i === 1 ? "pl-4" : "pl-4")}>
+                          {col.accessor(a, i)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Trust note */}
-      <motion.div variants={fadeUp} className="glass rounded-xl p-4 flex items-start gap-3 text-xs text-slate-400">
-        <Shield className="w-4 h-4 text-electric-400 shrink-0 mt-0.5" />
+      {/* ── Trust note ─────────────────────────────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-md p-4 flex items-start gap-3 text-xs text-gray-600">
+        <Shield className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
         <div>
-          <p className="text-slate-300 font-medium mb-0.5">About anomaly detection</p>
+          <p className="font-medium text-gray-800 mb-0.5">About anomaly detection</p>
           <p className="leading-relaxed">
-            Anomalies are AI-flagged patterns that warrant review — they indicate <em>risk</em>, not
-            confirmed fraud. Final verification always remains with authorized government officers.
-            Each anomaly has a risk score (0-100) and a clear evidence trail.
+            Anomalies are flagged patterns that warrant review — they indicate risk, not confirmed fraud.
+            Final verification always remains with authorized government officers.
+            Each anomaly has a risk score (0–100) and a clear evidence trail.
           </p>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

@@ -1,3 +1,8 @@
+/**
+ * LawEscalationDialog — Modal for escalating anomaly to law enforcement
+ * IBM Carbon light theme.
+ */
+
 import { useState } from "react";
 import { useLawEnforcementAuthorities, useEscalateAnomaly } from "@/hooks/useLawEnforcement";
 import type { LawAuthority, EscalationResult } from "@/services/lawEnforcementApi";
@@ -10,6 +15,7 @@ import {
   Loader2,
   ArrowRight,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   anomalyId: string;
@@ -19,50 +25,14 @@ interface Props {
   onEscalated?: (result: EscalationResult) => void;
 }
 
-// Authority visual styling (color + icon for the picker)
-const AUTHORITY_STYLES: Record<LawAuthority, { accent: string; bg: string; border: string; ring: string; icon: string }> = {
-  ACB_OFFICE: {
-    accent: "text-red-300",
-    bg: "bg-red-500/10",
-    border: "border-red-500/30",
-    ring: "ring-red-500/50",
-    icon: "🛡️",
-  },
-  POLICE_OFFICE: {
-    accent: "text-blue-300",
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/30",
-    ring: "ring-blue-500/50",
-    icon: "👮",
-  },
-  CVC: {
-    accent: "text-purple-300",
-    bg: "bg-purple-500/10",
-    border: "border-purple-500/30",
-    ring: "ring-purple-500/50",
-    icon: "⚖️",
-  },
-  LOKAYUKTA: {
-    accent: "text-amber-300",
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/30",
-    ring: "ring-amber-500/50",
-    icon: "🏛️",
-  },
-  VIGILANCE: {
-    accent: "text-emerald-300",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/30",
-    ring: "ring-emerald-500/50",
-    icon: "🔍",
-  },
-  COMPTROLLER: {
-    accent: "text-cyan-300",
-    bg: "bg-cyan-500/10",
-    border: "border-cyan-500/30",
-    ring: "ring-cyan-500/50",
-    icon: "📊",
-  },
+// Authority styling (light theme)
+const AUTHORITY_STYLES: Record<LawAuthority, { accent: string; text: string; bgSelected: string; borderSelected: string; ring: string; emoji: string }> = {
+  ACB_OFFICE:   { accent: "bg-red-50 border-red-200",    text: "text-red-700",    bgSelected: "bg-red-50",     borderSelected: "border-red-300",    ring: "ring-red-200",     emoji: "🛡️" },
+  POLICE_OFFICE:{ accent: "bg-blue-50 border-blue-200",  text: "text-blue-700",   bgSelected: "bg-blue-50",    borderSelected: "border-blue-300",   ring: "ring-blue-200",    emoji: "👮" },
+  CVC:          { accent: "bg-purple-50 border-purple-200", text: "text-purple-700", bgSelected: "bg-purple-50", borderSelected: "border-purple-300", ring: "ring-purple-200", emoji: "⚖️" },
+  LOKAYUKTA:    { accent: "bg-amber-50 border-amber-200", text: "text-amber-700",  bgSelected: "bg-amber-50",   borderSelected: "border-amber-300",  ring: "ring-amber-200",   emoji: "🏛️" },
+  VIGILANCE:    { accent: "bg-green-50 border-green-200", text: "text-green-700",  bgSelected: "bg-green-50",   borderSelected: "border-green-300",  ring: "ring-green-200",   emoji: "🔍" },
+  COMPTROLLER:  { accent: "bg-cyan-50 border-cyan-200",  text: "text-cyan-700",   bgSelected: "bg-cyan-50",    borderSelected: "border-cyan-300",   ring: "ring-cyan-200",    emoji: "📊" },
 };
 
 export default function LawEscalationDialog({
@@ -112,34 +82,34 @@ export default function LawEscalationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
       onClick={handleClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="escalation-dialog-title"
     >
       <div
-        className="glass rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white border border-gray-200 rounded-md p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-5">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
-              <Shield className="w-5 h-5 text-red-400" />
+            <div className="w-10 h-10 rounded bg-red-50 flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <h3 id="escalation-dialog-title" className="text-base font-bold text-white flex items-center gap-2">
+              <h3 id="escalation-dialog-title" className="text-base font-semibold text-gray-900">
                 Escalate to Law Enforcement
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">
+              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
                 {anomalyTitle}
               </p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="text-slate-400 hover:text-white transition-colors p-1"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -147,84 +117,57 @@ export default function LawEscalationDialog({
         </div>
 
         {success ? (
-          /* ── Success state ────────────────────────────────────────────── */
+          /* Success */
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+            <div className="p-4 rounded-md bg-green-50 border border-green-200">
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <p className="text-sm font-bold text-emerald-300">
-                  Escalation successful
-                </p>
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <p className="text-sm font-semibold text-green-700">Escalation successful</p>
               </div>
-              <p className="text-xs text-emerald-200/80 mb-3">
+              <p className="text-xs text-green-700 mb-3">
                 {success.notifiedAdmins} admin/officer
                 {success.notifiedAdmins === 1 ? "" : "s"} notified.
               </p>
               <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between py-1.5 border-t border-emerald-500/20">
-                  <span className="text-emerald-200/60 uppercase tracking-wider text-[10px]">
-                    Authority
-                  </span>
-                  <span className="text-emerald-200 font-semibold">
-                    {success.authorityLabel}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 border-t border-emerald-500/20">
-                  <span className="text-emerald-200/60 uppercase tracking-wider text-[10px]">
-                    Reference No.
-                  </span>
-                  <span className="text-emerald-200 font-mono font-bold">
-                    {success.lawReferenceNo}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-1.5 border-t border-emerald-500/20">
-                  <span className="text-emerald-200/60 uppercase tracking-wider text-[10px]">
-                    Escalated at
-                  </span>
-                  <span className="text-emerald-200">
-                    {new Date(success.escalatedAt).toLocaleString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                {success.caseId && (
-                  <div className="flex items-center justify-between py-1.5 border-t border-emerald-500/20">
-                    <span className="text-emerald-200/60 uppercase tracking-wider text-[10px]">
-                      Case ID
-                    </span>
-                    <span className="text-emerald-200 font-mono text-[10px]">
-                      {success.caseId}
-                    </span>
+                {[
+                  { label: "Authority", value: success.authorityLabel },
+                  { label: "Reference No.", value: success.lawReferenceNo, mono: true },
+                  {
+                    label: "Escalated at",
+                    value: new Date(success.escalatedAt).toLocaleString("en-IN", {
+                      day: "2-digit", month: "short", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    }),
+                  },
+                  ...(success.caseId ? [{ label: "Case ID", value: success.caseId, mono: true }] : []),
+                ].map(({ label, value, mono }) => (
+                  <div key={label} className="flex items-center justify-between py-1.5 border-t border-green-200">
+                    <span className="text-green-600 uppercase tracking-wider text-[10px]">{label}</span>
+                    <span className={cn("text-gray-800 font-medium", mono && "font-mono")}>{value}</span>
                   </div>
-                )}
+                ))}
               </div>
             </div>
             <button
               onClick={handleClose}
-              className="w-full py-2.5 bg-electric-500 hover:bg-electric-600 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-colors"
             >
               Done
             </button>
           </div>
         ) : (
-          /* ── Form state ──────────────────────────────────────────────── */
+          /* Form */
           <>
-            {/* Warning */}
-            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-              <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                This will formally refer the anomaly to the selected law-enforcement
-                authority. A unique reference number will be generated, a case will be
-                opened, and all admins/officers will be notified.
+            <div className="mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                This will formally refer the anomaly to the selected law-enforcement authority.
+                A unique reference number will be generated, a case will be opened, and all
+                admins/officers will be notified.
               </p>
             </div>
 
-            {/* Authority picker */}
-            <label className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-2 block">
+            <label className="text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2 block">
               Select Authority
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
@@ -236,32 +179,28 @@ export default function LawEscalationDialog({
                     key={auth.code}
                     type="button"
                     onClick={() => setSelected(auth.code)}
-                    className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all ${
+                    className={cn(
+                      "flex items-center gap-2.5 p-3 rounded-md border text-left transition-colors",
                       isSelected
-                        ? `${style.bg} ${style.border} ring-1 ${style.ring}`
-                        : "bg-white/5 border-white/10 hover:border-white/20"
-                    }`}
+                        ? `${style.bgSelected} ${style.borderSelected} ring-1 ${style.ring}`
+                        : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    )}
                   >
-                    <div className="text-2xl shrink-0">{style.icon}</div>
+                    <div className="text-2xl shrink-0">{style.emoji}</div>
                     <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-xs font-bold ${isSelected ? style.accent : "text-slate-200"}`}
-                      >
+                      <p className={cn("text-xs font-semibold", isSelected ? style.text : "text-gray-700")}>
                         {auth.label}
                       </p>
                     </div>
-                    {isSelected && (
-                      <CheckCircle2 className={`w-4 h-4 ${style.accent} shrink-0`} />
-                    )}
+                    {isSelected && <CheckCircle2 className={cn("w-4 h-4 shrink-0", style.text)} />}
                   </button>
                 );
               })}
             </div>
 
-            {/* Notes */}
             <label
               htmlFor="escalation-notes"
-              className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-2 block"
+              className="text-[11px] text-gray-600 uppercase tracking-wider font-semibold mb-2 block"
             >
               Notes for Authority (optional)
             </label>
@@ -269,35 +208,33 @@ export default function LawEscalationDialog({
               id="escalation-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add context, evidence, or instructions for the investigating authority..."
+              placeholder="Add context, evidence, or instructions for the investigating authority…"
               rows={3}
               maxLength={2000}
-              className="w-full bg-navy-800/50 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-electric-500/50 focus:ring-1 focus:ring-electric-500/30 resize-none"
+              className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 resize-none"
             />
-            <p className="text-[10px] text-slate-500 mt-1 text-right">
+            <p className="text-[10px] text-gray-400 mt-1 text-right">
               {notes.length} / 2000
             </p>
 
-            {/* Error */}
             {error && (
-              <div className="mt-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" />
-                <p className="text-[11px] text-red-300">{error}</p>
+              <div className="mt-3 p-2.5 rounded-md bg-red-50 border border-red-200 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5 shrink-0" />
+                <p className="text-[11px] text-red-700">{error}</p>
               </div>
             )}
 
-            {/* Actions */}
             <div className="mt-5 flex items-center gap-2">
               <button
                 onClick={handleClose}
-                className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+                className="flex-1 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={!selected || escalate.isPending}
-                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {escalate.isPending ? (
                   <>

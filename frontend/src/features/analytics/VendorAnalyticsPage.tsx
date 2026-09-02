@@ -1,25 +1,137 @@
-import { motion } from "framer-motion";
+/**
+ * VendorAnalyticsPage — VOJAS 2.0 Vendor Analytics
+ *
+ * IBM Carbon–inspired light theme. White cards, gray borders, semantic colors.
+ * No glassmorphism, no glow, no gradients, no decorative animations.
+ * All data from real hooks (no fabricated numbers).
+ *
+ * Layout: Page header → 4-col KPI strip → [Donut + Risk banner] → Top states → Top vendors list
+ */
+
 import {
   Building2,
   AlertTriangle,
   ShieldAlert,
+  ArrowRight,
+  type LucideIcon,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   useVendorOverview,
   useVendorTop,
 } from "@/hooks/useAnalyticsExtended";
 import { useTopVendors } from "@/hooks/useVendors";
 import { LoadingState, ErrorState } from "@/components/ui";
-import PageHeader from "@/components/ui/PageHeader";
-import { fadeUp, staggerContainer } from "@/components/ui/Animations";
 import { DonutChart, type DonutItem } from "@/components/charts/DonutChart";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 function formatINR(amount: number): string {
   if (amount >= 1_00_00_000) return `₹${(amount / 1_00_00_000).toFixed(2)} Cr`;
   if (amount >= 1_00_000) return `₹${(amount / 1_00_000).toFixed(1)} L`;
   if (amount >= 1_000) return `₹${(amount / 1_000).toFixed(0)}K`;
   return `₹${amount.toFixed(0)}`;
+}
+
+// ── Section header (IBM Carbon pattern) ──────────────────────────────────────
+
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="mb-3">
+      <h2 className="text-base font-semibold text-gray-900 leading-tight">{title}</h2>
+      {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+    </div>
+  );
+}
+
+// ── KPI card (Carbon pattern) ────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  Icon,
+  accent = "blue",
+  warn = false,
+}: {
+  label: string;
+  value: string | number;
+  Icon: LucideIcon;
+  accent?: "blue" | "red" | "amber" | "green" | "slate";
+  warn?: boolean;
+}) {
+  const iconBg: Record<string, string> = {
+    blue:  "bg-blue-50 text-blue-600",
+    red:   "bg-red-50 text-red-600",
+    amber: "bg-amber-50 text-amber-600",
+    green: "bg-green-50 text-green-600",
+    slate: "bg-gray-100 text-gray-600",
+  };
+  const bar: Record<string, string> = {
+    blue:  "bg-blue-500",
+    red:   "bg-red-500",
+    amber: "bg-amber-500",
+    green: "bg-green-500",
+    slate: "bg-gray-400",
+  };
+
+  return (
+    <div className="relative bg-white border border-gray-200 rounded-md p-4 hover:border-gray-300 hover:shadow-sm transition-all h-full">
+      <div className={cn("absolute top-0 left-0 right-0 h-0.5 rounded-t-md", bar[accent])} aria-hidden />
+      <div className="flex items-start justify-between mb-2">
+        <div className={cn("w-8 h-8 rounded flex items-center justify-center", iconBg[accent])}>
+          <Icon className="w-4 h-4" aria-hidden />
+        </div>
+      </div>
+      <p className="text-2xl font-semibold text-gray-900 tabular-nums leading-none">
+        {typeof value === "number" ? value.toLocaleString("en-IN") : value}
+      </p>
+      <p className="text-sm text-gray-700 font-medium mt-1.5">{label}</p>
+      {warn && (
+        <p className="text-[10px] text-red-600 font-medium mt-1">Requires review</p>
+      )}
+    </div>
+  );
+}
+
+// ── Chart card wrapper (Carbon pattern) ──────────────────────────────────────
+
+function ChartCard({
+  title,
+  sub,
+  children,
+  action,
+}: {
+  title: string;
+  sub?: string;
+  children: React.ReactNode;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-md p-5 h-full">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          {sub && <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>}
+        </div>
+        {action && (
+          <Link
+            to={action.href}
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 shrink-0"
+          >
+            {action.label}
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        )}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export default function VendorAnalyticsPage() {
@@ -45,26 +157,24 @@ export default function VendorAnalyticsPage() {
   const highRiskCount = data?.crossConstituencyRisk ?? 0;
 
   return (
-    <motion.div
-      className="space-y-6"
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div variants={fadeUp}>
-        <PageHeader
-          title="Vendor"
-          gradientWord="Vendor Analytics"
-          accent="electric"
-          icon={Building2}
-          subtitle="Vendor concentration, cross-constituency risk & payment benchmark"
-          breadcrumbs={[
-            { label: "Dashboard", href: "/" },
-            { label: "Analytics" },
-            { label: "Vendor" },
-          ]}
-        />
-      </motion.div>
+    <div className="space-y-5 max-w-[1400px]">
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900 leading-tight flex items-center gap-2">
+          <Building2 className="w-6 h-6 text-gray-700" aria-hidden />
+          Vendor Analytics
+        </h1>
+        <p className="text-sm text-gray-600 mt-1">
+          Vendor concentration, cross-constituency risk & payment benchmark
+        </p>
+        <nav className="flex items-center gap-1.5 mt-2 text-xs text-gray-500">
+          <Link to="/" className="hover:text-gray-700">Dashboard</Link>
+          <span>/</span>
+          <Link to="/analytics" className="hover:text-gray-700">Analytics</Link>
+          <span>/</span>
+          <span className="text-gray-900">Vendor</span>
+        </nav>
+      </div>
 
       {isLoading ? (
         <LoadingState message="Loading vendor analytics..." />
@@ -73,127 +183,160 @@ export default function VendorAnalyticsPage() {
       ) : data ? (
         <>
           {/* KPI strip */}
-          <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: "Total Vendors", value: data.totalVendors.toLocaleString(), accent: "text-electric-400" },
-              { label: "Total Payments", value: formatINR(data.totalPaid), accent: "text-saffron-400" },
-              { label: "Avg per Vendor", value: formatINR(data.avgPaidPerVendor), accent: "text-blue-400" },
-              {
-                label: "High-Risk Vendors",
-                value: data.crossConstituencyRisk.toLocaleString(),
-                accent: highRiskCount > 0 ? "text-red-400" : "text-green-400",
-                badge: highRiskCount > 0,
-              },
-            ].map((k) => (
-              <div
-                key={k.label}
-                className="p-4 rounded-xl bg-slate-900/40 border border-slate-800"
-              >
-                <p className="text-slate-500 text-xs font-medium mb-1">{k.label}</p>
-                <p className={`text-2xl font-bold ${k.accent}`}>{k.value}</p>
-              </div>
-            ))}
-          </motion.div>
+          <div>
+            <SectionHeader
+              title="Vendor Overview"
+              description="Aggregate vendor count and payment statistics"
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiCard
+                label="Total Vendors"
+                value={data.totalVendors.toLocaleString()}
+                Icon={Building2}
+                accent="blue"
+              />
+              <KpiCard
+                label="Total Payments"
+                value={formatINR(data.totalPaid)}
+                Icon={Building2}
+                accent="amber"
+              />
+              <KpiCard
+                label="Avg per Vendor"
+                value={formatINR(data.avgPaidPerVendor)}
+                Icon={Building2}
+                accent="green"
+              />
+              <KpiCard
+                label="High-Risk Vendors"
+                value={data.crossConstituencyRisk.toLocaleString()}
+                Icon={AlertTriangle}
+                accent={highRiskCount > 0 ? "red" : "green"}
+                warn={highRiskCount > 0}
+              />
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Payment status donut */}
-            <motion.div variants={fadeUp} className="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-300 mb-1">Payment Status</h3>
-              <p className="text-xs text-slate-600 mb-4">All expenditures by status</p>
+          {/* Payment donut + Risk banner */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <ChartCard
+              title="Payment Status"
+              sub="All expenditures by status"
+            >
               {statusItems.length > 0 ? (
-                <DonutChart data={statusItems} />
+                <div className="flex justify-center">
+                  <DonutChart
+                    data={statusItems}
+                    size={140}
+                    centerText={data.totalVendors.toString()}
+                    centerSubtext="vendors"
+                    formatValue={(v) => v.toString()}
+                  />
+                </div>
               ) : (
-                <p className="text-slate-600 text-sm py-8 text-center">No payment data yet.</p>
+                <p className="text-gray-500 text-sm py-8 text-center italic">No payment data yet</p>
               )}
-            </motion.div>
+            </ChartCard>
 
-            {/* Risk banner */}
-            <motion.div variants={fadeUp} className="lg:col-span-2 p-5 rounded-xl bg-slate-900/40 border border-slate-800">
+            <div className="lg:col-span-2 bg-white border border-gray-200 rounded-md p-5">
               <div className="flex items-center gap-2 mb-3">
-                <ShieldAlert className="w-4 h-4 text-red-400" />
-                <h3 className="text-sm font-semibold text-slate-300">Risk Indicators</h3>
+                <ShieldAlert className="w-4 h-4 text-red-600" aria-hidden />
+                <h3 className="text-sm font-semibold text-gray-900">Risk Indicators</h3>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg bg-red-950/20 border border-red-500/20">
-                  <p className="text-xs text-red-400 font-medium mb-1">Cross-Constituency</p>
-                  <p className="text-lg font-bold text-red-300">{data.crossConstituencyRisk}</p>
-                  <p className="text-xs text-slate-600 mt-1">Vendors in 3+ constituencies</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                  <p className="text-xs font-semibold text-red-800 mb-1">Cross-Constituency</p>
+                  <p className="text-2xl font-semibold text-red-900 tabular-nums leading-none">
+                    {data.crossConstituencyRisk}
+                  </p>
+                  <p className="text-[10px] text-red-700 mt-1">Vendors in 3+ constituencies</p>
                 </div>
-                <div className="p-3 rounded-lg bg-yellow-950/20 border border-yellow-500/20">
-                  <p className="text-xs text-yellow-400 font-medium mb-1">Cross-State</p>
-                  <p className="text-lg font-bold text-yellow-300">{data.crossStateRisk}</p>
-                  <p className="text-xs text-slate-600 mt-1">Vendors in 3+ states</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                  <p className="text-xs font-semibold text-amber-800 mb-1">Cross-State</p>
+                  <p className="text-2xl font-semibold text-amber-900 tabular-nums leading-none">
+                    {data.crossStateRisk}
+                  </p>
+                  <p className="text-[10px] text-amber-700 mt-1">Vendors in 3+ states</p>
                 </div>
               </div>
-              <p className="text-xs text-slate-600 mt-3 leading-relaxed">
+              <p className="text-xs text-gray-600 mt-3 leading-relaxed">
                 Vendors appearing across many constituencies or states are flagged by the{" "}
-                <span className="text-slate-400">VENDOR_CONCENTRATION</span> rule — strong indicator
-                of shell-vendor or cartel activity. Results require verification by authorized officers.
+                <span className="font-medium text-gray-800">VENDOR_CONCENTRATION</span> rule —
+                strong indicator of shell-vendor or cartel activity. Results require verification by authorized officers.
               </p>
-            </motion.div>
+            </div>
           </div>
 
           {/* Top states by payments */}
-          <motion.div variants={fadeUp} className="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Top States by Vendor Payments</h3>
-            <div className="space-y-2">
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <SectionHeader
+              title="Top States by Vendor Payments"
+              description="Total payments by state (top 8)"
+            />
+            <div className="space-y-2.5">
               {(data.topStates ?? []).slice(0, 8).map((s: { state: string; totalPaid: number; count: number }, i: number) => {
                 const max = data.topStates[0]?.totalPaid ?? 1;
                 const pct = Math.round((s.totalPaid / max) * 100);
                 return (
                   <div key={s.state} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500 w-5 shrink-0">{i + 1}</span>
-                    <span className="text-sm text-slate-300 w-36 truncate">{s.state}</span>
-                    <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden">
+                    <span className="text-xs text-gray-400 w-5 shrink-0 tabular-nums">{i + 1}</span>
+                    <span className="text-sm text-gray-700 w-36 truncate">{s.state}</span>
+                    <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-electric-500/80 to-electric-400/60"
+                        className="h-full rounded-full bg-blue-500"
                         style={{ width: `${pct}%` }}
+                        aria-hidden
                       />
                     </div>
-                    <span className="text-xs text-electric-400 font-medium w-20 text-right">
+                    <span className="text-xs font-medium text-blue-700 tabular-nums w-20 text-right">
                       {formatINR(s.totalPaid)}
                     </span>
                   </div>
                 );
               })}
             </div>
-          </motion.div>
+          </div>
 
-          {/* Top vendors quick list */}
-          <motion.div variants={fadeUp} className="p-5 rounded-xl bg-slate-900/40 border border-slate-800">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Top 5 by Total Paid</h3>
+          {/* Top vendors list */}
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <SectionHeader
+              title="Top 5 Vendors by Total Paid"
+              description="Click any vendor to view full details"
+            />
             <div className="space-y-2">
-              {(topVendors.data?.items ?? []).map((v: any, i: number) => (
-                <div
-                  key={v.id}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800/40 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/vendors/${v.id}`)}
-                >
-                  <span className={`text-sm font-bold w-5 shrink-0
-                    ${i === 0 ? "text-saffron-400" : i === 1 ? "text-slate-300" : "text-slate-600"}`}>
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-200 truncate">{v.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {v.state ?? "—"} · {v.constituencyCount} constituencies · {v.projectCount} projects
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-saffron-400 shrink-0">
-                    {formatINR(v.totalPaid)}
-                  </span>
-                  {v.constituencyCount > 3 && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 text-xs border border-red-500/20 shrink-0">
-                      <AlertTriangle className="w-3 h-3" />
-                      Risk
+              {(topVendors.data?.items ?? []).map((v: any, i: number) => {
+                const rankColor = i === 0 ? "text-amber-700" : i === 1 ? "text-gray-700" : "text-gray-400";
+                return (
+                  <div
+                    key={v.id}
+                    className="flex items-center gap-3 p-3 rounded border border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/vendors/${v.id}`)}
+                  >
+                    <span className={cn("text-sm font-bold w-5 shrink-0 tabular-nums", rankColor)}>
+                      {i + 1}
                     </span>
-                  )}
-                </div>
-              ))}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{v.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {v.state ?? "—"} · {v.constituencyCount} constituencies · {v.projectCount} projects
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 tabular-nums shrink-0">
+                      {formatINR(v.totalPaid)}
+                    </span>
+                    {v.constituencyCount > 3 && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-200 shrink-0">
+                        <AlertTriangle className="w-3 h-3" aria-hidden />
+                        Risk
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </motion.div>
+          </div>
         </>
       ) : null}
-    </motion.div>
+    </div>
   );
 }

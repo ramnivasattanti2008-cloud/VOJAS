@@ -1,17 +1,26 @@
+/**
+ * AnomalyDetailPage — VOJAS 2.0 Anomaly Detail View
+ *
+ * IBM Carbon–inspired light theme. Professional data-management layout.
+ * No gradients, no glassmorphism, no glow effects.
+ * All data from real hooks (no fabricated numbers).
+ */
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAnomaly, useAcknowledgeAnomaly, useResolveAnomaly } from "@/hooks/useAnomalies";
 import { aiApi } from "@/services/ai-api";
 import {
   type AIExplanation,
-  SEVERITY_COLORS,
   getAnomalyCategoryLabel,
   getStatusLabel,
   getRiskLabel,
+  type AnomalySeverity,
 } from "@/types";
 import { LoadingState, ErrorState } from "@/components/ui";
 import AIVerdictPanel from "./AIVerdictPanel";
 import LawEscalationDialog from "./LawEscalationDialog";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   AlertTriangle,
@@ -27,11 +36,25 @@ import {
   Gavel,
 } from "lucide-react";
 
+const SEV_BADGE: Record<AnomalySeverity, string> = {
+  CRITICAL: "bg-red-50 text-red-700",
+  HIGH:     "bg-orange-50 text-orange-700",
+  MEDIUM:   "bg-yellow-50 text-yellow-700",
+  LOW:      "bg-blue-50 text-blue-700",
+};
+
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
 export default function AnomalyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // React Query
   const anomalyQuery = useAnomaly(id);
   const ackMutation = useAcknowledgeAnomaly();
   const resolveMutation = useResolveAnomaly();
@@ -53,9 +76,7 @@ export default function AnomalyDetailPage() {
     if (!id) return;
     try {
       await ackMutation.mutateAsync(id);
-    } catch {
-      // Error surfaced via ackMutation.error
-    }
+    } catch { /* error handled via mutation state */ }
   };
 
   const handleResolve = async () => {
@@ -64,9 +85,7 @@ export default function AnomalyDetailPage() {
       await resolveMutation.mutateAsync({ id, resolution: resolution.trim() });
       setShowResolveDialog(false);
       setResolution("");
-    } catch {
-      // Error surfaced via resolveMutation.error
-    }
+    } catch { /* error handled via mutation state */ }
   };
 
   const handleGenerateExplanation = async () => {
@@ -83,8 +102,7 @@ export default function AnomalyDetailPage() {
         ruleCode: anomaly.ruleCode ?? undefined,
         projectName: anomaly.project?.name,
       });
-      // AI explanation is fetched on demand; React Query handles the main anomaly data
-      void result; // consumed by AIVerdictPanel via the anomaly prop
+      void result;
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Failed to generate AI explanation");
     } finally {
@@ -92,42 +110,32 @@ export default function AnomalyDetailPage() {
     }
   };
 
-  if (loading) return <LoadingState message="Loading anomaly..." />;
+  if (loading) return <LoadingState message="Loading anomaly…" />;
   if (error && !anomaly) return <ErrorState message={error} onRetry={() => anomalyQuery.refetch()} />;
   if (!anomaly) return <ErrorState message="Anomaly not found" />;
 
-  const sevStyle = SEVERITY_COLORS[anomaly.severity];
+  const sevBadge = SEV_BADGE[anomaly.severity] ?? SEV_BADGE.LOW;
   const risk = getRiskLabel(anomaly.riskScore);
 
-  // Parse evidence JSON if present
   let evidence: Record<string, unknown> | null = null;
   if (anomaly.evidence) {
-    try {
-      evidence = JSON.parse(anomaly.evidence);
-    } catch {
-      // ignore
-    }
+    try { evidence = JSON.parse(anomaly.evidence); } catch { /* ignore */ }
   }
 
-  // Parse AI explanation JSON if present
   let aiExplanation: AIExplanation | null = null;
   if (anomaly.aiExplanation) {
-    try {
-      aiExplanation = JSON.parse(anomaly.aiExplanation) as AIExplanation;
-    } catch {
-      // ignore
-    }
+    try { aiExplanation = JSON.parse(anomaly.aiExplanation) as AIExplanation; } catch { /* ignore */ }
   }
 
   const isOpen = anomaly.status === "OPEN";
   const isResolved = anomaly.status === "RESOLVED" || anomaly.status === "DISMISSED";
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-[fadeIn_0.3s_ease-out]">
+    <div className="space-y-5 max-w-5xl">
       {/* Back button */}
       <button
         onClick={() => navigate("/anomalies")}
-        className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group"
+        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors group"
         aria-label="Back to anomalies"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" aria-hidden="true" />
@@ -136,52 +144,49 @@ export default function AnomalyDetailPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm" role="alert">
+        <div className="flex items-start gap-2 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm" role="alert">
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Hero header */}
-      <div className="glass rounded-2xl p-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-electric-500/40 to-transparent" />
-
+      {/* Hero */}
+      <div className="bg-white border border-gray-200 rounded-md p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${sevStyle.bg} ${sevStyle.text}`}>
-              <span className={`w-2 h-2 rounded-full ${sevStyle.dot}`} />
+            <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded uppercase tracking-wider", sevBadge)}>
               {anomaly.severity}
-            </div>
-            <span className="text-xs px-2.5 py-1 rounded-lg font-medium bg-white/5 text-slate-300 uppercase tracking-wider">
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded font-medium bg-gray-100 text-gray-700 uppercase tracking-wider">
               {getAnomalyCategoryLabel(anomaly.category)}
             </span>
-            <span className="text-xs px-2.5 py-1 rounded-lg font-medium bg-blue-500/10 text-blue-400 uppercase tracking-wider">
+            <span className="text-xs px-2 py-0.5 rounded font-medium bg-blue-50 text-blue-700 uppercase tracking-wider">
               {getStatusLabel(anomaly.status)}
             </span>
           </div>
 
           {/* Risk score */}
           <div className="text-right shrink-0">
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Risk Score</p>
-            <p className={`text-3xl font-bold ${risk.color} leading-none`}>{anomaly.riskScore}</p>
-            <p className={`text-[10px] mt-0.5 ${risk.color}`}>{risk.label}</p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Risk Score</p>
+            <p className={cn("text-3xl font-bold leading-none tabular-nums", risk.color)}>{anomaly.riskScore}</p>
+            <p className={cn("text-[10px] mt-0.5 font-medium", risk.color)}>{risk.label}</p>
           </div>
         </div>
 
-        <h1 className="text-xl font-bold text-white leading-tight mb-2">{anomaly.title}</h1>
-        <p className="text-sm text-slate-400 leading-relaxed">{anomaly.description}</p>
+        <h1 className="text-xl font-semibold text-gray-900 leading-tight mb-2">{anomaly.title}</h1>
+        <p className="text-sm text-gray-600 leading-relaxed">{anomaly.description}</p>
 
         {/* Actions */}
         {!isResolved && (
-          <div className="mt-5 pt-5 border-t border-white/5 flex items-center gap-3 flex-wrap">
+          <div className="mt-5 pt-4 border-t border-gray-200 flex items-center gap-3 flex-wrap">
             {isOpen && (
               <button
                 onClick={handleAcknowledge}
                 disabled={actionPending !== null}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-blue-200 hover:border-blue-300 hover:bg-blue-50 text-blue-700 text-sm font-medium rounded transition-colors disabled:opacity-50"
               >
                 {actionPending === "ack" ? (
-                  <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
                 ) : (
                   <CheckCircle className="w-4 h-4" />
                 )}
@@ -191,7 +196,7 @@ export default function AnomalyDetailPage() {
             <button
               onClick={() => setShowResolveDialog(true)}
               disabled={actionPending !== null}
-              className="flex items-center gap-2 px-4 py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-green-200 hover:border-green-300 hover:bg-green-50 text-green-700 text-sm font-medium rounded transition-colors disabled:opacity-50"
             >
               <CheckCircle2 className="w-4 h-4" />
               Mark Resolved
@@ -199,7 +204,7 @@ export default function AnomalyDetailPage() {
             {!anomaly.lawEscalation && (
               <button
                 onClick={() => setShowEscalationDialog(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-700 text-sm font-medium rounded transition-colors"
               >
                 <Gavel className="w-4 h-4" />
                 Escalate to Law Enforcement
@@ -210,58 +215,35 @@ export default function AnomalyDetailPage() {
 
         {/* Law enforcement escalation info */}
         {anomaly.lawEscalation && (
-          <div className="mt-5 pt-5 border-t border-white/5">
-            <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+          <div className="mt-5 pt-4 border-t border-gray-200">
+            <div className="p-3 rounded-md bg-red-50 border border-red-200">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 text-red-400 text-xs font-semibold">
+                <div className="flex items-center gap-2 text-red-700 text-xs font-semibold">
                   <Gavel className="w-3.5 h-3.5" />
                   ESCALATED TO LAW ENFORCEMENT
                 </div>
                 {anomaly.lawAcknowledged && (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-200">
                     <CheckCircle2 className="w-3 h-3" />
                     Acknowledged
                   </span>
                 )}
               </div>
               <div className="space-y-1.5 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Authority</span>
-                  <span className="text-slate-200 font-semibold">
-                    {anomaly.lawAuthorityLabel ?? anomaly.lawAuthority}
-                  </span>
-                </div>
-                {anomaly.lawReferenceNo && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Reference</span>
-                    <span className="text-slate-200 font-mono font-bold">
-                      {anomaly.lawReferenceNo}
-                    </span>
+                {[
+                  { label: "Authority", value: anomaly.lawAuthorityLabel ?? anomaly.lawAuthority },
+                  ...(anomaly.lawReferenceNo ? [{ label: "Reference", value: anomaly.lawReferenceNo, mono: true }] : []),
+                  ...(anomaly.lawEscalatedAt ? [{ label: "Escalated at", value: fmtDate(anomaly.lawEscalatedAt) }] : []),
+                  ...(anomaly.escalatedBy ? [{ label: "Escalated by", value: anomaly.escalatedBy.name }] : []),
+                ].map(({ label, value, mono }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-gray-500">{label}</span>
+                    <span className={cn("text-gray-800 font-medium", mono && "font-mono")}>{value}</span>
                   </div>
-                )}
-                {anomaly.lawEscalatedAt && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Escalated at</span>
-                    <span className="text-slate-300">
-                      {new Date(anomaly.lawEscalatedAt).toLocaleString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                )}
-                {anomaly.escalatedBy && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Escalated by</span>
-                    <span className="text-slate-300">{anomaly.escalatedBy.name}</span>
-                  </div>
-                )}
+                ))}
                 {anomaly.lawNotes && (
-                  <div className="mt-2 pt-2 border-t border-red-500/20">
-                    <p className="text-slate-400 italic text-[10px] leading-relaxed">
+                  <div className="mt-2 pt-2 border-t border-red-200">
+                    <p className="text-gray-700 italic text-[10px] leading-relaxed">
                       "{anomaly.lawNotes}"
                     </p>
                   </div>
@@ -271,21 +253,19 @@ export default function AnomalyDetailPage() {
           </div>
         )}
 
+        {/* Resolved info */}
         {isResolved && anomaly.resolvedBy && (
-          <div className="mt-5 pt-5 border-t border-white/5">
-            <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-              <div className="flex items-center gap-2 text-green-400 text-xs font-semibold mb-1">
+          <div className="mt-5 pt-4 border-t border-gray-200">
+            <div className="p-3 rounded-md bg-green-50 border border-green-200">
+              <div className="flex items-center gap-2 text-green-700 text-xs font-semibold mb-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 RESOLVED
               </div>
-              <p className="text-xs text-slate-400 mb-1.5">
-                By {anomaly.resolvedBy.name} on{" "}
-                {anomaly.resolvedAt && new Date(anomaly.resolvedAt).toLocaleString("en-IN", {
-                  day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                })}
+              <p className="text-xs text-gray-600 mb-1.5">
+                By {anomaly.resolvedBy.name} on {fmtDate(anomaly.resolvedAt)}
               </p>
               {anomaly.resolution && (
-                <p className="text-xs text-slate-300 leading-relaxed italic">"{anomaly.resolution}"</p>
+                <p className="text-xs text-gray-700 leading-relaxed italic">"{anomaly.resolution}"</p>
               )}
             </div>
           </div>
@@ -297,18 +277,18 @@ export default function AnomalyDetailPage() {
         <div className="lg:col-span-2 space-y-4">
           {/* Evidence */}
           {evidence && Object.keys(evidence).length > 0 && (
-            <div className="glass rounded-xl p-5">
-              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-electric-400" />
+            <div className="bg-white border border-gray-200 rounded-md p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-400" />
                 Detection Evidence
               </h2>
               <div className="space-y-2 text-xs">
                 {Object.entries(evidence).map(([key, value]) => (
-                  <div key={key} className="flex items-start justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
-                    <span className="text-slate-500 font-mono uppercase tracking-wider text-[10px]">
+                  <div key={key} className="flex items-start justify-between gap-3 py-1.5 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-500 font-mono uppercase tracking-wider text-[10px]">
                       {key.replace(/([A-Z])/g, " $1").trim()}
                     </span>
-                    <span className="text-slate-200 text-right max-w-[60%]">
+                    <span className="text-gray-800 text-right max-w-[60%]">
                       {typeof value === "number"
                         ? value.toLocaleString("en-IN", { maximumFractionDigits: 2 })
                         : Array.isArray(value)
@@ -321,7 +301,7 @@ export default function AnomalyDetailPage() {
             </div>
           )}
 
-          {/* AI Verdict — Phase 11 */}
+          {/* AI Verdict */}
           {aiExplanation ? (
             <AIVerdictPanel
               explanation={aiExplanation}
@@ -330,36 +310,36 @@ export default function AnomalyDetailPage() {
               loading={aiLoading}
             />
           ) : (
-            <div className="glass rounded-xl p-5">
-              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-saffron-400" />
+            <div className="bg-white border border-gray-200 rounded-md p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-600" />
                 AI Verdict
                 {!aiLoading && (
                   <button
                     onClick={handleGenerateExplanation}
-                    className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-saffron-500/10 border border-saffron-500/30 text-saffron-400 text-[11px] font-semibold hover:bg-saffron-500/20 transition-colors"
+                    className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 text-[11px] font-medium transition-colors"
                   >
                     <Sparkles className="w-3 h-3" />
                     Generate
                   </button>
                 )}
                 {aiLoading && (
-                  <span className="ml-auto flex items-center gap-1.5 text-[11px] text-saffron-400">
-                    <span className="w-3 h-3 border-2 border-saffron-400/30 border-t-saffron-400 rounded-full animate-spin" />
-                    Analyzing...
+                  <span className="ml-auto flex items-center gap-1.5 text-[11px] text-gray-500">
+                    <span className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                    Analyzing…
                   </span>
                 )}
               </h2>
 
               {aiError && (
-                <div className="mb-3 flex items-center gap-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20" role="alert">
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" aria-hidden="true" />
-                  <p className="text-[11px] text-red-300">{aiError}</p>
+                <div className="mb-3 flex items-center gap-2 p-2.5 rounded-md bg-red-50 border border-red-200" role="alert">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" aria-hidden="true" />
+                  <p className="text-[11px] text-red-700">{aiError}</p>
                 </div>
               )}
 
-              {!aiLoading && (
-                <p className="text-[11px] text-slate-500 italic">
+              {!aiLoading && !aiError && (
+                <p className="text-[11px] text-gray-500 italic">
                   No AI analysis yet. Click "Generate" to run the explainability model on this anomaly.
                 </p>
               )}
@@ -368,31 +348,31 @@ export default function AnomalyDetailPage() {
 
           {/* Project link */}
           {anomaly.project && (
-            <div className="glass rounded-xl p-5">
-              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-electric-400" />
+            <div className="bg-white border border-gray-200 rounded-md p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-gray-400" />
                 Linked Project
               </h2>
               <button
                 onClick={() => navigate(`/projects/${anomaly.project!.id}`)}
-                className="w-full text-left p-3 rounded-lg bg-navy-800/40 border border-white/5 hover:border-white/15 hover:bg-navy-800/70 transition-all group"
+                className="w-full text-left p-3 rounded-md bg-gray-50 border border-gray-200 hover:border-gray-300 hover:bg-gray-100 transition-colors group"
               >
-                <p className="text-sm font-semibold text-slate-200 group-hover:text-electric-300 transition-colors">
+                <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
                   {anomaly.project.name}
                 </p>
-                <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-500">
+                <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-500 flex-wrap">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-2.5 h-2.5" />
                     {anomaly.project.district}, {anomaly.project.state}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-400">
+                  <span className="px-1.5 py-0.5 rounded bg-white text-gray-600 border border-gray-200">
                     {anomaly.project.status}
                   </span>
-                  <span className="text-slate-600">·</span>
+                  <span className="text-gray-400">·</span>
                   <span>{anomaly.project.sector.replace(/_/g, " ")}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-end">
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-electric-400 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
                 </div>
               </button>
             </div>
@@ -401,88 +381,76 @@ export default function AnomalyDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="glass rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-3">Detection Details</h3>
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Detection Details</h3>
             <div className="space-y-2.5 text-xs">
               {anomaly.ruleCode && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Rule</span>
-                  <span className="font-mono text-slate-200 text-[10px]">{anomaly.ruleCode}</span>
+                  <span className="text-gray-500">Rule</span>
+                  <span className="font-mono text-gray-800 text-[10px]">{anomaly.ruleCode}</span>
                 </div>
               )}
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Severity</span>
-                <span className={sevStyle.text}>{anomaly.severity}</span>
+                <span className="text-gray-500">Severity</span>
+                <span className="text-gray-800">{anomaly.severity}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Risk Score</span>
-                <span className={`font-semibold ${risk.color}`}>{anomaly.riskScore} / 100</span>
+                <span className="text-gray-500">Risk Score</span>
+                <span className={cn("font-semibold", risk.color)}>{anomaly.riskScore} / 100</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Status</span>
-                <span className="text-slate-200">{getStatusLabel(anomaly.status)}</span>
+                <span className="text-gray-500">Status</span>
+                <span className="text-gray-800">{getStatusLabel(anomaly.status)}</span>
               </div>
             </div>
           </div>
 
-          <div className="glass rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-3">Timeline</h3>
-            <div className="space-y-2.5 text-xs">
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Timeline</h3>
+            <div className="space-y-3 text-xs">
               <div className="flex items-start gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center shrink-0">
-                  <Clock className="w-3 h-3 text-slate-500" />
+                <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                  <Clock className="w-3 h-3 text-gray-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-slate-300">Detected</p>
-                  <p className="text-[10px] text-slate-500">
-                    {new Date(anomaly.createdAt).toLocaleString("en-IN", {
-                      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                    })}
-                  </p>
+                  <p className="text-gray-800">Detected</p>
+                  <p className="text-[10px] text-gray-500">{fmtDate(anomaly.createdAt)}</p>
                 </div>
               </div>
 
               {anomaly.acknowledgedAt && (
                 <div className="flex items-start gap-2.5">
-                  <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <CheckCircle className="w-3 h-3 text-blue-400" />
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                    <CheckCircle className="w-3 h-3 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-slate-300">Acknowledged by {anomaly.acknowledgedBy?.name ?? "—"}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {new Date(anomaly.acknowledgedAt).toLocaleString("en-IN", {
-                        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                      })}
-                    </p>
+                    <p className="text-gray-800">Acknowledged by {anomaly.acknowledgedBy?.name ?? "—"}</p>
+                    <p className="text-[10px] text-gray-500">{fmtDate(anomaly.acknowledgedAt)}</p>
                   </div>
                 </div>
               )}
 
               {anomaly.resolvedAt && (
                 <div className="flex items-start gap-2.5">
-                  <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-3 h-3 text-green-400" />
+                  <div className="w-6 h-6 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-3 h-3 text-green-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-slate-300">Resolved by {anomaly.resolvedBy?.name ?? "—"}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {new Date(anomaly.resolvedAt).toLocaleString("en-IN", {
-                        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                      })}
-                    </p>
+                    <p className="text-gray-800">Resolved by {anomaly.resolvedBy?.name ?? "—"}</p>
+                    <p className="text-[10px] text-gray-500">{fmtDate(anomaly.resolvedAt)}</p>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="glass rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-electric-400" />
+          <div className="bg-white border border-gray-200 rounded-md p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-gray-400" />
               Trust Notice
             </h3>
-            <p className="text-[10px] text-slate-400 leading-relaxed">
-              This anomaly is a <em>risk indicator</em>, not a fraud conviction. Final verification
+            <p className="text-[10px] text-gray-600 leading-relaxed">
+              This anomaly is a risk indicator, not a fraud conviction. Final verification
               is the responsibility of authorized government officers.
             </p>
           </div>
@@ -492,18 +460,18 @@ export default function AnomalyDetailPage() {
       {/* Resolve dialog */}
       {showResolveDialog && (
         <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
           onClick={() => setShowResolveDialog(false)}
           role="dialog"
           aria-modal="true"
           aria-labelledby="resolve-dialog-title"
         >
           <div
-            className="glass rounded-2xl p-6 max-w-md w-full"
+            className="bg-white border border-gray-200 rounded-md p-6 max-w-md w-full shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="resolve-dialog-title" className="text-base font-semibold text-white mb-1">Mark as Resolved</h3>
-            <p className="text-xs text-slate-400 mb-4">
+            <h3 id="resolve-dialog-title" className="text-base font-semibold text-gray-900 mb-1">Mark as Resolved</h3>
+            <p className="text-xs text-gray-500 mb-4">
               Briefly describe what action you took or what was concluded.
             </p>
             <label htmlFor="resolve-resolution" className="sr-only">
@@ -515,21 +483,21 @@ export default function AnomalyDetailPage() {
               onChange={(e) => setResolution(e.target.value)}
               rows={4}
               placeholder="e.g. Reviewed budget records; overrun justified by additional emergency work approved by district office."
-              className="w-full bg-navy-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-electric-500/50 focus:ring-1 focus:ring-electric-500/20 transition-all resize-none"
+              className="w-full bg-white border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 resize-none"
             />
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
                 onClick={() => { setShowResolveDialog(false); setResolution(""); }}
-                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResolve}
                 disabled={!resolution.trim() || actionPending === "resolve"}
-                className="px-4 py-1.5 bg-green-500 hover:bg-green-600 disabled:bg-green-500/50 text-white text-xs font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
+                className="px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-xs font-medium rounded transition-colors disabled:cursor-not-allowed"
               >
-                {actionPending === "resolve" ? "Resolving..." : "Confirm Resolve"}
+                {actionPending === "resolve" ? "Resolving…" : "Confirm Resolve"}
               </button>
             </div>
           </div>
