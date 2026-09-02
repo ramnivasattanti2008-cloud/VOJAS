@@ -561,6 +561,7 @@ export default function ProjectDetailPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
                       <div className="glass rounded-xl p-4">
                         <SiteComparison
+                          projectId={project.id}
                           location={{
                             latitude: primary.latitude,
                             longitude: primary.longitude,
@@ -599,6 +600,7 @@ export default function ProjectDetailPage() {
                     {/* Phase 12: Site change analysis */}
                     <div className="glass rounded-xl p-4">
                       <SiteAnalysis
+                        projectId={project.id}
                         location={{
                           latitude: primary.latitude,
                           longitude: primary.longitude,

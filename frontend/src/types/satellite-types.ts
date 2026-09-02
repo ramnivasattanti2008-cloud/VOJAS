@@ -10,7 +10,7 @@ export interface SatelliteCapture {
   lng: number;
   imageUrl: string;
   thumbnailUrl: string;
-  provider: "esri" | "sentinel" | "mock";
+  provider: "CDSE" | "NONE" | "esri" | "sentinel" | "mock"; // CDSE = real Sentinel-2 from Copernicus; NONE = no tile available
   cloudCover: number;
   analysis: {
     developmentScore: number; // 0–100

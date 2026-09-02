@@ -1,7 +1,13 @@
 /**
- * SatelliteTimeline — Weekly satellite captures with development analysis
- * Shows satellite imagery tiles, development scores, built-up area, vegetation cover,
- * status labels, and week-over-week change in a scrollable timeline.
+ * SatelliteTimeline — Real Sentinel-2 observations with development analysis
+ *
+ * Shows actual Sentinel-2 L2A acquisitions (with real dates, not synthetic weekly
+ * captures) for the project's location, including development scores, built-up area,
+ * vegetation cover, and overpass-to-overpass change.
+ *
+ * Acquisitions come from CDSE STAC catalog via the geospatial service. The interval
+ * between observations depends on Sentinel-2's actual 5-day revisit cycle and
+ * cloud cover — typically 5–30 days, not exactly 7.
  */
 
 import { useState } from "react";
@@ -288,7 +294,7 @@ export default function SatelliteTimeline({ projectId, compact = false }: Satell
         <div className="flex items-center gap-2">
           <Satellite size={18} className="text-primary" />
           <span className="text-sm font-semibold">
-            {captures.length} Weekly Captures
+            {captures.length} Sentinel-2 Observation{captures.length !== 1 ? "s" : ""}
           </span>
           {stats && (
             <span className="text-xs text-muted-foreground">
