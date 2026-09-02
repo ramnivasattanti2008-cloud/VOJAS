@@ -93,7 +93,9 @@ export default function HeroOpening({ onComplete }: HeroOpeningProps) {
         onComplete();
         return;
       }
-    } catch {}
+    } catch {
+      // sessionStorage not available — proceed normally
+    }
 
     // Respect reduced motion
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -119,7 +121,9 @@ export default function HeroOpening({ onComplete }: HeroOpeningProps) {
   function complete() {
     if (completed.current) return;
     completed.current = true;
-    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
+    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {
+      // sessionStorage not available — skip silently
+    }
     setVisible(false);
     // Small delay for exit animation
     setTimeout(onComplete, 400);

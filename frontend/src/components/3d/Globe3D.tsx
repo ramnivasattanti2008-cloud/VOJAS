@@ -462,7 +462,7 @@ function Earth({ quality }: { quality: string }) {
   return (
     <mesh ref={ref}>
       <sphereGeometry args={[1, segments, segments]} />
-      {/* @ts-ignore */}
+      {/* @ts-expect-error - custom material from extend() */}
       <earthMaterial ref={matRef} attach="material" />
     </mesh>
   );
@@ -477,13 +477,13 @@ function Atmosphere({ visible }: { visible: boolean }) {
       {/* Inner atmosphere */}
       <mesh scale={[1.018, 1.018, 1.018]}>
         <sphereGeometry args={[1, 64, 64]} />
-        {/* @ts-ignore */}
+        {/* @ts-expect-error - custom material from extend() */}
         <atmosphereMaterial attach="material" transparent side={THREE.BackSide} />
       </mesh>
       {/* Outer atmosphere halo */}
       <mesh scale={[1.06, 1.06, 1.06]}>
         <sphereGeometry args={[1, 64, 64]} />
-        {/* @ts-ignore */}
+        {/* @ts-expect-error - custom material from extend() */}
         <atmosphereMaterial attach="material" transparent side={THREE.BackSide} uIntensity={0.6} />
       </mesh>
     </group>
@@ -496,16 +496,7 @@ function OrbitalRing({ visible }: { visible: boolean }) {
   const ref = useRef<THREE.Group>(null);
   const ref2 = useRef<THREE.Group>(null);
 
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    if (ref.current) ref.current.rotation.y = t * 0.15;
-    if (ref2.current) ref2.current.rotation.y = -t * 0.1;
-    if (ref2.current) ref2.current.rotation.z = t * 0.05;
-  });
-
-  if (!visible) return null;
-
-  // Create particle ring
+  // Create particle ring — hook must be called before any conditional return
   const ringPoints = useMemo(() => {
     const points: { angle: number; radius: number; y: number }[] = [];
     for (let i = 0; i < 60; i++) {
@@ -517,6 +508,16 @@ function OrbitalRing({ visible }: { visible: boolean }) {
     }
     return points;
   }, []);
+
+  useFrame((state) => {
+    if (!visible) return;
+    const t = state.clock.getElapsedTime();
+    if (ref.current) ref.current.rotation.y = t * 0.15;
+    if (ref2.current) ref2.current.rotation.y = -t * 0.1;
+    if (ref2.current) ref2.current.rotation.z = t * 0.05;
+  });
+
+  if (!visible) return null;
 
   return (
     <>
