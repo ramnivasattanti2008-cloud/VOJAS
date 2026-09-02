@@ -50,37 +50,35 @@ export const anomalyApi = {
   },
 
   async stats(): Promise<AnomalyStats> {
-    const res = await api.get<{ data: AnomalyStats }>("/anomalies/stats");
-    return res.data;
+    return api.get<AnomalyStats>("/anomalies/stats");
   },
 
   async get(id: string): Promise<Anomaly> {
-    const res = await api.get<{ data: { anomaly: Anomaly } }>(`/anomalies/${id}`);
-    return res.data.anomaly;
+    const res = await api.get<{ anomaly: Anomaly }>(`/anomalies/${id}`);
+    return (res as any).anomaly ?? res as any;
   },
 
   async acknowledge(id: string): Promise<Anomaly> {
-    const res = await api.post<{ data: { anomaly: Anomaly } }>(`/anomalies/${id}/acknowledge`, {});
-    return res.data.anomaly;
+    const res = await api.post<{ anomaly: Anomaly }>(`/anomalies/${id}/acknowledge`, {});
+    return (res as any).anomaly ?? res as any;
   },
 
   async resolve(id: string, resolution: string): Promise<Anomaly> {
-    const res = await api.post<{ data: { anomaly: Anomaly } }>(`/anomalies/${id}/resolve`, { resolution });
-    return res.data.anomaly;
+    const res = await api.post<{ anomaly: Anomaly }>(`/anomalies/${id}/resolve`, { resolution });
+    return (res as any).anomaly ?? res as any;
   },
 
   async scan(): Promise<ScanResult> {
-    const res = await api.post<{ data: ScanResult }>("/anomalies/scan", {});
-    return res.data;
+    return api.post<ScanResult>("/anomalies/scan", {});
   },
 
   async listRules(): Promise<AnomalyRule[]> {
-    const res = await api.get<{ data: { rules: AnomalyRule[] } }>("/anomalies/rules");
-    return res.data.rules;
+    const res = await api.get<{ rules: AnomalyRule[] }>("/anomalies/rules");
+    return (res as any).rules ?? res as any;
   },
 
   async updateRule(id: string, enabled: boolean): Promise<AnomalyRule> {
-    const res = await api.put<{ data: { rule: AnomalyRule } }>(`/anomalies/rules/${id}`, { enabled });
-    return res.data.rule;
+    const res = await api.put<{ rule: AnomalyRule }>(`/anomalies/rules/${id}`, { enabled });
+    return (res as any).rule ?? res as any;
   },
 };

@@ -56,8 +56,7 @@ export interface RiskStats {
 export const riskApi = {
   /** GET /risk/stats */
   async stats(): Promise<RiskStats> {
-    const res = await api.get<{ data: RiskStats }>("/risk/stats");
-    return res.data;
+    return api.get<RiskStats>("/risk/stats");
   },
 
   /** GET /risk — paginated risk list */
@@ -79,24 +78,24 @@ export const riskApi = {
 
   /** GET /risk/:projectId */
   async get(projectId: string): Promise<ProjectRisk> {
-    const res = await api.get<{ data: { risk: ProjectRisk } }>(`/risk/${projectId}`);
-    return res.data.risk;
+    const res = await api.get<{ risk: ProjectRisk }>(`/risk/${projectId}`);
+    return res.risk;
   },
 
   /** POST /risk/recalculate — recalculate ALL */
   async recalculateAll() {
-    const res = await api.post<{
-      data: { message: string; count: number; projects: ProjectRisk[] };
-    }>("/risk/recalculate", {});
-    return res.data;
+    return api.post<{ message: string; count: number; projects: ProjectRisk[] }>(
+      "/risk/recalculate",
+      {}
+    );
   },
 
   /** POST /risk/:projectId/recalculate — recalculate one */
   async recalculateOne(projectId: string) {
-    const res = await api.post<{ data: { risk: ProjectRisk } }>(
+    const res = await api.post<{ risk: ProjectRisk }>(
       `/risk/${projectId}/recalculate`,
       {}
     );
-    return res.data.risk;
+    return res.risk;
   },
 };

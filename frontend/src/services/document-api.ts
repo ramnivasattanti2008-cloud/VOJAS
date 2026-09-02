@@ -47,10 +47,7 @@ export const documentApi = {
     if (filters?.search) params.set("search", filters.search);
     if (filters?.page) params.set("page", String(filters.page));
     if (filters?.limit) params.set("limit", String(filters.limit));
-    const data = await api.get<{ data: DocumentListResult }>(
-      `/documents?${params.toString()}`
-    );
-    return (data as any).data ?? data;
+    return api.get<DocumentListResult>(`/documents?${params.toString()}`);
   },
 
   /**
@@ -67,9 +64,7 @@ export const documentApi = {
    * Get document stats for a project.
    */
   async getStats(projectId: string): Promise<{ stats: DocumentStats }> {
-    return api.get<{ stats: DocumentStats }>(
-      `/documents/stats?projectId=${projectId}`
-    );
+    return api.get<{ stats: DocumentStats }>(`/documents/stats?projectId=${projectId}`);
   },
 
   /**
@@ -99,11 +94,10 @@ export const documentApi = {
       if (payload.description) formData.set("description", payload.description);
       formData.append("file", payload.file);
     }
-    const data = await api.postForm<{ data: { document: ProjectDocument } }>(
+    return api.postForm<{ document: ProjectDocument }>(
       `/projects/${formData.get("projectId") ?? projectIdOrPayload}/documents`,
       formData
     );
-    return (data as any).data ?? data;
   },
 
   /**
@@ -114,11 +108,10 @@ export const documentApi = {
     status: string,
     note?: string
   ): Promise<{ document: ProjectDocument }> {
-    const data = await api.patch<{ data: { document: ProjectDocument } }>(
+    return api.patch<{ document: ProjectDocument }>(
       `/documents/${id}/verify`,
       { status, note }
     );
-    return (data as any).data ?? data;
   },
 
   /**

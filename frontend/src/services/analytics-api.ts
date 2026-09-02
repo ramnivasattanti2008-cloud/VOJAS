@@ -127,6 +127,6 @@ export const analyticsApi = {
    * Full analytics payload — all chart data for the Analytics page.
    */
   getSummary(): Promise<AnalyticsSummary> {
-    return api.get<{ data: AnalyticsSummary }>("/analytics/summary").then((r) => r.data);
+    return api.get<AnalyticsSummary>("/analytics/summary");
   },
 };

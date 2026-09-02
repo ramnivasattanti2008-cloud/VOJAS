@@ -46,8 +46,7 @@ export const aiApi = {
     evidence?: string;
     projectName?: string;
   }): Promise<AIExplanation> {
-    const res = await api.post<{ data: AIExplanation }>("/ai/explain-anomaly", params);
-    return res.data;
+    return api.post<AIExplanation>("/ai/explain-anomaly", params);
   },
 
   /**
@@ -55,8 +54,7 @@ export const aiApi = {
    * Analyze a citizen report text for keywords, corruption signals, severity.
    */
   async analyzeReport(title: string, description: string): Promise<ReportAIAnalysis> {
-    const res = await api.post<{ data: ReportAIAnalysis }>("/ai/analyze-report", { title, description });
-    return res.data;
+    return api.post<ReportAIAnalysis>("/ai/analyze-report", { title, description });
   },
 
   /**
@@ -67,7 +65,6 @@ export const aiApi = {
     expenditures?: { amount: number; vendor?: string; invoiceNo?: string; paidOn?: string; category: string }[];
     timeline?: { startDate?: string; endDate?: string; expectedEndDate?: string; completedAt?: string; status: string };
   }): Promise<PatternAnalysisResult> {
-    const res = await api.post<{ data: PatternAnalysisResult }>("/ai/analyze-patterns", input);
-    return res.data;
+    return api.post<PatternAnalysisResult>("/ai/analyze-patterns", input);
   },
 };
