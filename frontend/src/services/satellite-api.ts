@@ -21,6 +21,13 @@ interface AnalyzeResponse {
   assessment: SatelliteAssessment;
 }
 
+/**
+ * Backend wraps all responses in `{ success, data, error, meta }`.
+ * After `api.request()` unwraps `data`, we get the inner payload here.
+ * For these routes the inner payload is already the response object,
+ * so we return it as-is.
+ */
+
 export const satelliteApi = {
   /** GET /satellite/:projectId/captures */
   getCaptures(projectId: string, params?: { from?: string; to?: string }) {

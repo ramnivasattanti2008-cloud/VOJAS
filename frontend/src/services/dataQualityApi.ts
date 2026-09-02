@@ -22,10 +22,10 @@ export const dataQualityApi = {
     return api.post<any>("/data-quality/scan", { entityType });
   },
   async resolve(id: string, note?: string): Promise<any> {
-    return api.put<any>(`/data-quality/${id}/resolve`, { note });
+    return api.post<any>(`/data-quality/${id}/resolve`, { resolution: note });
   },
   async dismiss(id: string, reason: string): Promise<any> {
-    return api.put<any>(`/data-quality/${id}/dismiss`, { reason });
+    return api.post<any>(`/data-quality/${id}/dismiss`, { resolution: reason });
   },
   async stats(): Promise<any> {
     return api.get<any>("/data-quality/stats");

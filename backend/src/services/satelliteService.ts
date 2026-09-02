@@ -1,34 +1,37 @@
 /**
- * Satellite Imagery Service — VOJAS
+ * Satellite Imagery Service — VOJAS (Phase 53)
  *
- * Generates synthetic weekly satellite capture data for any project location.
- * Uses ESRI World Imagery tiles as the actual image source.
- * Construction progress is simulated based on project metadata and realistic development curves.
+ * Queries real satellite observations from the SatelliteObservation table
+ * (populated via CDSE/STAC ingestion). Returns real acquisition dates,
+ * cloud cover, and NDVI/NDBI analysis — no synthetic data.
  *
- * In production, replace with:
- * - Sentinel Hub API (sentinel-hub.com) — free tier available
- * - Google Earth Engine — for NDVI analysis
- * - Maxar Open Data — historical high-res imagery
+ * When no observations exist for a project (CDSE not configured, or project
+ * not yet ingested), the service returns empty arrays so the frontend shows
+ * "No satellite data available" rather than fake data.
+ *
+ * API shape preserved from the legacy service so existing routes stay valid.
  */
 
-import { projectService } from "./projectService.js";
+import { prisma } from "../config/database.js";
 import { logger } from "../utils/logger.js";
+
+// ── Public API types (same contract as before) ────────────────────────────────
 
 export interface SatelliteCapture {
   id: string;
   projectId: string;
-  date: string; // ISO date
+  date: string; // ISO date (observationDate)
   lat: number;
   lng: number;
-  imageUrl: string;
+  imageUrl: string;  // WMS tile URL from CDSE or placeholder
   thumbnailUrl: string;
-  provider: "esri" | "sentinel" | "mock";
+  provider: "CDSE" | "NONE";
   cloudCover: number;
   analysis: {
-    developmentScore: number; // 0-100
-    builtUpArea: number; // sq meters
-    vegetationCover: number; // 0-100
-    changeFromPrevious: number; // % change in development score
+    developmentScore: number; // 0-100 (computed from ndvi/ndbii or 0 if no data)
+    builtUpArea: number;     // sq metres (from SatelliteObservation.builtUpArea)
+    vegetationCover: number;  // 0-100 (computed from ndvi)
+    changeFromPrevious: number; // % change (computed from analysis results)
     constructionDetected: boolean;
     statusLabel: "No Activity" | "Site Cleared" | "Foundation" | "Structure" | "Near Complete" | "Completed";
   };
@@ -42,157 +45,34 @@ export interface TimelinePoint {
   changeFromPrevious: number;
 }
 
-// ── Deterministic hash for consistent per-project data ───────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-function hashStr(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
+/** Converts NDVI (range -1 to 1) to a 0-100 vegetation cover score. */
+function ndviToVegetation(ndvi: number | null | undefined): number {
+  if (ndvi == null) return 0;
+  return Math.round(((ndvi + 1) / 2) * 100);
 }
 
-function seededRandom(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff;
-    return (s >>> 0) / 0xffffffff;
-  };
+/**
+ * Converts NDBI to an approximate built-up development score.
+ * NDBI range: -1 (all vegetation) to 1 (all built-up).
+ * Maps to 0-100 development score.
+ */
+function ndbiToDevelopment(ndbi: number | null | undefined): number {
+  if (ndbi == null) return 0;
+  return Math.round(((ndbi + 1) / 2) * 100);
 }
 
-// ── ESRI tile URL builder ────────────────────────────────────────────────────
-
-function latLngToTile(lat: number, lng: number, zoom: number): { x: number; y: number } {
-  const x = Math.floor(((lng + 180) / 360) * Math.pow(2, zoom));
-  const y = Math.floor(
-    (1 -
-      Math.log(
-        Math.tan((lat * Math.PI) / 180) +
-          1 / Math.cos((lat * Math.PI) / 180)
-      ) /
-        Math.PI) /
-      2 *
-      Math.pow(2, zoom)
-  );
-  return { x, y };
-}
-
-function buildEsriTileUrl(
-  lat: number,
-  lng: number,
-  zoom = 16
-): { imageUrl: string; thumbnailUrl: string } {
-  // Build a 3-tile grid URL (center + offset for context)
-  const center = latLngToTile(lat, lng, zoom);
-  const imageUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${center.y}/${center.x}`;
-  // Thumbnail at lower zoom
-  const thumb = latLngToTile(lat, lng, 14);
-  const thumbnailUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/${thumb.y}/${thumb.x}`;
-  return { imageUrl, thumbnailUrl };
-}
-
-// ── Development curve calculator ──────────────────────────────────────────────
-
-function computeDevelopment(
-  projectId: string,
-  weekIndex: number,
-  totalWeeks: number,
-  projectStartDate: Date
-): SatelliteCapture["analysis"] {
-  const rand = seededRandom(hashStr(projectId + weekIndex));
-  const noise = () => (rand() - 0.5) * 8; // ±4 point noise
-
-  // Progress curve: starts slow, accelerates, plateaus
-  const progress = Math.min(100, Math.max(0, (weekIndex / totalWeeks) * 110 - 5));
-  const score = Math.round(progress + noise());
-
-  // Built-up area: increases with progress (0 → ~5000 sq m typical MPLADS project)
-  const builtUpArea = Math.round((progress / 100) * 4800 + rand() * 400);
-
-  // Vegetation: decreases as land is cleared and built
-  const vegetationCover = Math.max(5, Math.round(60 - progress * 0.5 + (rand() - 0.5) * 10));
-
-  // Change from previous
-  const prevProgress = Math.min(
-    100,
-    Math.max(0, ((weekIndex - 1) / totalWeeks) * 110 - 5)
-  );
-  const changeFromPrevious = Math.round(score - (prevProgress + (rand() - 0.5) * 8));
-
-  const constructionDetected = score > 10;
-
-  let statusLabel: SatelliteCapture["analysis"]["statusLabel"];
-  if (score < 5) statusLabel = "No Activity";
-  else if (score < 20) statusLabel = "Site Cleared";
-  else if (score < 45) statusLabel = "Foundation";
-  else if (score < 75) statusLabel = "Structure";
-  else if (score < 95) statusLabel = "Near Complete";
-  else statusLabel = "Completed";
-
-  return {
-    developmentScore: score,
-    builtUpArea,
-    vegetationCover,
-    changeFromPrevious,
-    constructionDetected,
-    statusLabel,
-  };
-}
-
-// ── Generate captures for a project ────────────────────────────────────────────
-
-function generateCaptures(
-  projectId: string,
-  lat: number,
-  lng: number,
-  from?: string,
-  to?: string
-): SatelliteCapture[] {
-  const rand = seededRandom(hashStr(projectId));
-
-  // Default: last 24 weeks from today
-  const endDate = to ? new Date(to) : new Date();
-  const startDate = from
-    ? new Date(from)
-    : new Date(endDate.getTime() - 24 * 7 * 24 * 60 * 60 * 1000);
-
-  const totalWeeks = Math.ceil(
-    (endDate.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
-  );
-  const captures: SatelliteCapture[] = [];
-
-  for (let i = 0; i < totalWeeks; i++) {
-    const captureDate = new Date(
-      startDate.getTime() + i * 7 * 24 * 60 * 60 * 1000
-    );
-    // Skip ~15% of weeks (cloud cover simulation)
-    if (rand() < 0.15 && i > 0) continue;
-
-    const { imageUrl, thumbnailUrl } = buildEsriTileUrl(lat, lng);
-    const analysis = computeDevelopment(
-      projectId,
-      i,
-      totalWeeks,
-      startDate
-    );
-
-    captures.push({
-      id: `${projectId}-${captureDate.toISOString().split("T")[0]}`,
-      projectId,
-      date: captureDate.toISOString(),
-      lat,
-      lng,
-      imageUrl,
-      thumbnailUrl,
-      provider: "esri",
-      cloudCover: Math.round(5 + rand() * 35),
-      analysis,
-    });
-  }
-
-  return captures;
+/**
+ * Classifies the development status from a 0-100 score.
+ */
+function classifyStatus(score: number): SatelliteCapture["analysis"]["statusLabel"] {
+  if (score < 5)  return "No Activity";
+  if (score < 20) return "Site Cleared";
+  if (score < 45) return "Foundation";
+  if (score < 75) return "Structure";
+  if (score < 95) return "Near Complete";
+  return "Completed";
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -201,48 +81,110 @@ export async function getCapturesByProject(
   projectId: string,
   options?: { from?: string; to?: string }
 ): Promise<SatelliteCapture[]> {
-  logger.info(`[satellite] Fetching captures for project ${projectId}`);
-  try {
-    // Get project coordinates — fall back to deterministic hash-based coordinates
-    // if project doesn't exist (so the feature still works for any projectId)
-    let lat: number;
-    let lng: number;
-    try {
-      const project = await projectService.findById(projectId);
-      lat = project?.latitude ?? (20.5937 + (hashStr(projectId) % 1000) / 1000);
-      lng = project?.longitude ?? (78.9629 + (hashStr(projectId + "lng") % 1000) / 1000);
-    } catch (lookupErr) {
-      // Project not in DB — use deterministic fallback so satellite tile URLs are stable
-      lat = 20.5937 + (hashStr(projectId) % 1000) / 1000;
-      lng = 78.9629 + (hashStr(projectId + "lng") % 1000) / 1000;
-      logger.info(`[satellite] Project ${projectId} not in DB, using fallback coordinates ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-    }
+  logger.info(`[satellite] Fetching real captures for project ${projectId}`);
 
-    const captures = generateCaptures(projectId, lat, lng, options?.from, options?.to);
-    logger.info(`[satellite] Generated ${captures.length} captures for ${projectId}`);
+  try {
+    const observations = await prisma.satelliteObservation.findMany({
+      where: {
+        projectId,
+        ...(options?.from && { observationDate: { gte: new Date(options.from) } }),
+        ...(options?.to   && { observationDate: { lte: new Date(options.to) } }),
+      },
+      orderBy: { observationDate: "asc" },
+    });
+
+    logger.info(`[satellite] Found ${observations.length} real observations for ${projectId}`);
+
+    if (!observations.length) return [];
+
+    // Look up the project so we can fall back to its coordinates when the
+    // observation is missing lat/lng (older records predate the centre fields).
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { latitude: true, longitude: true },
+    });
+    const fallbackLat = project?.latitude ?? null;
+    const fallbackLng = project?.longitude ?? null;
+
+    // Enrich each observation with analysis from the latest analysis result
+    const captures: SatelliteCapture[] = await Promise.all(
+      observations.map(async (obs) => {
+        const latestAnalysis = await prisma.analysisResult.findFirst({
+          where: { observationId: obs.id },
+          orderBy: { createdAt: "desc" },
+        });
+
+        const ndvi = obs.ndvi ?? null;
+        const ndbii = obs.ndbii ?? null;
+        const builtUpArea = obs.builtUpArea ?? 0;
+        const vegetationCover = ndviToVegetation(ndvi);
+        const developmentScore = ndbiToDevelopment(ndbii);
+        const constructionDetected = developmentScore > 15;
+
+        // Look up change from the analysis result if available
+        let changeFromPrevious = 0;
+        if (latestAnalysis?.result) {
+          try {
+            const resultObj = JSON.parse(latestAnalysis.result) as Record<string, unknown>;
+            const prevScore = resultObj["previousDevelopmentScore"] as number | undefined;
+            if (prevScore !== undefined) {
+              changeFromPrevious = Math.round(developmentScore - prevScore);
+            }
+          } catch {
+            // result was not valid JSON — skip
+          }
+        }
+
+        return {
+          id: obs.id, // internal PK — always present; use as stable capture ID
+          projectId: obs.projectId,
+          date: obs.observationDate.toISOString(),
+          lat: obs.centerLat || (fallbackLat ?? 0),
+          lng: obs.centerLng || (fallbackLng ?? 0),
+          imageUrl: obs.tileUrl ?? buildPlaceholderTileUrl(obs.centerLat || (fallbackLat ?? 0), obs.centerLng || (fallbackLng ?? 0)),
+          thumbnailUrl: obs.thumbnailUrl ?? "",
+          provider: obs.provider === "CDSE" ? "CDSE" : "NONE",
+          cloudCover: obs.cloudCover ?? 0,
+          analysis: {
+            developmentScore,
+            builtUpArea,
+            vegetationCover,
+            changeFromPrevious,
+            constructionDetected,
+            statusLabel: classifyStatus(developmentScore),
+          },
+        } satisfies SatelliteCapture;
+      })
+    );
+
     return captures;
   } catch (err) {
     logger.error(`[satellite] Failed to get captures for ${projectId}`, err);
-    throw err;
+    return []; // Return empty rather than throwing — graceful degradation
   }
 }
 
 export async function getCaptureById(captureId: string): Promise<SatelliteCapture | null> {
-  // Parse projectId from captureId (format: projectId-YYYY-MM-DD)
-  const lastDash = captureId.lastIndexOf("-");
-  if (lastDash === -1) return null;
-  const dateStr = captureId.slice(lastDash + 1);
-  const projectId = captureId.slice(0, lastDash);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
-
-  const captures = await getCapturesByProject(projectId, { from: dateStr, to: dateStr });
-  return captures[0] ?? null;
+  // captureId is the internal PK (UUID) of SatelliteObservation
+  try {
+    const obs = await prisma.satelliteObservation.findUnique({
+      where: { id: captureId },
+    });
+    if (!obs) return null;
+    const captures = await getCapturesByProject(obs.projectId, {
+      from: obs.observationDate.toISOString().slice(0, 10),
+      to:   obs.observationDate.toISOString().slice(0, 10),
+    });
+    return captures[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getLatestCapture(projectId: string): Promise<SatelliteCapture | null> {
   const captures = await getCapturesByProject(projectId);
   if (!captures.length) return null;
-  return captures[captures.length - 1];
+  return captures[captures.length - 1]; // ascending order → last is latest
 }
 
 export async function getTimeline(projectId: string): Promise<TimelinePoint[]> {
@@ -254,4 +196,19 @@ export async function getTimeline(projectId: string): Promise<TimelinePoint[]> {
     vegetationCover: c.analysis.vegetationCover,
     changeFromPrevious: c.analysis.changeFromPrevious,
   }));
+}
+
+// ── Placeholder tile URL when no CDSE tiles are available ─────────────────────
+
+function buildPlaceholderTileUrl(lat: number, lng: number): string {
+  // Returns an OpenStreetMap tile as a neutral basemap
+  // Frontend can overlay this with WMS layers from the observation record
+  const zoom = 16;
+  const x = Math.floor(((lng + 180) / 360) * Math.pow(2, zoom));
+  const y = Math.floor(
+    (1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180) * Math.PI)) /
+      2 *
+      Math.pow(2, zoom)
+  );
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
 }

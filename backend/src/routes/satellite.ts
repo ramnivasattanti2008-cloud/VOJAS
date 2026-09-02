@@ -15,6 +15,7 @@ import {
   getLatestCapture,
   getTimeline,
 } from "../services/satelliteService.js";
+import { successResponse, errorResponse } from "../utils/response.js";
 import { logger } from "../utils/logger.js";
 
 const router = Router();
@@ -36,17 +37,17 @@ router.get("/:projectId/captures", async (req, res) => {
     const { projectId } = req.params;
     const parsed = dateQuerySchema.safeParse(req.query);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+      res.status(400).json(errorResponse("INVALID_DATE", "Invalid date format. Use YYYY-MM-DD."));
       return;
     }
     const captures = await getCapturesByProject(projectId, {
       from: parsed.data?.from,
       to: parsed.data?.to,
     });
-    res.json({ captures, total: captures.length });
+    res.json(successResponse({ captures, total: captures.length }));
   } catch (err) {
     logger.error(`[satellite] GET captures error`, err);
-    res.status(500).json({ error: "Failed to fetch satellite captures." });
+    res.status(500).json(errorResponse("SATELLITE_ERROR", "Failed to fetch satellite captures."));
   }
 });
 
@@ -57,13 +58,13 @@ router.get("/:projectId/captures/latest", async (req, res) => {
     const { projectId } = req.params;
     const capture = await getLatestCapture(projectId);
     if (!capture) {
-      res.status(404).json({ error: "No captures found for this project." });
+      res.status(404).json(errorResponse("NOT_FOUND", "No captures found for this project."));
       return;
     }
-    res.json({ capture });
+    res.json(successResponse({ capture }));
   } catch (err) {
     logger.error(`[satellite] GET latest capture error`, err);
-    res.status(500).json({ error: "Failed to fetch latest capture." });
+    res.status(500).json(errorResponse("SATELLITE_ERROR", "Failed to fetch latest capture."));
   }
 });
 
@@ -73,10 +74,10 @@ router.get("/:projectId/timeline", async (req, res) => {
   try {
     const { projectId } = req.params;
     const timeline = await getTimeline(projectId);
-    res.json({ timeline, total: timeline.length });
+    res.json(successResponse({ timeline, total: timeline.length }));
   } catch (err) {
     logger.error(`[satellite] GET timeline error`, err);
-    res.status(500).json({ error: "Failed to fetch timeline." });
+    res.status(500).json(errorResponse("SATELLITE_ERROR", "Failed to fetch timeline."));
   }
 });
 
@@ -87,13 +88,13 @@ router.get("/captures/:captureId", async (req, res) => {
     const { captureId } = req.params;
     const capture = await getCaptureById(captureId);
     if (!capture) {
-      res.status(404).json({ error: "Capture not found." });
+      res.status(404).json(errorResponse("NOT_FOUND", "Capture not found."));
       return;
     }
-    res.json({ capture });
+    res.json(successResponse({ capture }));
   } catch (err) {
     logger.error(`[satellite] GET capture error`, err);
-    res.status(500).json({ error: "Failed to fetch capture." });
+    res.status(500).json(errorResponse("SATELLITE_ERROR", "Failed to fetch capture."));
   }
 });
 
