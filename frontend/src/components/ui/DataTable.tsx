@@ -1,11 +1,18 @@
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
+/**
+ * DataTable — VOJAS 2.0 light theme.
+ * Compact, IBM Carbon-style data table. Used for tabular data with sorting/filtering.
+ */
+
 export interface Column<T> {
   header: string;
   accessor: (row: T, index: number) => ReactNode;
   className?: string;
   align?: "left" | "right" | "center";
+  /** When true, column header is sortable (visual only — actual sort logic is the parent's) */
+  sortable?: boolean;
 }
 
 export interface DataTableProps<T> {
@@ -14,6 +21,8 @@ export interface DataTableProps<T> {
   empty?: string;
   onRowClick?: (row: T) => void;
   className?: string;
+  /** Compact mode reduces vertical padding */
+  compact?: boolean;
 }
 
 const ALIGN_CLASS = {
@@ -25,22 +34,25 @@ const ALIGN_CLASS = {
 export default function DataTable<T>({
   columns,
   data,
-  empty = "No data found",
+  empty = "No data available",
   onRowClick,
   className,
+  compact = false,
 }: DataTableProps<T>) {
+  const cellPad = compact ? "py-2 px-3" : "py-2.5 px-4";
   return (
-    <div className={cn("bg-white/5 border border-white/10 rounded-xl overflow-hidden", className)}>
+    <div className={cn("bg-white border border-gray-200 rounded-md overflow-hidden", className)}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10">
+            <tr className="border-b border-gray-200 bg-gray-50">
               {columns.map((col, i) => (
                 <th
                   key={i}
                   scope="col"
                   className={cn(
-                    "py-3 px-4 font-medium text-xs text-white/50 uppercase tracking-wider",
+                    "font-semibold text-[11px] text-gray-600 uppercase tracking-wider",
+                    cellPad,
                     col.align ? ALIGN_CLASS[col.align] : "text-left",
                     col.className
                   )}
@@ -55,7 +67,7 @@ export default function DataTable<T>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="py-12 text-center text-white/40 text-sm"
+                  className="py-12 text-center text-gray-500 text-sm"
                 >
                   {empty}
                 </td>
@@ -66,7 +78,7 @@ export default function DataTable<T>({
                   key={i}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={cn(
-                    "border-b border-white/5 hover:bg-white/5 transition-colors",
+                    "border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors",
                     onRowClick && "cursor-pointer"
                   )}
                 >
@@ -74,7 +86,8 @@ export default function DataTable<T>({
                     <td
                       key={j}
                       className={cn(
-                        "py-3 px-4 text-white/80",
+                        "text-gray-800",
+                        cellPad,
                         col.align ? ALIGN_CLASS[col.align] : "text-left",
                         col.className
                       )}

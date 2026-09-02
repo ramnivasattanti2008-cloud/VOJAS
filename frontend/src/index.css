@@ -57,8 +57,8 @@
   * { border-color: rgb(var(--color-border)); }
 
   body {
-    @apply bg-navy-950 text-slate-200 antialiased;
-    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
     font-variant-numeric: tabular-nums;
     /* Smooth scrolling + reduced motion support */
@@ -78,26 +78,32 @@
     }
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  /* Custom scrollbar — light theme */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.08);
-    border-radius: 3px;
+    background: #cbd5e1;
+    border-radius: 4px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
   /* Text selection */
   ::selection {
-    background: rgba(37, 99, 235, 0.3);
-    color: #fff;
+    background: rgba(37, 99, 235, 0.2);
+    color: #0f172a;
   }
 
-  /* Focus styles */
+  /* Focus styles — IBM Carbon-style 2px blue outline */
   :focus-visible {
-    outline: 2px solid rgba(37, 99, 235, 0.6);
+    outline: 2px solid #2563eb;
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 2px;
+  }
+
+  /* Number/data font: monospace tabular nums */
+  .font-mono, .font-data {
+    font-family: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
   }
 }
 

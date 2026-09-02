@@ -102,7 +102,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         'relative inline-flex items-center justify-center font-semibold',
         'transition-all duration-200 cursor-pointer',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electric-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1',
         baseClasses,
         glowClass,
         SIZE_CLASSES[size],

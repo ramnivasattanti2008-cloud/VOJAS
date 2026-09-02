@@ -19,11 +19,11 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 const STORAGE_KEY = "vojas_theme";
 
 function readInitialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === "dark" || stored === "light") return stored;
-  // Default to dark — matches current VOJAS aesthetic
-  return "dark";
+  // Default to light — VOJAS 2.0 design system
+  return "light";
 }
 
 function applyTheme(theme: Theme) {
