@@ -2,7 +2,7 @@
 
 **Target:** Smart India Hackathon 2026 — Problem SIH26102
 **Audience:** Judges (technical + non-technical), 5-minute slot
-**Demo accounts:** All use password `admin123`
+**Demo accounts:** All use password `VojasDemo2026`
 - `admin@vojas.gov` — full PII + admin views
 - `officer@vojas.gov` — field officer (recommended for primary demo)
 - `analyst@vojas.gov` — data analyst (Risk + Anomalies best views)
