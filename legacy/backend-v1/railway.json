@@ -1,0 +1,31 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacksPlan": {
+      "phases": {
+        "setup": {
+          "nixpkgs": ["nodejs_22"],
+          "src": "."
+        },
+        "install": {
+          "commands": [
+            "npm install --include=dev",
+            "npx prisma generate"
+          ],
+          " Cache": ["node_modules", ".prisma"]
+        },
+        "build": {
+          "commands": ["npm run build"]
+        }
+      }
+    }
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "healthCheckPath": "/api/v1/health",
+    "startCommand": "npx prisma db push --accept-data-loss && node dist/server.js"
+  }
+}

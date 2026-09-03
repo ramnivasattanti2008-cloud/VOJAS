@@ -1,0 +1,382 @@
+/**
+ * MP + Vendor + Longitudinal analytics service.
+ *
+ * Powers:
+ *   GET /api/v1/analytics/mp-summary
+ *   GET /api/v1/analytics/mp/:id/trends
+ *   GET /api/v1/analytics/vendor-summary
+ *   GET /api/v1/analytics/vendor-top
+ *   GET /api/v1/analytics/longitudinal
+ */
+import { prisma } from "../config/database.js";
+import type { LokSabhaTerm } from "@prisma/client";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface MPTermSummary {
+  term: LokSabhaTerm;
+  totalProjects: number;
+  totalSanctioned: number;
+  totalSpent: number;
+  utilizationPct: number;
+  avgPerProject: number;
+  anomalyCount: number;
+}
+
+export interface MPLongitudinalTrend {
+  month: string;
+  recommended: number;
+  completed: number;
+  spent: number;
+}
+
+export interface VendorBenchmark {
+  vendorId: string;
+  vendorName: string;
+  totalPaid: number;
+  projectCount: number;
+  constituencyCount: number;
+  uniqueDistricts: number;
+  uniqueStates: number;
+  crossConstituencyRisk: boolean;
+  crossStateRisk: boolean;
+  percentile: number;
+}
+
+export interface LongitudinalStateTerm {
+  state: string;
+  term: LokSabhaTerm;
+  projectCount: number;
+  totalSanctioned: number;
+  totalSpent: number;
+  utilizationPct: number;
+}
+
+export interface LongitudinalOverview {
+  byTerm: {
+    term: LokSabhaTerm;
+    totalProjects: number;
+    totalSanctioned: number;
+    totalSpent: number;
+    utilizationPct: number;
+  }[];
+  byStateTerm: LongitudinalStateTerm[];
+  topStatesByTerm: Record<LokSabhaTerm, { state: string; totalSanctioned: number }[]>;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatMonth(d: Date): string {
+  return d.toLocaleString("en-US", { month: "short", year: "numeric" });
+}
+
+// ─── MP Analytics ─────────────────────────────────────────────────────────────
+
+export const mpAnalyticsService = {
+  async getMPOverview(): Promise<{
+    totalMPs: number;
+    byHouse: Record<string, number>;
+    byTerm: Record<string, number>;
+    topStates: { state: string; count: number }[];
+    avgProjectsPerMP: number;
+  }> {
+    const mps = await prisma.mP.findMany({
+      select: {
+        id: true,
+        house: true,
+        term: true,
+        state: true,
+        _count: { select: { projects: true } },
+      },
+    });
+
+    const byHouse: Record<string, number> = {};
+    const byTerm: Record<string, number> = {};
+    const stateCounts: Record<string, number> = {};
+    let totalProjects = 0;
+
+    for (const mp of mps) {
+      byHouse[mp.house] = (byHouse[mp.house] ?? 0) + 1;
+      byTerm[mp.term] = (byTerm[mp.term] ?? 0) + 1;
+      stateCounts[mp.state] = (stateCounts[mp.state] ?? 0) + 1;
+      totalProjects += mp._count.projects;
+    }
+
+    const topStates = Object.entries(stateCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([state, count]) => ({ state, count }));
+
+    return {
+      totalMPs: mps.length,
+      byHouse,
+      byTerm,
+      topStates,
+      avgProjectsPerMP: mps.length > 0 ? Math.round(totalProjects / mps.length) : 0,
+    };
+  },
+
+  async getMPTrends(mpId: string): Promise<{
+    byTerm: MPTermSummary[];
+    monthly: MPLongitudinalTrend[];
+  }> {
+    const projects = await prisma.project.findMany({
+      where: { mpId },
+      select: {
+        id: true,
+        approvedAmount: true,
+        spentAmount: true,
+        status: true,
+        term: true,
+        recommendedDate: true,
+      },
+    });
+
+    const termGroups: Record<string, typeof projects> = {};
+    for (const p of projects) {
+      const t = p.term ?? "UNKNOWN";
+      if (!termGroups[t]) termGroups[t] = [];
+      termGroups[t].push(p);
+    }
+
+    const anomalyIds = new Set(
+      (
+        await prisma.anomaly.findMany({
+          where: { project: { mpId } },
+          select: { id: true },
+        })
+      ).map((a) => a.id)
+    );
+
+    const allTermProjects = await prisma.anomaly.findMany({
+      where: { project: { mpId } },
+      select: { projectId: true },
+    });
+    const anomalousProjectIds = new Set(allTermProjects.map((a) => a.projectId));
+
+    const byTerm: MPTermSummary[] = [];
+    for (const [term, list] of Object.entries(termGroups)) {
+      if (term === "UNKNOWN") continue;
+      const sanctioned = list.reduce((s, p) => s + p.approvedAmount, 0);
+      const spent = list.reduce((s, p) => s + p.spentAmount, 0);
+      byTerm.push({
+        term: term as LokSabhaTerm,
+        totalProjects: list.length,
+        totalSanctioned: sanctioned,
+        totalSpent: spent,
+        utilizationPct: sanctioned > 0 ? Math.round((spent / sanctioned) * 100) : 0,
+        avgPerProject: list.length > 0 ? Math.round(sanctioned / list.length) : 0,
+        anomalyCount: list.filter((p) => anomalousProjectIds.has(p.id)).length,
+      });
+    }
+
+    const twentyFourMonthsAgo = new Date();
+    twentyFourMonthsAgo.setMonth(twentyFourMonthsAgo.getMonth() - 24);
+    const recent = projects.filter(
+      (p) => p.recommendedDate && new Date(p.recommendedDate) >= twentyFourMonthsAgo
+    );
+
+    const monthGroups: Record<string, { recommended: number; completed: number; spent: number }> = {};
+    for (const p of recent) {
+      const m = p.recommendedDate ? formatMonth(new Date(p.recommendedDate)) : "Unknown";
+      if (!monthGroups[m]) monthGroups[m] = { recommended: 0, completed: 0, spent: 0 };
+      monthGroups[m].recommended++;
+      if (p.status === "COMPLETED" || p.status === "VERIFIED") monthGroups[m].completed++;
+      monthGroups[m].spent += p.spentAmount;
+    }
+
+    const monthly: MPLongitudinalTrend[] = Object.entries(monthGroups)
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([month, v]) => ({ month, ...v }));
+
+    return { byTerm, monthly };
+  },
+};
+
+// ─── Vendor Analytics ─────────────────────────────────────────────────────────
+
+export const vendorAnalyticsService = {
+  async getVendorOverview(): Promise<{
+    totalVendors: number;
+    totalPaid: number;
+    avgPaidPerVendor: number;
+    crossStateRisk: number;
+    crossConstituencyRisk: number;
+    byPaymentStatus: Record<string, number>;
+    topStates: { state: string; totalPaid: number; count: number }[];
+  }> {
+    const vendors = await prisma.vendor.findMany({
+      select: { id: true, state: true, totalPaid: true, projectCount: true, constituencyCount: true },
+    });
+
+    let totalPaid = 0;
+    let crossStateRisk = 0;
+    let crossConstituencyRisk = 0;
+    const statePaid: Record<string, { totalPaid: number; count: number }> = {};
+
+    for (const v of vendors) {
+      totalPaid += v.totalPaid;
+      if (v.constituencyCount > 3) crossConstituencyRisk++;
+      // heuristic: if projectCount significantly exceeds constituencyCount, likely cross-state
+      if (v.projectCount > 0 && v.projectCount > v.constituencyCount * 0.8) crossStateRisk++;
+      if (v.state) {
+        if (!statePaid[v.state]) statePaid[v.state] = { totalPaid: 0, count: 0 };
+        statePaid[v.state].totalPaid += v.totalPaid;
+        statePaid[v.state].count++;
+      }
+    }
+
+    const byPaymentStatus = await prisma.expenditure.groupBy({
+      by: ["paymentStatus"],
+      _count: { id: true },
+    });
+
+    const topStates = Object.entries(statePaid)
+      .sort((a, b) => b[1].totalPaid - a[1].totalPaid)
+      .slice(0, 10)
+      .map(([state, v]) => ({ state, totalPaid: v.totalPaid, count: v.count }));
+
+    return {
+      totalVendors: vendors.length,
+      totalPaid,
+      avgPaidPerVendor: vendors.length > 0 ? Math.round(totalPaid / vendors.length) : 0,
+      crossStateRisk,
+      crossConstituencyRisk,
+      byPaymentStatus: Object.fromEntries(
+        byPaymentStatus.map((s) => [s.paymentStatus ?? "UNKNOWN", s._count.id])
+      ),
+      topStates,
+    };
+  },
+
+  async getTopVendorsBenchmark(limit = 50): Promise<VendorBenchmark[]> {
+    const vendors = await prisma.vendor.findMany({
+      select: {
+        id: true,
+        name: true,
+        totalPaid: true,
+        projectCount: true,
+        constituencyCount: true,
+        expenditures: {
+          select: {
+            project: { select: { district: true, state: true } },
+          },
+          take: 500,
+        },
+      },
+      orderBy: { totalPaid: "desc" },
+      take: limit,
+    });
+
+    const allPaid = await prisma.vendor.findMany({ select: { totalPaid: true } });
+    const sortedPaid = allPaid.map((v) => v.totalPaid).sort((a, b) => b - a);
+
+    return vendors.map((v) => {
+      const uniqueStates = new Set(
+        v.expenditures.map((e) => e.project?.state).filter(Boolean)
+      ).size;
+      const uniqueDistricts = new Set(
+        v.expenditures.map((e) => e.project?.district).filter(Boolean)
+      ).size;
+      const rank = sortedPaid.indexOf(v.totalPaid);
+      const percentile =
+        sortedPaid.length > 0 ? Math.round(((sortedPaid.length - rank) / sortedPaid.length) * 100) : 0;
+
+      return {
+        vendorId: v.id,
+        vendorName: v.name,
+        totalPaid: v.totalPaid,
+        projectCount: v.projectCount,
+        constituencyCount: v.constituencyCount,
+        uniqueDistricts,
+        uniqueStates,
+        crossConstituencyRisk: v.constituencyCount > 3,
+        crossStateRisk: uniqueStates > 3,
+        percentile,
+      };
+    });
+  },
+};
+
+// ─── Longitudinal ──────────────────────────────────────────────────────────────
+
+export const longitudinalService = {
+  async getOverview(): Promise<LongitudinalOverview> {
+    const projects = await prisma.project.findMany({
+      select: {
+        term: true,
+        state: true,
+        approvedAmount: true,
+        spentAmount: true,
+      },
+    });
+
+    const termGroups: Record<string, typeof projects> = {};
+    for (const p of projects) {
+      const t = p.term ?? "UNKNOWN";
+      if (!termGroups[t]) termGroups[t] = [];
+      termGroups[t].push(p);
+    }
+
+    const allTerms: LokSabhaTerm[] = ["FIFTEENTH", "SIXTEENTH", "SEVENTEENTH", "EIGHTEENTH"];
+
+    const byTerm = allTerms.map((term) => {
+      const list = termGroups[term] ?? [];
+      const sanctioned = list.reduce((s, p) => s + p.approvedAmount, 0);
+      const spent = list.reduce((s, p) => s + p.spentAmount, 0);
+      return {
+        term,
+        totalProjects: list.length,
+        totalSanctioned: sanctioned,
+        totalSpent: spent,
+        utilizationPct: sanctioned > 0 ? Math.round((spent / sanctioned) * 100) : 0,
+      };
+    });
+
+    const stateTermGroups: Record<string, LongitudinalStateTerm[]> = {};
+    const VALID_TERMS = new Set(["FIFTEENTH", "SIXTEENTH", "SEVENTEENTH", "EIGHTEENTH"]);
+    for (const p of projects) {
+      if (!p.term || !VALID_TERMS.has(p.term)) continue;
+      const key = `${p.state}::${p.term}`;
+      if (!stateTermGroups[key]) stateTermGroups[key] = [];
+      stateTermGroups[key].push({
+        state: p.state,
+        term: p.term,
+        projectCount: 1,
+        totalSanctioned: p.approvedAmount,
+        totalSpent: p.spentAmount,
+        utilizationPct: p.approvedAmount > 0 ? Math.round((p.spentAmount / p.approvedAmount) * 100) : 0,
+      });
+    }
+
+    const mergedStateTerm: LongitudinalStateTerm[] = [];
+    for (const [key, list] of Object.entries(stateTermGroups)) {
+      const [state, term] = key.split("::") as [string, LokSabhaTerm];
+      const sanctioned = list.reduce((s, r) => s + r.totalSanctioned, 0);
+      const spent = list.reduce((s, r) => s + r.totalSpent, 0);
+      mergedStateTerm.push({
+        state,
+        term,
+        projectCount: list.reduce((s, r) => s + r.projectCount, 0),
+        totalSanctioned: sanctioned,
+        totalSpent: spent,
+        utilizationPct: sanctioned > 0 ? Math.round((spent / sanctioned) * 100) : 0,
+      });
+    }
+
+    const topStatesByTerm: Record<string, { state: string; totalSanctioned: number }[]> = {};
+    for (const term of allTerms) {
+      const byState: Record<string, number> = {};
+      for (const st of mergedStateTerm) {
+        if (st.term !== term) continue;
+        byState[st.state] = (byState[st.state] ?? 0) + st.totalSanctioned;
+      }
+      topStatesByTerm[term] = Object.entries(byState)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([state, totalSanctioned]) => ({ state, totalSanctioned }));
+    }
+
+    return { byTerm, byStateTerm: mergedStateTerm, topStatesByTerm };
+  },
+};

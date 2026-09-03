@@ -1,0 +1,36 @@
+{
+  "name": "vojas-monorepo",
+  "version": "2.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n web,api -c blue,green \"pnpm --filter @vojas/web dev\" \"pnpm --filter @vojas/api dev\"",
+    "dev:api": "pnpm --filter @vojas/api dev",
+    "dev:web": "pnpm --filter @vojas/web dev",
+    "build": "pnpm -r --filter @vojas/db --filter @vojas/shared --filter @vojas/domain --filter @vojas/api-client build && pnpm --filter @vojas/api build && pnpm --filter @vojas/web build",
+    "build:packages": "pnpm -r --filter @vojas/db --filter @vojas/shared --filter @vojas/domain --filter @vojas/api-client build",
+    "build:api": "pnpm --filter @vojas/api build",
+    "build:web": "pnpm --filter @vojas/web build",
+    "test": "pnpm -r --if-present test",
+    "test:unit": "pnpm -r --if-present --filter \"./packages/*\" test",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "db:generate": "pnpm --filter @vojas/db db:generate",
+    "db:migrate": "pnpm --filter @vojas/db db:migrate",
+    "db:push": "pnpm --filter @vojas/db db:push",
+    "db:seed": "pnpm --filter @vojas/db db:seed",
+    "db:studio": "pnpm --filter @vojas/db db:studio",
+    "db:reset": "pnpm --filter @vojas/db db:reset"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "~5.6.2"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3"
+  }
+}

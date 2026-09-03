@@ -117,6 +117,56 @@ enum RiskLevel {
   CRITICAL
 }
 
+enum ReportCategory {
+  CONSTRUCTION_QUALITY
+  FINANCIAL_IRREGULARITY
+  DELAYED_WORK
+  ABANDONED_WORK
+  FAKE_DOCUMENTS
+  VENDOR_MISCONDUCT
+  LOCATION_MISMATCH
+  PROGRESS_MISMATCH
+  ENVIRONMENTAL_VIOLATION
+  SAFETY_HAZARD
+  OTHER
+}
+
+enum ReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ASSIGNED
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationType {
+  ANOMALY_DETECTED
+  ANOMALY_ACKNOWLEDGED
+  ANOMALY_RESOLVED
+  ANOMALY_ESCALATED
+  ANOMALY_ESCALATED_TO_LAW
+  REPORT_SUBMITTED
+  REPORT_ASSIGNED
+  RISK_THRESHOLD
+  PROJECT_COMPLETED
+  SYSTEM_ALERT
+}
+
+enum VendorStatus {
+  ACTIVE
+  SUSPENDED
+  BLACKLISTED
+  PENDING_VERIFICATION
+}
+
 enum ChangeClassification {
   NO_OBSERVABLE_CHANGE
   LOW_OBSERVABLE_CHANGE
@@ -156,9 +206,11 @@ enum AuditAction {
   PROJECT_UPDATED
   PROJECT_DELETED
   ANOMALY_DETECTED
+  ANOMALY_CREATED
   ANOMALY_ACKNOWLEDGED
   ANOMALY_RESOLVED
   ANOMALY_ESCALATED
+  ANOMALY_DISMISSED
   DOCUMENT_UPLOADED
   DOCUMENT_VERIFIED
   DOCUMENT_REJECTED
@@ -166,6 +218,11 @@ enum AuditAction {
   FINANCIAL_UPDATE
   VERIFICATION_COMPLETED
   SYSTEM_CONFIG_CHANGED
+  REPORT_SUBMITTED
+  REPORT_ASSIGNED
+  REPORT_RESOLVED
+  VENDOR_REGISTERED
+  NOTIFICATION_SENT
 }
 
 // ────────────────────────────────────────────────────────────
@@ -195,6 +252,11 @@ model User {
   contractorUpdates        ContractorUpdate[]  @relation("ContractorUpdateSubmittedBy")
   contractorUpdatesRev     ContractorUpdate[]  @relation("ContractorUpdateReviewedBy")
   projectLocationsVerified ProjectLocation[]   @relation("ProjectLocationVerifiedBy")
+  anomaliesAck             Anomaly[]           @relation("AnomalyAcknowledger")
+  anomaliesResolved        Anomaly[]           @relation("AnomalyResolver")
+  anomaliesLawEscalated    Anomaly[]           @relation("AnomalyLawEscalator")
+  reportsAssigned          Report[]            @relation("ReportAssignee")
+  notifications            Notification[]
 
   @@map("users")
 }
@@ -331,6 +393,7 @@ model Project {
   stateId            String? @map("state_id")
   constituencyId     String? @map("constituency_id")
   mpId               String? @map("mp_id")
+  vendorId           String? @map("vendor_id")
   sourceDataSourceId String? @map("source_data_source_id")
 
   // Geospatial
@@ -355,6 +418,7 @@ model Project {
   stateRecord        State?        @relation(fields: [stateId], references: [id])
   constituencyRecord Constituency? @relation(fields: [constituencyId], references: [id])
   mp                 MP?           @relation(fields: [mpId], references: [id])
+  vendor             Vendor?       @relation(fields: [vendorId], references: [id])
   sourceDataSource   DataSource?   @relation("ProjectSourceDataSource", fields: [sourceDataSourceId], references: [id])
 
   projectEvents         ProjectEvent[]
@@ -370,6 +434,9 @@ model Project {
   fieldVerifications    FieldVerification[]
   documents             Document[]
   contractorUpdates     ContractorUpdate[]
+  anomalies             Anomaly[]
+  reports               Report[]
+  projectRisk           ProjectRisk?
 
   // Constraints & indexes
   @@unique([source, sourceWorkId])
@@ -879,4 +946,222 @@ model AuditEvent {
   @@index([entityType, entityId])
   @@index([timestamp])
   @@map("audit_events")
+}
+
+// ────────────────────────────────────────────────────────────
+// ANOMALIES (legacy-compatible; RiskFinding remains the canonical M1 model)
+// ────────────────────────────────────────────────────────────
+
+model Anomaly {
+  id               String          @id @default(cuid())
+  title            String
+  description      String
+  category         AnomalyCategory
+  severity         AnomalySeverity @default(MEDIUM)
+  riskScore        Int             @default(50) @map("risk_score")
+  status           String          @default("OPEN") // OPEN | ACKNOWLEDGED | UNDER_INVESTIGATION | RESOLVED | ESCALATED | DISMISSED
+  ruleCode         String?         @map("rule_code")
+  projectId        String?         @map("project_id")
+  reportId         String?         @map("report_id")
+  vendorId         String?         @map("vendor_id")
+  evidence         Json?
+  acknowledgedById String?         @map("acknowledged_by_id")
+  acknowledgedAt   DateTime?       @map("acknowledged_at") @db.Timestamptz(6)
+  resolvedById     String?         @map("resolved_by_id")
+  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz(6)
+  resolution       String?
+  // Law enforcement escalation
+  lawEscalation    Boolean         @default(false) @map("law_escalation")
+  lawAuthority     String?         @map("law_authority")
+  lawReferenceNo   String?         @map("law_reference_no")
+  lawEscalatedAt   DateTime?       @map("law_escalated_at") @db.Timestamptz(6)
+  lawEscalatedById String?         @map("law_escalated_by_id")
+  lawAcknowledged  Boolean         @default(false) @map("law_acknowledged")
+  lawNotes         String?         @map("law_notes")
+  // AI explanation
+  aiExplanation    String?         @map("ai_explanation")
+  aiConfidence     Int?            @map("ai_confidence")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  acknowledgedBy User?    @relation("AnomalyAcknowledger", fields: [acknowledgedById], references: [id])
+  resolvedBy     User?    @relation("AnomalyResolver", fields: [resolvedById], references: [id])
+  lawEscalatedBy User?    @relation("AnomalyLawEscalator", fields: [lawEscalatedById], references: [id])
+
+  @@index([severity])
+  @@index([status])
+  @@index([category])
+  @@index([projectId])
+  @@index([createdAt])
+  @@index([ruleCode])
+  @@index([lawEscalation, lawAuthority])
+  @@index([projectId, ruleCode, status])
+  @@map("anomalies")
+}
+
+model AnomalyRule {
+  id          String          @id @default(cuid())
+  code        String          @unique
+  name        String
+  description String
+  category    AnomalyCategory
+  severity    AnomalySeverity @default(MEDIUM)
+  enabled     Boolean         @default(true)
+  priority    Int             @default(50)
+  params      Json?
+  lastRun     DateTime?       @map("last_run") @db.Timestamptz(6)
+  matchCount  Int             @default(0) @map("match_count")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("anomaly_rules")
+}
+
+// ────────────────────────────────────────────────────────────
+// CITIZEN REPORTS
+// ────────────────────────────────────────────────────────────
+
+model Report {
+  id            String         @id @default(cuid())
+  title         String
+  description   String
+  category      ReportCategory
+  severity      ReportSeverity @default(LOW)
+  status        ReportStatus   @default(SUBMITTED)
+  // Reporter info
+  reporterName  String?        @map("reporter_name")
+  reporterEmail String?        @map("reporter_email")
+  reporterPhone String?        @map("reporter_phone")
+  isAnonymous   Boolean        @default(false) @map("is_anonymous")
+  // Location
+  locationDesc  String?        @map("location_desc")
+  latitude      Float?
+  longitude     Float?
+  // References
+  projectId     String?        @map("project_id")
+  assignedToId  String?        @map("assigned_to_id")
+  resolution    String?
+  resolvedAt    DateTime?      @map("resolved_at") @db.Timestamptz(6)
+  // Source metadata
+  source        String         @default("WEB")
+  ipAddress     String?        @map("ip_address")
+  userAgent     String?        @map("user_agent")
+  // AI analysis
+  aiAnalysis    Json?          @map("ai_analysis")
+  aiAnalyzedAt  DateTime?      @map("ai_analyzed_at") @db.Timestamptz(6)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project    Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignedTo User?               @relation("ReportAssignee", fields: [assignedToId], references: [id])
+  statusLogs ReportStatusLog[]
+
+  @@index([status])
+  @@index([category])
+  @@index([severity])
+  @@index([projectId])
+  @@index([assignedToId])
+  @@index([createdAt])
+  @@map("reports")
+}
+
+model ReportStatusLog {
+  id          String       @id @default(cuid())
+  reportId    String       @map("report_id")
+  fromStatus  ReportStatus? @map("from_status")
+  toStatus    ReportStatus @map("to_status")
+  changedById String?      @map("changed_by_id")
+  notes       String?
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("report_status_logs")
+}
+
+// ────────────────────────────────────────────────────────────
+// VENDORS (deduplicated across data sources)
+// ────────────────────────────────────────────────────────────
+
+model Vendor {
+  id                String        @id @default(cuid())
+  name              String
+  nameNormalized    String        @unique @map("name_normalized")
+  udyamRegNo        String?       @map("udyam_reg_no")
+  pan               String?
+  gstin             String?
+  district          String?
+  state             String?
+  totalContracts    Int           @default(0) @map("total_contracts")
+  totalValue        Float         @default(0) @map("total_value")
+  flagged           Boolean       @default(false)
+  status            VendorStatus  @default(ACTIVE)
+  riskScore         Int           @default(0) @map("risk_score")
+  contactEmail      String?       @map("contact_email")
+  contactPhone      String?       @map("contact_phone")
+  source            String?
+  metadata          Json?
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  projects Project[]
+
+  @@index([nameNormalized])
+  @@index([state])
+  @@index([status])
+  @@index([flagged])
+  @@map("vendors")
+}
+
+// ────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ────────────────────────────────────────────────────────────
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String           @map("user_id")
+  type       NotificationType
+  title      String
+  message    String
+  resource   String? // e.g. "Anomaly", "Report"
+  resourceId String?          @map("resource_id")
+  isRead     Boolean          @default(false) @map("is_read")
+  readAt     DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+// ────────────────────────────────────────────────────────────
+// PROJECT RISK (per-project risk score)
+// ────────────────────────────────────────────────────────────
+
+model ProjectRisk {
+  id              String     @id @default(cuid())
+  projectId       String     @unique @map("project_id")
+  riskLevel       RiskLevel  @default(MEDIUM) @map("risk_level")
+  riskScore       Int        @default(0) @map("risk_score") // 0-100
+  // Component scores
+  financialScore  Int        @default(0) @map("financial_score")
+  anomalyScore    Int        @default(0) @map("anomaly_score")
+  reportScore     Int        @default(0) @map("report_score")
+  satelliteScore  Int        @default(0) @map("satellite_score")
+  // Drivers
+  primaryDriver   String?    @map("primary_driver")
+  drivers         Json? // { name, contribution, evidence }
+  computedAt      DateTime   @default(now()) @map("computed_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([riskLevel])
+  @@index([riskScore])
+  @@map("project_risks")
 }

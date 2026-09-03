@@ -7,18 +7,20 @@ import { TimeMachine } from '@/components/satellite/TimeMachine';
 import { ObservationCard } from '@/components/satellite/ObservationCard';
 import { ProgressComparisonPanel } from '@/components/satellite/ProgressComparisonPanel';
 import { EvidenceChain } from '@/components/satellite/EvidenceChain';
+import { BeforeAfterComparison } from '@/components/satellite/BeforeAfterComparison';
+import { AIFindingsPanel } from '@/components/satellite/AIFindingsPanel';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import {
   RefreshCw, MapPin, Eye, BarChart2, CheckCircle2, AlertCircle,
   Clock, Loader2, CloudOff, ExternalLink, ArrowRight, Info,
-  Layers, AlertTriangle,
+  Layers, AlertTriangle, Brain,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import type { SatelliteObservation } from '@vojas/api-client';
 
-type SubTab = 'timemachine' | 'observations' | 'comparison';
+type SubTab = 'timemachine' | 'observations' | 'comparison' | 'findings';
 
 interface SatelliteTabProps {
   projectId: string;
@@ -192,6 +194,7 @@ export function SatelliteTab({ projectId, lat, lng, projectName }: SatelliteTabP
             { key: 'timemachine', label: 'Time Machine', icon: Eye },
             { key: 'observations', label: 'Observations', icon: Layers },
             { key: 'comparison', label: 'Progress Comparison', icon: BarChart2 },
+            { key: 'findings', label: 'AI Findings', icon: Brain },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -279,6 +282,12 @@ export function SatelliteTab({ projectId, lat, lng, projectName }: SatelliteTabP
               hasLatest={!!status?.latest}
               analysisCount={changeData?.comparisons?.length ?? 0}
             />
+
+            {/* Before / After Comparison */}
+            <BeforeAfterComparison
+              baselineObservation={observations.find((o) => o.selectionReason === 'BASELINE') ?? observations[observations.length - 1] ?? null}
+              latestObservation={observations[0] ?? null}
+            />
           </div>
         </div>
       )}
@@ -364,6 +373,14 @@ export function SatelliteTab({ projectId, lat, lng, projectName }: SatelliteTabP
             )}
           </div>
         </div>
+      )}
+
+      {/* AI Findings */}
+      {subTab === 'findings' && (
+        <AIFindingsPanel
+          analyses={changeData?.comparisons ?? []}
+          comparison={comparison ?? null}
+        />
       )}
     </div>
   );

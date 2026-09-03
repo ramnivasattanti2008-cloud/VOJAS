@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --vojas-color-bg: 255 255 255;
+  --vojas-color-fg: 15 23 42;
+  --vojas-color-muted: 100 116 139;
+  --vojas-color-border: 226 232 240;
+  --vojas-color-surface: 248 250 252;
+  --vojas-color-primary: 37 99 235;
+  --vojas-color-primary-hover: 29 78 216;
+  --vojas-color-success: 22 163 74;
+  --vojas-color-warning: 217 119 6;
+  --vojas-color-danger: 220 38 38;
+}
+
+html,
+body {
+  height: 100%;
+  background-color: rgb(var(--vojas-color-bg));
+  color: rgb(var(--vojas-color-fg));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  border-color: rgb(var(--vojas-color-border));
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--vojas-color-primary));
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
