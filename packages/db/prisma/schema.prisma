@@ -1,0 +1,882 @@
+// ============================================================
+// VOJAS 2.0 — M1 Database Schema
+// PostgreSQL + PostGIS + Prisma 6
+//
+// Enums must match packages/shared/src/enums.ts exactly.
+// Prisma redefines them here (no cross-package import).
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ────────────────────────────────────────────────────────────
+// ENUMS
+// ────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  OFFICER
+  ANALYST
+  REVIEWER
+  MP
+  CONTRACTOR
+  CITIZEN
+  FIELD_OFFICER
+  VIEWER
+}
+
+enum ProjectStatus {
+  PROPOSED
+  APPROVED
+  SANCTIONED
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+  CANCELLED
+  UNSANCTIONED
+}
+
+enum ProjectSector {
+  PUBLIC_INFRASTRUCTURE
+  WATER_SANITATION
+  EDUCATION
+  HEALTH
+  AGRICULTURE
+  ENVIRONMENT
+  TRANSPORT
+  ENERGY
+  HOUSING
+  RURAL_DEVELOPMENT
+  SOCIAL_WELFARE
+  PUBLIC_ADMIN
+  FINANCE_PROCUREMENT
+  JUSTICE
+  LEGISLATIVE
+  PUBLIC_SAFETY
+}
+
+enum ProjectEventType {
+  PROPOSAL
+  APPROVAL
+  SANCTION
+  FUND_RELEASE
+  CONTRACTOR_ASSIGNED
+  WORK_START
+  MILESTONE
+  PROGRESS_REPORT
+  SATELLITE_OBSERVATION
+  CITIZEN_REPORT
+  FIELD_INSPECTION
+  AI_ALERT
+  VERIFICATION
+  COMPLETION
+  ABANDONMENT
+}
+
+enum House {
+  LOK_SABHA
+  RAJYA_SABHA
+}
+
+enum ConstituencyType {
+  LOK_SABHA
+  RAJYA_SABHA
+  STATE_ASSEMBLY
+}
+
+enum AnomalyCategory {
+  DUPLICATE
+  COST_OUTLIER
+  TIMELINE
+  BUDGET_OVERRUN
+  STALLED
+  GEOGRAPHIC
+  COMPLIANCE
+  FINANCIAL
+  PROGRESS_DISCREPANCY
+}
+
+enum AnomalySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ChangeClassification {
+  NO_OBSERVABLE_CHANGE
+  LOW_OBSERVABLE_CHANGE
+  MODERATE_OBSERVABLE_CHANGE
+  HIGH_OBSERVABLE_CHANGE
+}
+
+enum Confidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CheckpointAvailability {
+  AVAILABLE
+  NO_USABLE_OBSERVATION
+  UNKNOWN
+}
+
+enum DataSourceStatus {
+  ACTIVE
+  STALE
+  UNAVAILABLE
+  DEPRECATED
+}
+
+enum AuditAction {
+  AUTH_LOGIN
+  AUTH_LOGOUT
+  AUTH_FAILED_LOGIN
+  AUTH_TOKEN_REFRESH
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_ROLE_CHANGED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  ANOMALY_DETECTED
+  ANOMALY_ACKNOWLEDGED
+  ANOMALY_RESOLVED
+  ANOMALY_ESCALATED
+  DOCUMENT_UPLOADED
+  DOCUMENT_VERIFIED
+  DOCUMENT_REJECTED
+  SATELLITE_ANALYSIS_RUN
+  FINANCIAL_UPDATE
+  VERIFICATION_COMPLETED
+  SYSTEM_CONFIG_CHANGED
+}
+
+// ────────────────────────────────────────────────────────────
+// IDENTITY & ACCESS
+// ────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String
+  role         UserRole  @default(VIEWER)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions                 Session[]
+  createdProjects          Project[]           @relation("ProjectCreatedBy")
+  fieldVerifications       FieldVerification[] @relation("FieldVerificationAssigned")
+  riskFindings             RiskFinding[]       @relation("RiskFindingAssignedTo")
+  riskFindingsAck          RiskFinding[]       @relation("RiskFindingAcknowledgedBy")
+  riskFindingsResolved     RiskFinding[]       @relation("RiskFindingResolvedBy")
+  verificationCases        VerificationCase[]  @relation("VerificationCaseAssigned")
+  documents                Document[]          @relation("DocumentUploadedBy")
+  documentVerified         Document[]          @relation("DocumentVerifiedBy")
+  contractorUpdates        ContractorUpdate[]  @relation("ContractorUpdateSubmittedBy")
+  contractorUpdatesRev     ContractorUpdate[]  @relation("ContractorUpdateReviewedBy")
+  projectLocationsVerified ProjectLocation[]   @relation("ProjectLocationVerifiedBy")
+
+  @@map("users")
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  refreshTokenHash String   @map("refresh_token_hash")
+  ipAddress        String?  @map("ip_address")
+  userAgent        String?  @map("user_agent")
+  expiresAt        DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ────────────────────────────────────────────────────────────
+// GEOGRAPHY
+// ────────────────────────────────────────────────────────────
+
+model State {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique // 2-letter state code e.g. "KA"
+  region    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  districts District[]
+  projects  Project[]
+  mps       MP[]       @relation("MPState")
+
+  @@map("states")
+}
+
+model District {
+  id        String   @id @default(cuid())
+  name      String
+  stateId   String   @map("state_id")
+  lgdCode   String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  state          State          @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  constituencies Constituency[]
+  projects       Project[]
+
+  @@index([stateId])
+  @@map("districts")
+}
+
+model Constituency {
+  id         String           @id @default(cuid())
+  name       String
+  districtId String           @map("district_id")
+  type       ConstituencyType
+  house      House
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  district District  @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@index([districtId])
+  @@index([type])
+  @@map("constituencies")
+}
+
+model MP {
+  id           String   @id @default(cuid())
+  name         String
+  house        House
+  constituency String
+  state        String
+  term         String
+  party        String?
+  lgdCode      String?  @map("lgd_code")
+  stateId      String?  @map("state_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  stateRecord State?    @relation("MPState", fields: [stateId], references: [id])
+  projects    Project[]
+
+  @@index([state])
+  @@index([constituency])
+  @@index([house, term])
+  @@index([stateId])
+  @@map("mps")
+}
+
+model LGDLocation {
+  id            String   @id @default(cuid())
+  lgdCode       String   @unique @map("lgd_code")
+  entityType    String   @map("entity_type") // STATE | DISTRICT | BLOCK | VILLAGE | GP
+  name          String
+  nameCanonical String?  @map("name_canonical")
+  parentCode    String?  @map("parent_code")
+  stateName     String?  @map("state_name")
+  districtName  String?  @map("district_name")
+  blockName     String?  @map("block_name")
+  latitude      Float?
+  longitude     Float?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, nameCanonical])
+  @@index([parentCode])
+  @@map("lgd_locations")
+}
+
+// ────────────────────────────────────────────────────────────
+// PROJECTS (CORE)
+// ────────────────────────────────────────────────────────────
+
+model Project {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?
+  status          ProjectStatus @default(PROPOSED)
+  sector          ProjectSector
+  district        String
+  state           String
+  constituency    String?
+  approvedAmount  Float         @map("approved_amount")
+  spentAmount     Float         @default(0) @map("spent_amount")
+  contractor      String?
+  startDate       DateTime?     @map("start_date") @db.Timestamptz(6)
+  expectedEndDate DateTime?     @map("expected_end_date") @db.Timestamptz(6)
+  completedAt     DateTime?     @map("completed_at") @db.Timestamptz(6)
+
+  // Attribution
+  createdById        String  @map("created_by_id")
+  districtId         String? @map("district_id")
+  stateId            String? @map("state_id")
+  constituencyId     String? @map("constituency_id")
+  mpId               String? @map("mp_id")
+  sourceDataSourceId String? @map("source_data_source_id")
+
+  // Geospatial
+  latitude        Float?
+  longitude       Float?
+  locationSource  String? @map("location_source")
+  boundary        Json?
+  boundarySource  String? @map("boundary_source")
+  boundaryQuality String? @map("boundary_quality")
+
+  // Provenance
+  source       String  @default("MPLADS_PORTAL")
+  sourceWorkId String? @map("source_work_id")
+  sourceRef    Json?   @map("source_ref")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations (named xxxRecord to avoid collision with string scalar fields)
+  createdBy          User          @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  districtRecord     District?     @relation(fields: [districtId], references: [id])
+  stateRecord        State?        @relation(fields: [stateId], references: [id])
+  constituencyRecord Constituency? @relation(fields: [constituencyId], references: [id])
+  mp                 MP?           @relation(fields: [mpId], references: [id])
+  sourceDataSource   DataSource?   @relation("ProjectSourceDataSource", fields: [sourceDataSourceId], references: [id])
+
+  projectEvents         ProjectEvent[]
+  locations             ProjectLocation[]
+  satelliteObservations SatelliteObservation[]
+  satelliteAnalyses     SatelliteAnalysis[]
+  weeklyCheckpoints     SatelliteWeeklyCheckpoint[]
+  analysisResults       AnalysisResult[]
+  progressObservations  ProgressObservation[]
+  financialObservations FinancialObservation[]
+  riskFindings          RiskFinding[]
+  verificationCases     VerificationCase[]
+  fieldVerifications    FieldVerification[]
+  documents             Document[]
+  contractorUpdates     ContractorUpdate[]
+
+  // Constraints & indexes
+  @@unique([source, sourceWorkId])
+  @@index([stateId])
+  @@index([districtId])
+  @@index([constituencyId])
+  @@index([mpId])
+  @@index([status])
+  @@index([sector])
+  @@index([state, district])
+  @@index([sector, status])
+  @@index([approvedAmount])
+  @@index([latitude, longitude])
+  @@map("projects")
+}
+
+model ProjectEvent {
+  id            String           @id @default(cuid())
+  projectId     String           @map("project_id")
+  eventType     ProjectEventType @map("event_type")
+  eventDate     DateTime         @map("event_date") @db.Timestamptz(6)
+  source        String
+  sourceUrl     String?          @map("source_url")
+  dataset       String?
+  description   String
+  evidenceUrls  Json?            @map("evidence_urls")
+  actor         String?
+  confidence    String?
+  retrievalDate DateTime         @default(now()) @map("retrieval_date") @db.Timestamptz(6)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, eventDate])
+  @@index([projectId, eventType])
+  @@index([eventType])
+  @@index([source])
+  @@map("project_events")
+}
+
+// ────────────────────────────────────────────────────────────
+// LOCATIONS
+// ────────────────────────────────────────────────────────────
+
+model ProjectLocation {
+  id           String    @id @default(cuid())
+  projectId    String    @map("project_id")
+  latitude     Float
+  longitude    Float
+  label        String?
+  address      String?
+  landmark     String?
+  isPrimary    Boolean   @default(false) @map("is_primary")
+  verified     Boolean   @default(false)
+  verifiedById String?   @map("verified_by_id")
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  verifiedBy User?   @relation("ProjectLocationVerifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([projectId, isPrimary])
+  @@map("project_locations")
+}
+
+// ────────────────────────────────────────────────────────────
+// OBSERVATIONS (SATELLITE, ANALYSIS, PROGRESS, FINANCIAL)
+// ────────────────────────────────────────────────────────────
+
+model SatelliteObservation {
+  id               String    @id @default(cuid())
+  projectId        String    @map("project_id")
+  observationDate  DateTime  @map("observation_date") @db.Timestamptz(6)
+  targetDate       DateTime? @map("target_date") @db.Timestamptz(6)
+  targetDifference Float?    @map("target_difference")
+  provider         String
+  satellite        String
+  sensor           String    @default("MSI")
+  dataset          String
+  sceneId          String?   @map("scene_id")
+  cloudCover       Float     @default(0) @map("cloud_cover")
+  resolution       Float     @default(10)
+  bbox             Json?
+  tileUrl          String?   @map("tile_url")
+  thumbnailUrl     String?   @map("thumbnail_url")
+  centerLat        Float?    @map("center_lat")
+  centerLng        Float?    @map("center_lng")
+  processingDate   DateTime? @map("processing_date") @db.Timestamptz(6)
+  processingLevel  String?   @map("processing_level")
+  quality          String    @default("RAW")
+  projectCoverage  Float     @default(0) @map("project_coverage")
+  rejectionReason  String?   @map("rejection_reason")
+  selectionReason  String?   @map("selection_reason")
+
+  // Analytical outputs
+  ndvi              Float? @map("ndvi")
+  ndbi              Float? @map("ndbi")
+  bsi               Float? @map("bsi")
+  builtUpArea       Float? @map("built_up_area")
+  vegetationArea    Float? @map("vegetation_area")
+  waterArea         Float? @map("water_area")
+  constructionScore Float? @map("construction_score")
+
+  sourceUrl     String?  @map("source_url")
+  sourceName    String?  @map("source_name")
+  retrievalDate DateTime @default(now()) @map("retrieval_date") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project      Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analyses     AnalysisResult[]
+  progressObs  ProgressObservation[]
+  analysesAsBefore SatelliteAnalysis[] @relation("SatelliteAnalysisBefore")
+  analysesAsAfter  SatelliteAnalysis[] @relation("SatelliteAnalysisAfter")
+  weeklyCheckpoints SatelliteWeeklyCheckpoint[]
+
+  @@unique([sceneId, observationDate])
+  @@index([projectId, observationDate])
+  @@index([projectId, targetDate])
+  @@index([projectId, quality])
+  @@index([projectId, selectionReason])
+  @@index([provider, observationDate])
+  @@map("satellite_observations")
+}
+
+// M5: pairwise change analysis between two real observations
+model SatelliteAnalysis {
+  id                  String   @id @default(cuid())
+  projectId           String   @map("project_id")
+  observationBeforeId String?  @map("observation_before_id")
+  observationAfterId  String?  @map("observation_after_id")
+  analysisType        String   @map("analysis_type") // WEEK_OVER_WEEK | BASELINE_VS_LATEST | QUARTERLY | MULTI_DATE
+  analysisDate        DateTime @default(now()) @map("analysis_date") @db.Timestamptz(6)
+  baselineDate        DateTime? @map("baseline_date") @db.Timestamptz(6)
+  comparisonDate      DateTime? @map("comparison_date") @db.Timestamptz(6)
+  changeClassification String  @map("change_classification") // NO_OBSERVABLE_CHANGE | LOW_OBSERVABLE_CHANGE | MODERATE_OBSERVABLE_CHANGE | HIGH_OBSERVABLE_CHANGE
+  changeArea          Float?   @map("change_area")
+  changePercent       Float?   @map("change_percent")
+  confidence          String   @default("MEDIUM") // LOW | MEDIUM | HIGH
+  methodology         String
+  evidence            Json
+  limitations         String?
+  metadata            Json?
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project           Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observationBefore SatelliteObservation? @relation("SatelliteAnalysisBefore", fields: [observationBeforeId], references: [id])
+  observationAfter  SatelliteObservation? @relation("SatelliteAnalysisAfter", fields: [observationAfterId], references: [id])
+
+  @@index([projectId, analysisType, createdAt])
+  @@index([observationBeforeId])
+  @@index([observationAfterId])
+  @@index([changeClassification])
+  @@map("satellite_analyses")
+}
+
+// M5: pre-computed weekly target checkpoints with the nearest real observation
+model SatelliteWeeklyCheckpoint {
+  id                String   @id @default(cuid())
+  projectId         String   @map("project_id")
+  targetDate        DateTime @map("target_date") @db.Timestamptz(6)
+  observationId     String?  @map("observation_id")
+  windowStart       DateTime @map("window_start") @db.Timestamptz(6)
+  windowEnd         DateTime @map("window_end") @db.Timestamptz(6)
+  availability      String   @default("UNKNOWN") // AVAILABLE | NO_USABLE_OBSERVATION | UNKNOWN
+  reason            String?  // CLOUD_COVER_TOO_HIGH | NO_SCENE_AVAILABLE | INVALID_GEOMETRY | OUTSIDE_COVERAGE | AUTHENTICATION_REQUIRED | API_UNAVAILABLE | PENDING
+  targetDifference  Int?     @map("target_difference")
+  methodology       String
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observation SatelliteObservation? @relation(fields: [observationId], references: [id])
+
+  @@unique([projectId, targetDate])
+  @@index([projectId, targetDate])
+  @@index([availability])
+  @@map("satellite_weekly_checkpoints")
+}
+
+model AnalysisResult {
+  id               String   @id @default(cuid())
+  projectId        String   @map("project_id")
+  observationId    String?  @map("observation_id")
+  progressId       String?  @map("progress_id")
+  analysisType     String   @map("analysis_type")
+  result           Json
+  score            Float?
+  evidenceUrls     Json?    @map("evidence_urls")
+  mapTileUrl       String?  @map("map_tile_url")
+  explanation      String?
+  confidence       String   @default("MEDIUM")
+  limitations      String?
+  modelUsed        String?  @map("model_used")
+  processingTimeMs Int?     @map("processing_time_ms")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observation SatelliteObservation? @relation(fields: [observationId], references: [id])
+  progress    ProgressObservation?  @relation(fields: [progressId], references: [id])
+
+  @@index([projectId, analysisType])
+  @@index([projectId, createdAt])
+  @@map("analysis_results")
+}
+
+model ProgressObservation {
+  id                 String    @id @default(cuid())
+  projectId          String    @map("project_id")
+  observationId      String?   @map("observation_id")
+  reportDate         DateTime  @map("report_date") @db.Timestamptz(6)
+  observationDate    DateTime? @map("observation_date") @db.Timestamptz(6)
+  reportedProgress   Float     @map("reported_progress")
+  reportSource       String    @map("report_source")
+  reportSourceUrl    String?   @map("report_source_url")
+  observedChange     Float?    @map("observed_change")
+  observableArea     Float?    @map("observable_area")
+  changeType         String?   @map("change_type")
+  verificationResult String?   @map("verification_result")
+  confidenceLevel    String?   @map("confidence_level")
+  explanation        String?
+  dataQuality        String?   @map("data_quality")
+  qualityFactors     Json?     @map("quality_factors")
+  recommendedAction  String?   @map("recommended_action")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observation SatelliteObservation? @relation(fields: [observationId], references: [id])
+  analyses    AnalysisResult[]
+
+  @@index([projectId, reportDate])
+  @@index([projectId, verificationResult])
+  @@map("progress_observations")
+}
+
+model FinancialObservation {
+  id          String    @id @default(cuid())
+  projectId   String    @map("project_id")
+  date        DateTime  @map("date") @db.Timestamptz(6)
+  type        String // SANCTION | ALLOCATION | RELEASE | EXPENDITURE | BALANCE | UTILIZATION | MILESTONE_PAYMENT
+  amount      Float
+  category    String?
+  description String
+  vendor      String?
+  vendorId    String?   @map("vendor_id")
+  invoiceNo   String?   @map("invoice_no")
+  paidOn      DateTime? @map("paid_on") @db.Timestamptz(6)
+  status      String    @default("PENDING") // PENDING | AUTHORIZED | PAID | REJECTED | REVERSED
+  notes       String?
+  source      String
+  sourceTxnId String?   @map("source_txn_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vendorRecord Contractor? @relation(fields: [vendorId], references: [id])
+
+  @@index([projectId, date])
+  @@index([projectId, type])
+  @@index([vendorId])
+  @@index([source, sourceTxnId])
+  @@map("financial_observations")
+}
+
+// ────────────────────────────────────────────────────────────
+// RISK & VERIFICATION
+// ────────────────────────────────────────────────────────────
+
+model RiskFinding {
+  id               String          @id @default(cuid())
+  projectId        String          @map("project_id")
+  type             String
+  severity         AnomalySeverity @default(MEDIUM)
+  description      String
+  evidence         Json
+  status           String          @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED | ESCALATED
+  assignedToId     String?         @map("assigned_to_id")
+  acknowledgedById String?         @map("acknowledged_by_id")
+  acknowledgedAt   DateTime?       @map("acknowledged_at") @db.Timestamptz(6)
+  resolvedById     String?         @map("resolved_by_id")
+  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz(6)
+  resolution       String?
+  lawEscalation    Boolean         @default(false) @map("law_escalation")
+  lawAuthority     String?         @map("law_authority")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project        Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo     User?              @relation("RiskFindingAssignedTo", fields: [assignedToId], references: [id])
+  acknowledgedBy User?              @relation("RiskFindingAcknowledgedBy", fields: [acknowledgedById], references: [id])
+  resolvedBy     User?              @relation("RiskFindingResolvedBy", fields: [resolvedById], references: [id])
+  cases          VerificationCase[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([severity])
+  @@index([lawEscalation, lawAuthority])
+  @@map("risk_findings")
+}
+
+model VerificationCase {
+  id           String   @id @default(cuid())
+  projectId    String   @map("project_id")
+  findingId    String?  @map("finding_id")
+  type         String
+  status       String   @default("OPEN") // OPEN | ASSIGNED | UNDER_REVIEW | CLOSED | REOPENED
+  assignedToId String?  @map("assigned_to_id")
+  priority     String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  finding            RiskFinding?        @relation(fields: [findingId], references: [id])
+  assignedTo         User?               @relation("VerificationCaseAssigned", fields: [assignedToId], references: [id])
+  fieldVerifications FieldVerification[]
+
+  @@index([projectId, status])
+  @@index([assignedToId])
+  @@index([priority])
+  @@map("verification_cases")
+}
+
+model FieldVerification {
+  id            String    @id @default(cuid())
+  projectId     String    @map("project_id")
+  caseId        String?   @map("case_id")
+  assignedToId  String    @map("assigned_to_id")
+  locationDesc  String?   @map("location_desc")
+  latitude      Float
+  longitude     Float
+  scheduledDate DateTime? @map("scheduled_date") @db.Timestamptz(6)
+  completedDate DateTime? @map("completed_date") @db.Timestamptz(6)
+  result        String // VERIFIED | PARTIALLY_VERIFIED | MORE_INFO_REQUIRED | NOT_VERIFIED | REQUIRES_INVESTIGATION
+  checklist     Json?
+  photos        Json?
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  case       VerificationCase? @relation(fields: [caseId], references: [id])
+  assignedTo User              @relation("FieldVerificationAssigned", fields: [assignedToId], references: [id])
+
+  @@index([projectId])
+  @@index([caseId])
+  @@index([assignedToId])
+  @@index([result])
+  @@map("field_verifications")
+}
+
+// ────────────────────────────────────────────────────────────
+// EVIDENCE
+// ────────────────────────────────────────────────────────────
+
+model Document {
+  id               String    @id @default(cuid())
+  projectId        String    @map("project_id")
+  type             String // SANCTION_ORDER | TENDER | CONTRACT | INVOICE | RECEIPT | COMPLETION_CERT | INSPECTION_REPORT | PHOTOGRAPH | ENVIRONMENTAL_CLEARANCE | OTHER
+  title            String
+  description      String?
+  filename         String
+  originalName     String    @map("original_name")
+  mimeType         String    @map("mime_type")
+  size             Int
+  url              String
+  status           String    @default("PENDING") // PENDING | VERIFIED | REJECTED | REQUIRES_INFO
+  verifiedById     String?   @map("verified_by_id")
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(6)
+  verificationNote String?   @map("verification_note")
+  uploadedById     String    @map("uploaded_by_id")
+  uploadedAt       DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  extractedText    String?   @map("extracted_text")
+  suggestedType    String?   @map("suggested_type")
+  aiConfidence     Int?      @map("ai_confidence")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  verifiedBy User?   @relation("DocumentVerifiedBy", fields: [verifiedById], references: [id])
+
+  @@index([projectId, type])
+  @@index([projectId, status])
+  @@index([uploadedAt])
+  @@map("documents")
+}
+
+model Contractor {
+  id                String   @id @default(cuid())
+  name              String
+  nameNormalized    String   @map("name_normalized")
+  udyamRegNo        String?  @map("udayam_reg_no")
+  district          String?
+  state             String?
+  totalPaid         Float    @default(0) @map("total_paid")
+  projectCount      Int      @default(0) @map("project_count")
+  constituencyCount Int      @default(0) @map("constituency_count")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updates  ContractorUpdate[]
+  payments FinancialObservation[]
+
+  @@unique([nameNormalized, state])
+  @@index([nameNormalized])
+  @@map("contractors")
+}
+
+model ContractorUpdate {
+  id            String    @id @default(cuid())
+  contractorId  String    @map("contractor_id")
+  projectId     String    @map("project_id")
+  updateType    String // PERFORMANCE | MILESTONE | PAYMENT | STATUS
+  title         String
+  description   String
+  evidenceUrls  Json?     @map("evidence_urls")
+  amount        Float?
+  status        String    @default("PENDING") // PENDING | UNDER_REVIEW | ACCEPTED | REJECTED
+  submittedById String    @map("submitted_by_id")
+  submittedAt   DateTime  @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  reviewedById  String?   @map("reviewed_by_id")
+  reviewedAt    DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote    String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contractor  Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submittedBy User       @relation("ContractorUpdateSubmittedBy", fields: [submittedById], references: [id])
+  reviewedBy  User?      @relation("ContractorUpdateReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([contractorId, status])
+  @@index([projectId])
+  @@map("contractor_updates")
+}
+
+// ────────────────────────────────────────────────────────────
+// PROVENANCE
+// ────────────────────────────────────────────────────────────
+
+model DataSource {
+  id                  String           @id @default(cuid())
+  sourceName          String           @map("source_name")
+  datasetName         String           @map("dataset_name")
+  department          String?
+  officialUrl         String?          @map("official_url")
+  lastFetched         DateTime?        @map("last_fetched") @db.Timestamptz(6)
+  lastUpdated         DateTime?        @map("last_updated") @db.Timestamptz(6)
+  format              String // CSV | JSON | XML | API | MANUAL
+  apiAvailable        Boolean          @default(false) @map("api_available")
+  downloadAvailable   Boolean          @default(false) @map("download_available")
+  status              DataSourceStatus @default(ACTIVE)
+  notes               String?
+  transformationNotes String?          @map("transformation_notes")
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  projects          Project[]          @relation("ProjectSourceDataSource")
+  dataSourceRecords DataSourceRecord[]
+
+  @@unique([sourceName, datasetName])
+  @@index([status])
+  @@index([sourceName])
+  @@map("data_sources")
+}
+
+model DataSourceRecord {
+  id                   String   @id @default(cuid())
+  dataSourceId         String   @map("data_source_id")
+  externalRecordId     String   @map("external_record_id")
+  fetchedAt            DateTime @map("fetched_at") @db.Timestamptz(6)
+  rawPayload           Json     @map("raw_payload")
+  transformationStatus String   @default("RAW") // RAW | PROCESSED | REJECTED
+  quality              String? // HIGH | MEDIUM | LOW
+  errorMessage         String?  @map("error_message")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  dataSource DataSource @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+
+  @@unique([dataSourceId, externalRecordId])
+  @@index([dataSourceId, transformationStatus])
+  @@map("data_source_records")
+}
+
+// ────────────────────────────────────────────────────────────
+// AUDIT (APPEND-ONLY)
+// ────────────────────────────────────────────────────────────
+// AuditEvent is immutable: no UPDATE or DELETE routes must exist.
+// The service layer (auditService.ts) enforces append-only semantics.
+// ────────────────────────────────────────────────────────────
+
+model AuditEvent {
+  id         String      @id @default(cuid())
+  actorId    String      @map("actor_id") // userId, "SYSTEM", or "AI"
+  actorType  String      @map("actor_type") // USER | SYSTEM | AI | EXTERNAL
+  action     AuditAction
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  metadata   Json?
+  ipAddress  String?     @map("ip_address")
+  userAgent  String?     @map("user_agent")
+  timestamp  DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("audit_events")
+}
