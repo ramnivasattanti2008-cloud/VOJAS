@@ -2,7 +2,8 @@
 
 import { useState, use } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, AlertCircle, FileText, ImageIcon, Activity, DollarSign, Layers, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, MapPin, AlertCircle, FileText, ImageIcon, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
@@ -74,7 +75,19 @@ export default function ProjectDetailPage() {
             <p className="text-slate-500 text-sm mt-1">{project.description}</p>
           )}
         </div>
-        <Badge variant="info">{project.status}</Badge>
+        <div className="flex items-center gap-3">
+          <Badge variant="info">{project.status}</Badge>
+          <Link href={`/projects/${id}/time-machine`}>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Sparkles className="h-4 w-4" />}
+              rightIcon={<ArrowRight className="h-4 w-4" />}
+            >
+              Time Machine
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Tabs */}
