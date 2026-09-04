@@ -37,7 +37,7 @@ function TimeMachinePageInner({ projectId }: { projectId: string }) {
   const {
     selectedObservationId, setSelectedObservationId,
     beforeObservationId, setBeforeObservationId,
-    mode, playbackState,
+    mode, playbackState, targetDate, setTargetDate,
   } = useTimeMachine();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -79,6 +79,10 @@ function TimeMachinePageInner({ projectId }: { projectId: string }) {
   // When an observation is selected from the timeline, it becomes the "before" baseline
   const handleSelectObservation = useCallback((obsId: string) => {
     setSelectedObservationId(obsId);
+    const obs = observations.find((o) => o.id === obsId);
+    if (obs?.observationDate) {
+      setTargetDate(new Date(obs.observationDate));
+    }
     // If no "before" is set yet, set the baseline (earliest observation)
     if (!beforeObservationId) {
       const earliest = [...observations]
@@ -100,6 +104,9 @@ function TimeMachinePageInner({ projectId }: { projectId: string }) {
     if (observations.length > 0 && !selectedObservationId) {
       const latest = observations[0];
       setSelectedObservationId(latest.id);
+      if (latest.observationDate) {
+        setTargetDate(new Date(latest.observationDate));
+      }
       // Also set earliest as the before baseline
       const earliest = [...observations]
         .sort((a, b) => new Date(a.observationDate).getTime() - new Date(b.observationDate).getTime())[0];
