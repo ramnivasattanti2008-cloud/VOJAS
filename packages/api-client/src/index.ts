@@ -6,3 +6,4 @@ export * from './anomalies';
 export * from './reports';
 export * from './vendors';
 export * from './notifications';
+export * from './changeAnalysis';

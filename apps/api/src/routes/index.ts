@@ -6,6 +6,7 @@ import timelineRoutes from './timeline';
 import locationRoutes from './locations';
 import financialRoutes from './financial';
 import satelliteRoutes from './satellite';
+import changeAnalysisRoutes from './changeAnalysis';
 import auditRoutes from './audit';
 import anomalyRoutes from './anomalies';
 import reportRoutes from './reports';
@@ -37,6 +38,9 @@ router.use('/', financialRoutes);
 
 // Satellite routes
 router.use('/', satelliteRoutes);
+
+// Change analysis routes
+router.use('/', changeAnalysisRoutes);
 
 // Audit routes
 router.use('/audit', auditRoutes);

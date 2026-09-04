@@ -425,6 +425,7 @@ model Project {
   locations             ProjectLocation[]
   satelliteObservations SatelliteObservation[]
   satelliteAnalyses     SatelliteAnalysis[]
+  changeAnalyses        ChangeAnalysis[]
   weeklyCheckpoints     SatelliteWeeklyCheckpoint[]
   analysisResults       AnalysisResult[]
   progressObservations  ProgressObservation[]
@@ -547,12 +548,14 @@ model SatelliteObservation {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  project      Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  analyses     AnalysisResult[]
-  progressObs  ProgressObservation[]
-  analysesAsBefore SatelliteAnalysis[] @relation("SatelliteAnalysisBefore")
-  analysesAsAfter  SatelliteAnalysis[] @relation("SatelliteAnalysisAfter")
-  weeklyCheckpoints SatelliteWeeklyCheckpoint[]
+  project                Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analyses               AnalysisResult[]
+  progressObs            ProgressObservation[]
+  analysesAsBefore       SatelliteAnalysis[]         @relation("SatelliteAnalysisBefore")
+  analysesAsAfter        SatelliteAnalysis[]         @relation("SatelliteAnalysisAfter")
+  changeAnalysesAsBefore ChangeAnalysis[]            @relation("ChangeAnalysisBefore")
+  changeAnalysesAsAfter  ChangeAnalysis[]            @relation("ChangeAnalysisAfter")
+  weeklyCheckpoints      SatelliteWeeklyCheckpoint[]
 
   @@unique([sceneId, observationDate])
   @@index([projectId, observationDate])
@@ -565,23 +568,23 @@ model SatelliteObservation {
 
 // M5: pairwise change analysis between two real observations
 model SatelliteAnalysis {
-  id                  String   @id @default(cuid())
-  projectId           String   @map("project_id")
-  observationBeforeId String?  @map("observation_before_id")
-  observationAfterId  String?  @map("observation_after_id")
-  analysisType        String   @map("analysis_type") // WEEK_OVER_WEEK | BASELINE_VS_LATEST | QUARTERLY | MULTI_DATE
-  analysisDate        DateTime @default(now()) @map("analysis_date") @db.Timestamptz(6)
-  baselineDate        DateTime? @map("baseline_date") @db.Timestamptz(6)
-  comparisonDate      DateTime? @map("comparison_date") @db.Timestamptz(6)
-  changeClassification String  @map("change_classification") // NO_OBSERVABLE_CHANGE | LOW_OBSERVABLE_CHANGE | MODERATE_OBSERVABLE_CHANGE | HIGH_OBSERVABLE_CHANGE
-  changeArea          Float?   @map("change_area")
-  changePercent       Float?   @map("change_percent")
-  confidence          String   @default("MEDIUM") // LOW | MEDIUM | HIGH
-  methodology         String
-  evidence            Json
-  limitations         String?
-  metadata            Json?
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                   String    @id @default(cuid())
+  projectId            String    @map("project_id")
+  observationBeforeId  String?   @map("observation_before_id")
+  observationAfterId   String?   @map("observation_after_id")
+  analysisType         String    @map("analysis_type") // WEEK_OVER_WEEK | BASELINE_VS_LATEST | QUARTERLY | MULTI_DATE
+  analysisDate         DateTime  @default(now()) @map("analysis_date") @db.Timestamptz(6)
+  baselineDate         DateTime? @map("baseline_date") @db.Timestamptz(6)
+  comparisonDate       DateTime? @map("comparison_date") @db.Timestamptz(6)
+  changeClassification String    @map("change_classification") // NO_OBSERVABLE_CHANGE | LOW_OBSERVABLE_CHANGE | MODERATE_OBSERVABLE_CHANGE | HIGH_OBSERVABLE_CHANGE
+  changeArea           Float?    @map("change_area")
+  changePercent        Float?    @map("change_percent")
+  confidence           String    @default("MEDIUM") // LOW | MEDIUM | HIGH
+  methodology          String
+  evidence             Json
+  limitations          String?
+  metadata             Json?
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   project           Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   observationBefore SatelliteObservation? @relation("SatelliteAnalysisBefore", fields: [observationBeforeId], references: [id])
@@ -594,22 +597,107 @@ model SatelliteAnalysis {
   @@map("satellite_analyses")
 }
 
+// M7: pixel-level change analysis with confidence factors, change regions, and evidence
+model ChangeAnalysis {
+  id                  String  @id @default(cuid())
+  projectId           String  @map("project_id")
+  observationBeforeId String? @map("observation_before_id")
+  observationAfterId  String? @map("observation_after_id")
+
+  // Comparison
+  analysisType   String  @map("analysis_type") // BASELINE_VS_LATEST | PREVIOUS_VS_CURRENT | CUSTOM | MULTI_STAGE
+  primarySignal  String  @map("primary_signal") // SPECTRAL_CHANGE | NDVI_CHANGE | BUILT_SURFACE_CHANGE | VEGETATION_DISTURBANCE | BARE_SOIL | WATER_CHANGE
+  sector         String? @map("sector")
+  comparisonMode String  @default("CUSTOM") @map("comparison_mode") // BASELINE_VS_LATEST | PREVIOUS_VS_CURRENT | CUSTOM
+
+  // Geometry
+  geometryType    String @map("geometry_type") // POLYGON | POINT_BUFFER
+  analysisBufferM Float  @default(0) @map("analysis_buffer_m")
+  geometryRef     Json?  @map("geometry_ref") // the polygon used (excluding buffer)
+
+  // Metrics
+  totalAreaM2   Float? @map("total_area_m2")
+  validAreaM2   Float? @map("valid_area_m2")
+  changedAreaM2 Float? @map("changed_area_m2")
+  changePercent Float? @map("change_percent")
+
+  // Spectral snapshots
+  ndviBefore Float? @map("ndvi_before")
+  ndviAfter  Float? @map("ndvi_after")
+  ndviDelta  Float? @map("ndvi_delta")
+  ndbiBefore Float? @map("ndbi_before")
+  ndbiAfter  Float? @map("ndbi_after")
+  ndbiDelta  Float? @map("ndbi_delta")
+  bsiBefore  Float? @map("bsi_before")
+  bsiAfter   Float? @map("bsi_after")
+  bsiDelta   Float? @map("bsi_delta")
+
+  // Control area (false-positive detection)
+  controlAreaChangePercent Float? @map("control_area_change_percent")
+  deltaRatio               Float? @map("delta_ratio")
+
+  // Quality metrics
+  cloudPercentBefore Float? @map("cloud_percent_before")
+  cloudPercentAfter  Float? @map("cloud_percent_after")
+  validPixelsPercent Float? @map("valid_pixels_percent")
+
+  // Output
+  changeClassification       String  @map("change_classification") // NO_DETECTABLE_CHANGE | LOW_CHANGE | MODERATE_CHANGE | HIGH_CHANGE | INCONCLUSIVE | INVALID
+  confidence                 String  @default("MEDIUM") // LOW | MEDIUM | HIGH
+  confidenceFactors          Json?   @map("confidence_factors") // { imageQuality, geometryQuality, spatialCoherence, seasonalityRisk, resolutionSuitability, controlAreaComparison }
+  changeRegions              Json?   @map("change_regions") // [{ id, areaM2, centroid, magnitude, category, confidence }]
+  changeStory                String? @map("change_story") // Human-readable narrative
+  reportedProgressComparison String? @map("reported_progress_comparison") // CONSISTENT | POSSIBLY_INCONSISTENT | INCONCLUSIVE | INSUFFICIENT_DATA
+
+  // Evidence
+  evidencePackage Json?   @map("evidence_package") // { beforeRef, afterRef, changeLayerRef, geometry, metrics, algorithm, limitations, sourceProvenance }
+  methodology     String
+  limitations     String?
+
+  // Processing
+  processingStatus String    @default("QUEUED") @map("processing_status") // QUEUED | PROCESSING | COMPLETED | FAILED | INSUFFICIENT_DATA | INVALID
+  provider         String?   @map("provider") // GEE | CDSE_PIXEL
+  algorithmVersion String    @default("change-v1.0") @map("algorithm_version")
+  runParameters    Json?     @map("run_parameters") // full parameter snapshot
+  parametersHash   String?   @map("parameters_hash")
+  jobId            String?   @map("job_id")
+  errorMessage     String?   @map("error_message")
+  processingTimeMs Int?      @map("processing_time_ms")
+  analysisDate     DateTime  @default(now()) @map("analysis_date") @db.Timestamptz(6)
+  baselineDate     DateTime? @map("baseline_date") @db.Timestamptz(6)
+  comparisonDate   DateTime? @map("comparison_date") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project           Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  observationBefore SatelliteObservation? @relation("ChangeAnalysisBefore", fields: [observationBeforeId], references: [id])
+  observationAfter  SatelliteObservation? @relation("ChangeAnalysisAfter", fields: [observationAfterId], references: [id])
+
+  @@index([projectId, analysisType, createdAt])
+  @@index([projectId, processingStatus])
+  @@index([observationBeforeId])
+  @@index([observationAfterId])
+  @@index([changeClassification])
+  @@index([parametersHash])
+  @@map("change_analyses")
+}
+
 // M5: pre-computed weekly target checkpoints with the nearest real observation
 model SatelliteWeeklyCheckpoint {
-  id                String   @id @default(cuid())
-  projectId         String   @map("project_id")
-  targetDate        DateTime @map("target_date") @db.Timestamptz(6)
-  observationId     String?  @map("observation_id")
-  windowStart       DateTime @map("window_start") @db.Timestamptz(6)
-  windowEnd         DateTime @map("window_end") @db.Timestamptz(6)
-  availability      String   @default("UNKNOWN") // AVAILABLE | NO_USABLE_OBSERVATION | UNKNOWN
-  reason            String?  // CLOUD_COVER_TOO_HIGH | NO_SCENE_AVAILABLE | INVALID_GEOMETRY | OUTSIDE_COVERAGE | AUTHENTICATION_REQUIRED | API_UNAVAILABLE | PENDING
-  targetDifference  Int?     @map("target_difference")
-  methodology       String
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String   @id @default(cuid())
+  projectId        String   @map("project_id")
+  targetDate       DateTime @map("target_date") @db.Timestamptz(6)
+  observationId    String?  @map("observation_id")
+  windowStart      DateTime @map("window_start") @db.Timestamptz(6)
+  windowEnd        DateTime @map("window_end") @db.Timestamptz(6)
+  availability     String   @default("UNKNOWN") // AVAILABLE | NO_USABLE_OBSERVATION | UNKNOWN
+  reason           String? // CLOUD_COVER_TOO_HIGH | NO_SCENE_AVAILABLE | INVALID_GEOMETRY | OUTSIDE_COVERAGE | AUTHENTICATION_REQUIRED | API_UNAVAILABLE | PENDING
+  targetDifference Int?     @map("target_difference")
+  methodology      String
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   observation SatelliteObservation? @relation(fields: [observationId], references: [id])
 
   @@unique([projectId, targetDate])
@@ -1053,8 +1141,8 @@ model Report {
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  project    Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  assignedTo User?               @relation("ReportAssignee", fields: [assignedToId], references: [id])
+  project    Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignedTo User?             @relation("ReportAssignee", fields: [assignedToId], references: [id])
   statusLogs ReportStatusLog[]
 
   @@index([status])
@@ -1067,13 +1155,13 @@ model Report {
 }
 
 model ReportStatusLog {
-  id          String       @id @default(cuid())
-  reportId    String       @map("report_id")
+  id          String        @id @default(cuid())
+  reportId    String        @map("report_id")
   fromStatus  ReportStatus? @map("from_status")
-  toStatus    ReportStatus @map("to_status")
-  changedById String?      @map("changed_by_id")
+  toStatus    ReportStatus  @map("to_status")
+  changedById String?       @map("changed_by_id")
   notes       String?
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
@@ -1086,25 +1174,25 @@ model ReportStatusLog {
 // ────────────────────────────────────────────────────────────
 
 model Vendor {
-  id                String        @id @default(cuid())
-  name              String
-  nameNormalized    String        @unique @map("name_normalized")
-  udyamRegNo        String?       @map("udyam_reg_no")
-  pan               String?
-  gstin             String?
-  district          String?
-  state             String?
-  totalContracts    Int           @default(0) @map("total_contracts")
-  totalValue        Float         @default(0) @map("total_value")
-  flagged           Boolean       @default(false)
-  status            VendorStatus  @default(ACTIVE)
-  riskScore         Int           @default(0) @map("risk_score")
-  contactEmail      String?       @map("contact_email")
-  contactPhone      String?       @map("contact_phone")
-  source            String?
-  metadata          Json?
-  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String       @id @default(cuid())
+  name           String
+  nameNormalized String       @unique @map("name_normalized")
+  udyamRegNo     String?      @map("udyam_reg_no")
+  pan            String?
+  gstin          String?
+  district       String?
+  state          String?
+  totalContracts Int          @default(0) @map("total_contracts")
+  totalValue     Float        @default(0) @map("total_value")
+  flagged        Boolean      @default(false)
+  status         VendorStatus @default(ACTIVE)
+  riskScore      Int          @default(0) @map("risk_score")
+  contactEmail   String?      @map("contact_email")
+  contactPhone   String?      @map("contact_phone")
+  source         String?
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   projects Project[]
 
@@ -1144,20 +1232,20 @@ model Notification {
 // ────────────────────────────────────────────────────────────
 
 model ProjectRisk {
-  id              String     @id @default(cuid())
-  projectId       String     @unique @map("project_id")
-  riskLevel       RiskLevel  @default(MEDIUM) @map("risk_level")
-  riskScore       Int        @default(0) @map("risk_score") // 0-100
+  id             String    @id @default(cuid())
+  projectId      String    @unique @map("project_id")
+  riskLevel      RiskLevel @default(MEDIUM) @map("risk_level")
+  riskScore      Int       @default(0) @map("risk_score") // 0-100
   // Component scores
-  financialScore  Int        @default(0) @map("financial_score")
-  anomalyScore    Int        @default(0) @map("anomaly_score")
-  reportScore     Int        @default(0) @map("report_score")
-  satelliteScore  Int        @default(0) @map("satellite_score")
+  financialScore Int       @default(0) @map("financial_score")
+  anomalyScore   Int       @default(0) @map("anomaly_score")
+  reportScore    Int       @default(0) @map("report_score")
+  satelliteScore Int       @default(0) @map("satellite_score")
   // Drivers
-  primaryDriver   String?    @map("primary_driver")
-  drivers         Json? // { name, contribution, evidence }
-  computedAt      DateTime   @default(now()) @map("computed_at") @db.Timestamptz(6)
-  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  primaryDriver  String?   @map("primary_driver")
+  drivers        Json? // { name, contribution, evidence }
+  computedAt     DateTime  @default(now()) @map("computed_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 

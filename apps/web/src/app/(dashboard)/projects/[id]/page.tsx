@@ -3,20 +3,22 @@
 import { useState, use } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, AlertCircle, FileText, ImageIcon, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowLeft, MapPin, AlertCircle, FileText, ImageIcon, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
 import { useProject } from '@/hooks/useProjects';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SatelliteTab } from '@/components/satellite/SatelliteTab';
+import { ChangeAnalysisTab } from '@/components/changeAnalysis/ChangeAnalysisTab';
 import { formatCurrency, formatDate, formatDateTime, cn } from '@/lib/utils';
 
 const projectsApi = createProjectsApi(apiClient);
 
-type Tab = 'overview' | 'timeline' | 'financial' | 'documents' | 'satellite' | 'risk';
+type Tab = 'overview' | 'timeline' | 'financial' | 'documents' | 'satellite' | 'change' | 'risk';
 
 const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
   { key: 'overview', label: 'Overview', icon: FileText },
@@ -24,6 +26,7 @@ const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
   { key: 'financial', label: 'Financial', icon: DollarSign },
   { key: 'documents', label: 'Documents', icon: Layers },
   { key: 'satellite', label: 'Satellite', icon: MapPin },
+  { key: 'change', label: 'Change Analysis', icon: BarChart2 },
   { key: 'risk', label: 'Risk', icon: ShieldAlert },
 ];
 
@@ -32,6 +35,7 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const id = params.id;
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const { user } = useAuth();
 
   const { data: project, isLoading, error } = useProject(id);
 
@@ -132,6 +136,15 @@ export default function ProjectDetailPage() {
             lat={project.latitude ?? 0}
             lng={project.longitude ?? 0}
             projectName={project.name}
+          />
+        )}
+        {activeTab === 'change' && (
+          <ChangeAnalysisTab
+            projectId={id}
+            projectName={project.name}
+            lat={project.latitude}
+            lng={project.longitude}
+            userRole={user?.role}
           />
         )}
         {activeTab === 'risk' && <RiskTab project={project} />}
