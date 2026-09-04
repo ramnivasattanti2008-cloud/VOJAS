@@ -150,6 +150,7 @@ export function TimeMachineMap({
                 source: 'obs-after',
                 paint: {
                   'raster-opacity': mode === 'opacity' ? opacity / 100 : (mode === 'swipe' ? 1.0 : 1.0),
+                  'raster-fade-duration': 1000,
                 },
               });
             } catch (e) {
@@ -312,7 +313,7 @@ export function TimeMachineMap({
           id: 'obs-after-layer',
           type: 'raster',
           source: 'obs-after',
-          paint: { 'raster-opacity': mode === 'opacity' ? opacity / 100 : 1.0 },
+          paint: { 'raster-opacity': mode === 'opacity' ? opacity / 100 : 1.0, 'raster-fade-duration': 1000 },
         });
       } catch {}
     }
@@ -325,8 +326,10 @@ export function TimeMachineMap({
       }
       if (mode === 'opacity') {
         map.setPaintProperty('obs-before-layer', 'raster-opacity', 1 - opacity / 100);
+        map.setPaintProperty('obs-before-layer', 'raster-fade-duration', 1000);
       } else if (mode === 'single') {
         map.setPaintProperty('obs-before-layer', 'raster-opacity', 0);
+        map.setPaintProperty('obs-before-layer', 'raster-fade-duration', 1000);
       }
     } else if (beforeWmsUrl && map.getSource('obs-before') == null) {
       try {
@@ -339,7 +342,7 @@ export function TimeMachineMap({
             id: 'obs-before-layer',
             type: 'raster',
             source: 'obs-before',
-            paint: { 'raster-opacity': mode === 'opacity' ? (1 - opacity / 100) : 0 },
+            paint: { 'raster-opacity': mode === 'opacity' ? (1 - opacity / 100) : 0, 'raster-fade-duration': 1000 },
           });
         }
       } catch {}
@@ -385,7 +388,7 @@ export function TimeMachineMap({
           mapRef.current.addSource('obs-after', { type: 'raster', tiles: [afterWmsUrl], tileSize: 256 });
           mapRef.current.addLayer({
             id: 'obs-after-layer', type: 'raster', source: 'obs-after',
-            paint: { 'raster-opacity': mode === 'opacity' ? opacity / 100 : 1.0 },
+            paint: { 'raster-opacity': mode === 'opacity' ? opacity / 100 : 1.0, 'raster-fade-duration': 1000 },
           });
         } catch {}
       }
@@ -408,8 +411,15 @@ export function TimeMachineMap({
 
   return (
     <div className={cn('relative w-full h-full overflow-hidden bg-slate-900', className)}>
+      {/* Skip link for keyboard navigation */}
+      <a
+        href="#time-machine-map-content"
+        className="absolute top-4 left-4 z-[9999] bg-slate-900 text-white px-3 py-1.5 rounded-md shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-indigo-500"
+      >
+        Skip to map
+      </a>
       {!isSideBySide ? (
-        <div ref={containerRef} className="absolute inset-0" />
+        <div id="time-machine-map-content" ref={containerRef} className="absolute inset-0" />
       ) : (
         <div className="absolute inset-0 grid grid-cols-2 gap-px bg-slate-700">
           <SideBySideMap observation={beforeObservation} lat={lat} lng={lng} activeBase={activeBase} projectName={projectName} side="before" />
@@ -562,7 +572,7 @@ function SideBySideMap({
         if (wmsUrl) {
           try {
             map.addSource('obs', { type: 'raster', tiles: [wmsUrl], tileSize: 256, bounds: wmsBoundsFromObs(observation ?? null) });
-            map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-opacity': 0.95 } });
+            map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-opacity': 0.95, 'raster-fade-duration': 1000 } });
           } catch {}
         }
       });

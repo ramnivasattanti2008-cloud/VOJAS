@@ -93,6 +93,22 @@ export function TimeMachineTimeline({ entries, observations, onSelectObservation
     return Math.max(0, Math.min(100, ((t - minDate.getTime()) / span) * 100));
   }, [nodes, currentIndex, minDate, span]);
 
+  // Announce playback state changes to screen readers via a live region
+  const [liveMessage, setLiveMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!playbackState.playing) return;
+    const node = nodes[currentIndex];
+    const label = node?.observation
+      ? new Date(node.observation.observationDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : node?.entry.targetDate
+        ? new Date(node.entry.targetDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '';
+    const msg = label ? `Playback at ${label}` : 'Playback started';
+    setLiveMessage(msg);
+    const t = setTimeout(() => setLiveMessage(null), 3000);
+    return () => clearTimeout(t);
+  }, [playbackState.playing, currentIndex, nodes]);
+
   // Drag the playhead
   const handleMove = useCallback((clientX: number) => {
     const track = trackRef.current;
@@ -205,6 +221,12 @@ export function TimeMachineTimeline({ entries, observations, onSelectObservation
 
   return (
     <div className="w-full bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      {/* ARIA live region for playback announcements */}
+      {liveMessage && (
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {liveMessage}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
