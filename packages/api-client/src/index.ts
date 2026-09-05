@@ -10,3 +10,4 @@ export * from './changeAnalysis';
 export * from './risk';
 export * from './mps';
 export * from './documents';
+export * from './financial';

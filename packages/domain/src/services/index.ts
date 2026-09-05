@@ -4,9 +4,35 @@ export type { PaginatedResult } from './projectService.js';
 export { SatelliteService } from './satelliteService.js';
 export { FinancialService } from './financialService.js';
 export { RiskService } from './riskService.js';
+
+// M9: Financial Intelligence
+export { FinancialIntelligenceService } from './financialIntelligence.js';
+export type {
+  FundLifecycle,
+  ReconciliationResult,
+  PeerBenchmark,
+  CostAnomalySignal,
+  CrossSourceCorrelation,
+  FinancialRiskSignals,
+} from './financialIntelligence.js';
 export type { RiskFinding } from './riskService.js';
 export { DataSourceService } from './dataSourceService.js';
 export { AuditService } from './auditService.js';
+
+// M9: Document Intelligence
+export { DocumentIntelligenceService } from './documentIntelligence.js';
+export {
+  DOCUMENT_TYPES,
+  type DocumentType,
+  type DocumentProcessingStatus,
+  type EvidenceLevel,
+  type ExtractionConfidence,
+  type ExtractedFields,
+  type DocumentExtractionResult,
+  type DocumentClassification,
+  type CrossCheckResult,
+  type DocumentSearchResult,
+} from './documentIntelligence.js';
 
 // M8: Risk Engine
 export {

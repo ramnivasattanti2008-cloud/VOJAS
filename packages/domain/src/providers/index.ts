@@ -14,7 +14,7 @@ export type {
   AIProvider,
   AIDocumentAnalysis,
   AIAnomalyExplanation,
-  DocumentType,
+  AIDocumentType,
 } from './aiProvider.js';
 export type { DocumentProvider, DocumentUploadResult } from './documentProvider.js';
 export type { StorageProvider, StorageObject } from './storageProvider.js';

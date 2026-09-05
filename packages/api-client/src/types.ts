@@ -159,12 +159,18 @@ export type Document = {
   title: string;
   description?: string;
   filename: string;
+  originalName?: string;
   mimeType: string;
   size: number;
   url: string;
+  status?: string;
+  extractedText?: string | null;
+  suggestedType?: string | null;
+  aiConfidence?: number | null;
   verified: boolean;
   verifiedAt?: string;
   createdAt: string;
+  uploadedById?: string;
   project?: { id: string; name: string };
   uploadedBy?: { id: string; name: string; email: string };
 };
@@ -312,4 +318,133 @@ export type RiskRule = {
   enabled: boolean;
   lastRun?: string;
   matchCount: number;
+};
+
+// ── Financial Intelligence (M9) ─────────────────────────────────────────────
+
+export type FundLifecycle = {
+  sanctioned: number;
+  allocated: number;
+  released: number;
+  committed: number;
+  expended: number;
+  remaining: number;
+  utilizationPercent: number;
+};
+
+export type FinancialObservation = {
+  id: string;
+  projectId: string;
+  date: string;
+  type: string;
+  amount: number;
+  category?: string;
+  description: string;
+  vendor?: string;
+  vendorId?: string;
+  invoiceNo?: string;
+  paidOn?: string;
+  status: string;
+  notes?: string;
+  source: string;
+  sourceTxnId?: string;
+  createdAt: string;
+};
+
+export type ReconciliationResult = {
+  projectId: string;
+  financial: {
+    totalExpenditure: number;
+    transactionCount: number;
+    lastTransactionDate: string | null;
+    byType: Record<string, { count: number; total: number }>;
+  };
+  physical: {
+    reportedProgressPercent: number | null;
+    satelliteProgressPercent: number | null;
+    constructionScore: number | null;
+  };
+  correlation: {
+    financialVsPhysical: 'MATCH' | 'SUSPICIOUS_UNDERPEND' | 'SUSPICIOUS_OVERPEND' | 'INSUFFICIENT_DATA';
+    discrepancyPercent: number | null;
+    signalSeverity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null;
+    explanation: string;
+  };
+  documents: {
+    invoiceCount: number;
+    receiptCount: number;
+    completionCertCount: number;
+    verifiedDocuments: number;
+    totalDocuments: number;
+  };
+  timeline: {
+    startDate: string | null;
+    expectedEndDate: string | null;
+    daysElapsed: number | null;
+    expectedDurationDays: number | null;
+    daysRemaining: number | null;
+    onTrack: boolean;
+  };
+};
+
+export type PeerBenchmark = {
+  projectId: string;
+  projectName: string;
+  sector: string;
+  district: string;
+  state: string;
+  peerGroup: { scope: string; sector?: string };
+  ourUnitCost: number;
+  unitCostStats: {
+    median: number;
+    mean: number;
+    stdDev: number;
+    min: number;
+    max: number;
+    p25: number;
+    p75: number;
+    p10: number;
+    p90: number;
+    count: number;
+  };
+  zScore: number | null;
+  isOutlier: boolean;
+  outlierSeverity: 'NORMAL' | 'CHEAP' | 'EXPENSIVE' | 'ANOMALOUS';
+  percentile: number | null;
+  peers: Array<{ projectId: string; name: string; unitCost: number; district: string; state: string }>;
+};
+
+export type CostAnomalySignal = {
+  signalType: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  value: number;
+  expectedValue: number | null;
+  deviationPercent: number | null;
+  explanation: string;
+  evidence: { financialObservationIds: string[]; satelliteObservationIds: string[]; documentIds: string[] };
+  scoreContribution: number;
+};
+
+export type FinancialRiskSignals = {
+  projectId: string;
+  signals: CostAnomalySignal[];
+  compositeScore: number;
+  dominantRisk: string | null;
+  generatedAt: string;
+};
+
+export type CrossSourceCorrelation = {
+  projectId: string;
+  correlations: Array<{
+    sourceA: string;
+    sourceB: string;
+    agreement: string;
+    score: number;
+    finding: string;
+    signals: string[];
+  }>;
+  overallConsistencyScore: number;
+  redFlags: string[];
+  recommendations: string[];
 };

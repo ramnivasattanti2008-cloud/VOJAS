@@ -1,6 +1,6 @@
 import { ProviderStatus } from './types.js';
 
-export type DocumentType =
+export type AIDocumentType =
   | 'INVOICE'
   | 'TENDER'
   | 'CONTRACT'
@@ -10,7 +10,7 @@ export type DocumentType =
   | 'OTHER';
 
 export interface AIDocumentAnalysis {
-  documentType: DocumentType;
+  documentType: AIDocumentType;
   summary: string;
   keywords: string[];
   corruptionIndicators: string[];
@@ -27,7 +27,7 @@ export interface AIAnomalyExplanation {
 }
 
 export interface AIProvider {
-  analyzeDocument(text: string, type: DocumentType): Promise<AIDocumentAnalysis>;
+  analyzeDocument(text: string, type: AIDocumentType): Promise<AIDocumentAnalysis>;
   explainAnomaly(anomaly: {
     title: string;
     description: string;

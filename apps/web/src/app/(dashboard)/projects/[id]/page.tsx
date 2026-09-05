@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { SatelliteTab } from '@/components/satellite/SatelliteTab';
 import { ChangeAnalysisTab } from '@/components/changeAnalysis/ChangeAnalysisTab';
 import { ProjectDocumentsTab } from '@/components/project/DocumentsTab';
+import { FinancialTab } from '@/components/project/FinancialTab';
 import { formatCurrency, formatDate, formatDateTime, cn } from '@/lib/utils';
 
 const projectsApi = createProjectsApi(apiClient);
@@ -125,7 +126,7 @@ export default function ProjectDetailPage() {
       <div role="tabpanel" aria-label={`${activeTab} tab`}>
         {activeTab === 'overview' && <OverviewTab project={project} />}
         {activeTab === 'timeline' && <TimelineTab id={id} />}
-        {activeTab === 'financial' && <FinancialTab project={project} />}
+        {activeTab === 'financial' && <FinancialTab projectId={id} />}
         {activeTab === 'documents' && <ProjectDocumentsTab projectId={id} />}
         {activeTab === 'satellite' && (
           <SatelliteTab
@@ -269,7 +270,7 @@ function TimelineTab({ id }: { id: string }) {
   );
 }
 
-function FinancialTab({ project }: { project: any }) {
+function FinancialTabSummary({ project }: { project: any }) {
   const items = [
     { label: 'Sanctioned Amount', value: project.sanctionedAmount },
     { label: 'Released Amount', value: project.releasedAmount },

@@ -13,7 +13,7 @@ import {
   AIProvider,
   AIDocumentAnalysis,
   AIAnomalyExplanation,
-  DocumentType,
+  AIDocumentType,
 } from './aiProvider.js';
 import { DocumentProvider, DocumentUploadResult } from './documentProvider.js';
 import { StorageProvider, StorageObject } from './storageProvider.js';
@@ -78,7 +78,7 @@ export class NullAIProvider implements AIProvider {
   }
   async analyzeDocument(
     _text: string,
-    _type: DocumentType
+    _type: AIDocumentType
   ): Promise<AIDocumentAnalysis> {
     throw new Error(`AIProvider not configured. ${NOT_CONFIGURED_MESSAGE}`);
   }
