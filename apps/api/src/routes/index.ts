@@ -63,7 +63,7 @@ router.use('/documents', documentRoutes);
 // MP routes
 router.use('/mps', mpRoutes);
 
-// Risk routes
-router.use('/risk', riskRoutes);
+// Risk routes (project-scoped: /projects/:id/risk; global: /summary, /findings, etc.)
+router.use('/', riskRoutes);
 
 export default router;

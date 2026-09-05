@@ -10,7 +10,10 @@ export function globalErrorHandler(
   const isDev = process.env.NODE_ENV !== 'production';
 
   if (err instanceof AppError) {
-    res.status(err.statusCode).json(err.toJSON());
+    res.status(err.statusCode).json({
+      success: false,
+      ...err.toJSON(),
+    });
     return;
   }
 
@@ -24,6 +27,7 @@ export function globalErrorHandler(
   });
 
   res.status(500).json({
+    success: false,
     error: {
       code: 'INTERNAL_ERROR',
       message: 'An unexpected error occurred',
@@ -33,6 +37,7 @@ export function globalErrorHandler(
 
 export function notFoundHandler(req: Request, res: Response) {
   res.status(404).json({
+    success: false,
     error: {
       code: 'NOT_FOUND',
       message: `Route not found: ${req.method} ${req.path}`,
