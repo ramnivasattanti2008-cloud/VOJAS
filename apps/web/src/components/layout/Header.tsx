@@ -2,8 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronDown, LogOut, User as UserIcon, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotificationCount } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 
 export function Header() {
@@ -11,6 +13,8 @@ export function Header() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { data: notifCount } = useNotificationCount();
+  const unread = notifCount?.unreadCount ?? 0;
 
   // Close menu on outside click
   useEffect(() => {
@@ -32,7 +36,21 @@ export function Header() {
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-      <div className="px-6 py-3 flex items-center justify-end">
+      <div className="px-6 py-3 flex items-center justify-end gap-3">
+        {/* Notification bell */}
+        <Link
+          href="/notifications"
+          className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-600"
+          aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ''}`}
+        >
+          <Bell className="h-5 w-5" />
+          {unread > 0 && (
+            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+              {unread > 99 ? '99+' : unread}
+            </span>
+          )}
+        </Link>
+
         <div className="relative" ref={menuRef}>
           <button
             type="button"

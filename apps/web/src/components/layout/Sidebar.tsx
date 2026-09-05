@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderOpenDot, AlertTriangle, FileText, Settings,
-  ShieldAlert, ListChecks, ScanSearch, type LucideIcon,
+  ShieldAlert, ListChecks, ScanSearch, Map, BarChart3, Bell,
+  Users, Briefcase, FileArchive, type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,11 +18,17 @@ interface NavItem {
 const items: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Projects', href: '/projects', icon: FolderOpenDot },
+  { label: 'Map View', href: '/map-view', icon: Map },
+  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Anomalies', href: '/anomalies', icon: AlertTriangle },
   { label: 'Reports', href: '/reports', icon: FileText },
   { label: 'Intelligence', href: '/intelligence', icon: ShieldAlert },
   { label: 'Alerts', href: '/alerts', icon: ListChecks },
   { label: 'Verification', href: '/verification', icon: ScanSearch },
+  { label: 'MPs', href: '/mps', icon: Users },
+  { label: 'Vendors', href: '/vendors', icon: Briefcase },
+  { label: 'Documents', href: '/documents', icon: FileArchive },
+  { label: 'Notifications', href: '/notifications', icon: Bell },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

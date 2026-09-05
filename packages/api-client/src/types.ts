@@ -87,6 +87,14 @@ export type Report = {
 
 // ── Vendors ────────────────────────────────────────────────
 
+export interface VendorProject {
+  id: string;
+  name: string;
+  state?: string;
+  district?: string;
+  status: string;
+}
+
 export type Vendor = {
   id: string;
   name: string;
@@ -105,6 +113,8 @@ export type Vendor = {
   contactPhone?: string;
   createdAt: string;
   updatedAt: string;
+  _count?: { projects: number };
+  projects?: VendorProject[];
 };
 
 // ── Notifications ─────────────────────────────────────────

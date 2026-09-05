@@ -8,3 +8,5 @@ export * from './vendors';
 export * from './notifications';
 export * from './changeAnalysis';
 export * from './risk';
+export * from './mps';
+export * from './documents';

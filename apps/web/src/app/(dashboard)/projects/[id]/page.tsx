@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SatelliteTab } from '@/components/satellite/SatelliteTab';
 import { ChangeAnalysisTab } from '@/components/changeAnalysis/ChangeAnalysisTab';
+import { ProjectDocumentsTab } from '@/components/project/DocumentsTab';
 import { formatCurrency, formatDate, formatDateTime, cn } from '@/lib/utils';
 
 const projectsApi = createProjectsApi(apiClient);
@@ -125,11 +126,7 @@ export default function ProjectDetailPage() {
         {activeTab === 'overview' && <OverviewTab project={project} />}
         {activeTab === 'timeline' && <TimelineTab id={id} />}
         {activeTab === 'financial' && <FinancialTab project={project} />}
-        {activeTab === 'documents' && <PlaceholderTab
-          icon={FileText}
-          title="Documents"
-          description="Project documents and evidence will appear here. Upload and verification features coming in M2."
-        />}
+        {activeTab === 'documents' && <ProjectDocumentsTab projectId={id} />}
         {activeTab === 'satellite' && (
           <SatelliteTab
             projectId={id}
