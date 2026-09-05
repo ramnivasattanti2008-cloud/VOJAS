@@ -8,7 +8,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../../node_modules/@prisma/client"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -223,6 +223,14 @@ enum AuditAction {
   REPORT_RESOLVED
   VENDOR_REGISTERED
   NOTIFICATION_SENT
+  RISK_FINDING_DETECTED
+  RISK_FINDING_ACKNOWLEDGED
+  RISK_FINDING_RESOLVED
+  RISK_FINDING_DISMISSED
+  RISK_FINDING_ESCALATED
+  RISK_SIGNAL_GENERATED
+  RISK_RULE_TRIGGERED
+  RISK_SCORE_UPDATED
 }
 
 // ────────────────────────────────────────────────────────────
@@ -438,6 +446,9 @@ model Project {
   anomalies             Anomaly[]
   reports               Report[]
   projectRisk           ProjectRisk?
+  // M8: Risk signals and events
+  riskSignals           RiskSignal[]
+  riskEvents            RiskEvent[]
 
   // Constraints & indexes
   @@unique([source, sourceWorkId])
@@ -793,35 +804,58 @@ model FinancialObservation {
 // RISK & VERIFICATION
 // ────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────
+// RISK FINDING — M8 Multi-Signal AI Risk & Anomaly Engine
+// ────────────────────────────────────────────────────────────
+// Supports all statuses: NEW, ACKNOWLEDGED, UNDER_REVIEW, VERIFICATION_REQUIRED, RESOLVED, DISMISSED, ESCALATED
+// Risk score 0-100, confidence LOW|MEDIUM|HIGH, algorithm version for auditability
+// ────────────────────────────────────────────────────────────
 model RiskFinding {
-  id               String          @id @default(cuid())
-  projectId        String          @map("project_id")
-  type             String
-  severity         AnomalySeverity @default(MEDIUM)
+  id               String   @id @default(cuid())
+  projectId        String   @map("project_id")
+  type             String   // finding type e.g. "PROGRESS_SATELLITE_MISMATCH", "COST_ANOMALY"
+  title            String
   description      String
-  evidence         Json
-  status           String          @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED | ESCALATED
-  assignedToId     String?         @map("assigned_to_id")
-  acknowledgedById String?         @map("acknowledged_by_id")
-  acknowledgedAt   DateTime?       @map("acknowledged_at") @db.Timestamptz(6)
-  resolvedById     String?         @map("resolved_by_id")
-  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz(6)
-  resolution       String?
-  lawEscalation    Boolean         @default(false) @map("law_escalation")
-  lawAuthority     String?         @map("law_authority")
-  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  severity         AnomalySeverity @default(MEDIUM)
+  riskScore        Int   @default(0) @map("risk_score") // 0-100
+  confidence       String @default("MEDIUM") // LOW | MEDIUM | HIGH
+  status           RiskFindingStatus @default(NEW)
+  recommendedAction String? @map("recommended_action")
+  limitations      String? @map("limitations")
+  signalIds        String[] @default([]) @map("signal_ids") // IDs of contributing RiskSignal records
+  evidence         Json?
+  algorithmVersion String @default("rule-engine-v1.0") @map("algorithm_version")
+  firstObservedAt  DateTime? @map("first_observed_at") @db.Timestamptz(6)
+  lastObservedAt   DateTime? @map("last_observed_at") @db.Timestamptz(6)
+  detectedAt       DateTime @default(now()) @map("detected_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  project        Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignedTo     User?              @relation("RiskFindingAssignedTo", fields: [assignedToId], references: [id])
-  acknowledgedBy User?              @relation("RiskFindingAcknowledgedBy", fields: [acknowledgedById], references: [id])
-  resolvedBy     User?              @relation("RiskFindingResolvedBy", fields: [resolvedById], references: [id])
+  // Assignment
+  assignedToId     String? @map("assigned_to_id")
+  acknowledgedById String? @map("acknowledged_by_id")
+  acknowledgedAt   DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  resolvedById     String? @map("resolved_by_id")
+  resolvedAt       DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolution       String?
+
+  // Law escalation
+  lawEscalation    Boolean @default(false) @map("law_escalation")
+  lawAuthority     String? @map("law_authority")
+
+  project        Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo     User? @relation("RiskFindingAssignedTo", fields: [assignedToId], references: [id])
+  acknowledgedBy User? @relation("RiskFindingAcknowledgedBy", fields: [acknowledgedById], references: [id])
+  resolvedBy     User? @relation("RiskFindingResolvedBy", fields: [resolvedById], references: [id])
   cases          VerificationCase[]
 
   @@index([projectId])
   @@index([status])
   @@index([severity])
-  @@index([lawEscalation, lawAuthority])
+  @@index([riskScore])
+  @@index([confidence])
+  @@index([algorithmVersion])
+  @@index([type, projectId]) // compound for dedup
   @@map("risk_findings")
 }
 
@@ -1037,6 +1071,163 @@ model AuditEvent {
 }
 
 // ────────────────────────────────────────────────────────────
+// SIGNAL TYPES (M8 normalized signal architecture)
+// ────────────────────────────────────────────────────────────
+// Each signal represents an independent data point that can
+// contribute to a risk finding. Source diversity drives confidence.
+//
+// Supported signal types:
+//   SATELLITE_CHANGE — satellite observation mismatch
+//   PROGRESS_FINANCIAL_MISMATCH — expenditure vs progress
+//   PROJECT_DELAY — milestone date passed, low progress
+//   COST_ANOMALY — cost vs peer benchmark
+//   DUPLICATE_PROJECT — possible duplicate project
+//   GEOGRAPHIC_INCONSISTENCY — location mismatch
+//   DOCUMENT_INCONSISTENCY — document contradictions
+//   CITIZEN_OFFICIAL_DISCREPANCY — report vs status
+//   CONTRACTOR_PATTERN — cross-project patterns
+//   ENVIRONMENTAL_RISK — environmental anomaly
+// ────────────────────────────────────────────────────────────
+enum SignalType {
+  SATELLITE_CHANGE
+  PROGRESS_FINANCIAL_MISMATCH
+  PROJECT_DELAY
+  COST_ANOMALY
+  DUPLICATE_PROJECT
+  GEOGRAPHIC_INCONSISTENCY
+  DOCUMENT_INCONSISTENCY
+  CITIZEN_OFFICIAL_DISCREPANCY
+  CONTRACTOR_PATTERN
+  ENVIRONMENTAL_RISK
+}
+
+// ────────────────────────────────────────────────────────────
+// RISK FINDING STATUS
+// ────────────────────────────────────────────────────────────
+enum RiskFindingStatus {
+  NEW
+  ACKNOWLEDGED
+  UNDER_REVIEW
+  VERIFICATION_REQUIRED
+  RESOLVED
+  DISMISSED
+  ESCALATED
+}
+
+// ────────────────────────────────────────────────────────────
+// RISK RULE STATUS
+// ────────────────────────────────────────────────────────────
+enum RiskRuleStatus {
+  ENABLED
+  DISABLED
+}
+
+// ────────────────────────────────────────────────────────────
+// RISK SIGNAL — normalized independent evidence
+// ────────────────────────────────────────────────────────────
+model RiskSignal {
+  id               String   @id @default(cuid())
+  projectId        String   @map("project_id")
+  signalType       SignalType
+  sourceType       String   // e.g. "satellite", "financial_record", "document", "citizen", "contractor", "field_verification"
+  sourceId         String?  // ID of the originating record
+  detectedAt       DateTime @map("detected_at") @db.Timestamptz(6)
+  observationDate  DateTime? @map("observation_date") @db.Timestamptz(6)
+  severity         String   // LOW | MEDIUM | HIGH | CRITICAL
+  confidence       String   // LOW | MEDIUM | HIGH
+  value            Float?
+  expectedValue    Float?
+  deviation        Float?
+  explanation      String?
+  evidenceReferences Json?  // array of evidence record IDs
+  metadata         Json?    // algorithm version, parameters, etc.
+  algorithmVersion String    @default("rule-engine-v1.0") @map("algorithm_version")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([signalType])
+  @@index([severity])
+  @@index([confidence])
+  @@map("risk_signals")
+}
+
+// ────────────────────────────────────────────────────────────
+// RISK RULE — deterministic rule definitions
+// ────────────────────────────────────────────────────────────
+model RiskRule {
+  id               String   @id @default(cuid())
+  name             String
+  category         String   // e.g. "progress_satellite_mismatch", "cost_anomaly"
+  version          String   @default("v1.0")
+  status           RiskRuleStatus @default(ENABLED)
+  conditions       Json      // rule condition logic as structured JSON
+  severityModifier String   // added to base score: LOW=+0, MEDIUM=+5, HIGH=+15, CRITICAL=+30
+  confidenceModifier String  // "LOW" | "MEDIUM" | "HIGH"
+  explanationTemplate String  // mustache template with {{variable}} placeholders
+  enabled          Boolean  @default(true)
+  lastRun          DateTime? @map("last_run") @db.Timestamptz(6)
+  matchCount       Int      @default(0) @map("match_count")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  versions          RiskRuleVersion[]
+
+  @@index([category])
+  @@index([status])
+  @@index([version])
+  @@map("risk_rules")
+}
+
+// ────────────────────────────────────────────────────────────
+// RISK RULE VERSION — versioned rule algorithm revisions
+// ────────────────────────────────────────────────────────────
+model RiskRuleVersion {
+  id               String   @id @default(cuid())
+  ruleId           String   @map("rule_id")
+  version          String
+  conditions       Json      // conditions for this version
+  severityModifier String
+  confidenceModifier String
+  explanationTemplate String
+  effectiveAt      DateTime @map("effective_at") @db.Timestamptz(6)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  riskRule         RiskRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, version])
+  @@index([ruleId, isActive])
+  @@map("risk_rule_versions")
+}
+
+// ────────────────────────────────────────────────────────────
+// RISK EVENT — project risk timeline (M13)
+// ────────────────────────────────────────────────────────────
+model RiskEvent {
+  id               String   @id @default(cuid())
+  projectId        String   @map("project_id")
+  eventType        String   // e.g. "finding_detected", "score_updated", "rule_triggered", "verification_complete"
+  description      String
+  severity         String   // LOW | MEDIUM | HIGH | CRITICAL
+  riskScore        Int?     // 0-100 if score change
+  findingId        String?  @map("finding_id") // related RiskFinding
+  relatedSignalIds Json?    // signal IDs that triggered this event
+  metadata         Json?    // additional event context
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([eventType])
+  @@index([findingId])
+  @@map("risk_events")
+}
+
+// ────────────────────────────────────────────────────────────
 // ANOMALIES (legacy-compatible; RiskFinding remains the canonical M1 model)
 // ────────────────────────────────────────────────────────────
 
@@ -1228,28 +1419,40 @@ model Notification {
 }
 
 // ────────────────────────────────────────────────────────────
-// PROJECT RISK (per-project risk score)
+// PROJECT RISK (per-project risk score, M8 multi-signal)
 // ────────────────────────────────────────────────────────────
 
 model ProjectRisk {
-  id             String    @id @default(cuid())
-  projectId      String    @unique @map("project_id")
-  riskLevel      RiskLevel @default(MEDIUM) @map("risk_level")
-  riskScore      Int       @default(0) @map("risk_score") // 0-100
-  // Component scores
-  financialScore Int       @default(0) @map("financial_score")
-  anomalyScore   Int       @default(0) @map("anomaly_score")
-  reportScore    Int       @default(0) @map("report_score")
-  satelliteScore Int       @default(0) @map("satellite_score")
-  // Drivers
-  primaryDriver  String?   @map("primary_driver")
-  drivers        Json? // { name, contribution, evidence }
-  computedAt     DateTime  @default(now()) @map("computed_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String    @id @default(cuid())
+  projectId         String    @unique @map("project_id")
+  riskLevel         RiskLevel @default(MEDIUM) @map("risk_level")
+  riskScore         Int       @default(0) @map("risk_score") // 0-100
+  // Component scores (M8 multi-signal)
+  financialScore    Int       @default(0) @map("financial_score")
+  satelliteScore    Int       @default(0) @map("satellite_score")
+  progressScore     Int       @default(0) @map("progress_score")
+  documentScore     Int       @default(0) @map("document_score")
+  citizenScore      Int       @default(0) @map("citizen_score")
+  contractorScore   Int       @default(0) @map("contractor_score")
+  geographicScore   Int       @default(0) @map("geographic_score")
+  correlationScore  Int       @default(0) @map("correlation_score")
+  // Overall
+  confidence        String    @default("MEDIUM") // LOW | MEDIUM | HIGH
+  primaryDriver     String?   @map("primary_driver")
+  drivers           Json? // [{ name, contribution, evidence }]
+  findingsCount     Int       @default(0) @map("findings_count")
+  signalsCount      Int       @default(0) @map("signals_count")
+  sourceDiversity   Int       @default(0) @map("source_diversity") // count of distinct source types
+  algorithmVersion  String    @default("rule-engine-v1.0") @map("algorithm_version")
+  // Drivers and metadata
+  // Last scoring input
+  computedAt        DateTime  @default(now()) @map("computed_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([riskLevel])
   @@index([riskScore])
+  @@index([confidence])
   @@map("project_risks")
 }

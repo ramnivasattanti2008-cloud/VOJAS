@@ -7,3 +7,18 @@ export { RiskService } from './riskService.js';
 export type { RiskFinding } from './riskService.js';
 export { DataSourceService } from './dataSourceService.js';
 export { AuditService } from './auditService.js';
+
+// M8: Risk Engine
+export {
+  RiskAnalysisOrchestrator,
+  SignalGenerator,
+  CorrelationEngine,
+  RiskScorer,
+  DataQualityGate,
+  AIExplainer,
+  RiskRuleEngine,
+} from './riskEngine/index.js';
+export type {
+  RiskAnalysisResult,
+} from './riskEngine/index.js';
+export * from './riskEngine/types.js';
