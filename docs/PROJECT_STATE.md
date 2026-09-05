@@ -1,33 +1,35 @@
 # VOJAS Project State
 
 ## Status
-**NEO Monorepo — M8 Risk Dashboard shipped (2026-09-05).** 15 legacy phases + NEO rebuild + M5/M6/M7/M8 modules live in a pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 4 typechecks pass (api, web, api-client, domain).
+**NEO Monorepo — All pages complete (2026-09-06).** 15 legacy phases + NEO rebuild + M5/M6/M7/M8/M9 modules live in a pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 4 typechecks pass (api, web, api-client, domain).
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete).
 
 ## Last Completed Action
-**M8 Risk Dashboard (2026-09-05, this session — commit 205700e):**
-- ✅ `apps/api/src/routes/risk.ts` — added `GET /risk/findings` (global queue, auth required); project-scoped `GET /projects/:id/risk/findings` now includes `{ project: { id, name } }` so list rows can link back to the project.
-- ✅ `packages/api-client/src/types.ts` — full M8 type surface: `RiskSignal`, `RiskFinding`, `RiskEvent`, `ProjectRiskSummary`, `RiskAnalysisResult`, `NationalRiskSummary`, `RiskTrend`, `RiskHotspot`, `RiskRule`, `FindingStatusUpdateResult`.
-- ✅ `packages/api-client/src/risk.ts` — `createRiskApi` factory with 12 methods (project + national + workflow).
-- ✅ `apps/web/src/hooks/useRisk.ts` — 11 React Query hooks. `useRiskFindings(projectId, filters)` transparently falls back to `getAllFindings` when `projectId` is null so the dashboard pages don't need separate hooks. `useUpdateFindingStatus` invalidates both `['risk', 'findings']` (global) and `['projects']` (any project page that embeds a finding).
-- ✅ `apps/web/src/app/(dashboard)/alerts/page.tsx` — severity/status filters, acknowledge action, project drill-down.
-- ✅ `apps/web/src/app/(dashboard)/intelligence/page.tsx` — national summary, risk-distribution bars, geographic hotspots, recent findings feed, methodology disclaimer.
-- ✅ `apps/web/src/app/(dashboard)/verification/page.tsx` — split queue+detail layout, resolution notes, mark-resolved / dismiss / escalate actions.
-- ✅ `apps/web/src/components/layout/Sidebar.tsx` — added Intelligence, Alerts, Verification nav items (with Lucide icons `ShieldAlert`, `ListChecks`, `ScanSearch`).
-- ✅ Verified: `tsc --noEmit` clean across `apps/api`, `apps/web`, `packages/api-client`, `packages/domain`.
-
-**Earlier this session — M8 Risk Engine (2026-09-05, commit 0865d11):**
-- ✅ `packages/domain/src/services/riskEngine/` — 7 signal types, 3 core correlation rules, transparent risk-scoring engine (base + 3 bonuses), data-quality gate, AI explainer, 1 orchestrator.
-- ✅ `apps/api/src/routes/risk.ts` — 9 endpoints (project + national + workflow).
-- ✅ `packages/api-client/src/risk.ts` + `types.ts` — 9 risk API methods, full type surface.
+**M9 Complete Pages (2026-09-06, commit 4757f12):**
+- ✅ **8 new pages** (all wired to real API, not mock data):
+  - `/mps` + `/mps/[id]` — MP list with state/house filters + MP detail with stats and projects
+  - `/vendors` + `/vendors/[id]` — Vendor list with status filter + Vendor detail with stats, contact info, project history
+  - `/map-view` — India SVG map with project clusters, state summary sidebar, clickable markers with detail popup
+  - `/analytics` — Platform analytics: 4 stat tiles + sector bars + status donut + top-states bars + sector utilization progress
+  - `/notifications` — Full notification center with All/Unread filter, mark-read single/all, type-colored icons
+  - `/documents` — Global document browser with type filter and project links
+- ✅ **2 new api-client files** (`packages/api-client/src/mps.ts`, `documents.ts`) + 2 hook files (`hooks/useMPs.ts`, `useDocuments.ts`) + index export
+- ✅ **1 new component** `components/project/DocumentsTab.tsx` — wired into project detail Documents tab (replaced PlaceholderTab)
+- ✅ **Sidebar** added 6 new nav items (Map View, Analytics, MPs, Vendors, Documents, Notifications)
+- ✅ **Header** now has a notification bell with red unread-count badge (uses existing useNotificationCount)
+- ✅ **Vendor type** in `packages/api-client/src/types.ts` extended with `_count?` and `projects?` to match the API response shape
+- ✅ `tsc --noEmit` clean across `apps/web` and all 4 packages (0 errors)
 
 **Earlier milestones in this branch:**
-- M7 Change Analysis (a036808): changeAnalysisEngine (sector-aware, 6 confidence factors), GEE + CDSE_STAC providers, 9 endpoints, `useChangeAnalysis` hook + ChangeAnalysisTab.
-- M6 Project Time Machine (914a66a): TimeMachineContext, TimeMachineMap (MapLibre+WMS+side-by-side/swipe/opacity), Timeline with drag+keyboard+playback, ObservationDrawer, TemporalProjectCard.
-- M5 Real Satellite (ef457ef): `cdseService` + `satelliteEOAnalysis` + `jobQueue` for real Sentinel-2 via CDSE, flagship Project Experience UI.
-- NEO Monorepo (0956c32): pnpm workspace, full Prisma schema, 7 new API routes, api-client methods, React Query hooks, AnomaliesPage + ReportsPage wired to real data, legacy `backend/` and `frontend/` deleted.
+- M8 Polish (5bf746e): risk route double-prefix fix, error handler consistency, 12 integration tests
+- M8 Dashboard (205700e): Alerts/Intelligence/Verification pages + global /risk/findings endpoint
+- M8 Risk Engine (0865d11): 7 signal types, 3 core rules, transparent scoring, 9 endpoints
+- M7 Change Analysis (a036808): changeAnalysisEngine, GEE + CDSE_STAC, 9 endpoints, useChangeAnalysis hook
+- M6 Project Time Machine (914a66a): TimeMachineContext, TimeMachineMap, Timeline playback, ObservationDrawer
+- M5 Real Satellite (ef457ef): cdseService + satelliteEOAnalysis + jobQueue for real Sentinel-2 via CDSE
+- NEO Monorepo (0956c32): pnpm workspace, full Prisma schema, 7 new API routes, AnomaliesPage + ReportsPage wired
 
 ## Phase Status Summary
 
@@ -44,15 +46,16 @@
 | 9 | Anomaly Detection | ✅ |
 | 10 | Risk Scoring | ✅ (M8) |
 | 11 | AI Integration | ✅ |
-| 12 | Satellite Change Detection | ✅ (M5 real CDSE + M6 Time Machine + M7 Change Analysis) |
+| 12 | Satellite Change Detection | ✅ (M5/M6/M7) |
 | 13 | Dashboard & PDF Export | ✅ |
 | 14 | Advanced UI / ARIA Polish | ✅ |
-| 15 | Deployment | ✅ (Docker + Render + Vercel + CI/CD) |
+| 15 | Deployment | ✅ |
 | NEO | Monorepo Rebuild | ✅ (pnpm + apps/api + apps/web) |
 | M5 | Real CDSE Sentinel-2 | ✅ (ef457ef) |
 | M6 | Project Time Machine | ✅ (914a66a) |
 | M7 | Change Analysis | ✅ (a036808) |
-| M8 | Risk Engine + Dashboard | ✅ (0865d11 + 205700e) |
+| M8 | Risk Engine + Dashboard | ✅ (0865d11 + 205700e + 5bf746e) |
+| M9 | All Pages Complete | ✅ (4757f12) |
 
 ## Verification
 
@@ -60,7 +63,7 @@
 - Web `tsc --noEmit`: CLEAN
 - api-client `tsc --noEmit`: CLEAN
 - domain `tsc --noEmit`: CLEAN
-- 11 risk-related routes, 3 new dashboard pages, 11 React Query hooks live.
+- 18+ feature pages live (Dashboard, Projects, Map, Analytics, Anomalies, Reports, Intelligence, Alerts, Verification, MPs, Vendors, Documents, Notifications, Settings, Project Detail + Time Machine)
 
 ## Next Action
-Decide next phase. Candidates: M9 (Recommendations / Mitigation Workflow), M10 (Predictive Risk Forecasting), or polish/bugfix round.
+Decide next phase. Candidates: M10 (Recommendations / Mitigation Workflow), M11 (Predictive Risk Forecasting), or polish/bugfix round. The app is now feature-complete relative to the legacy version and the SIH demo.
