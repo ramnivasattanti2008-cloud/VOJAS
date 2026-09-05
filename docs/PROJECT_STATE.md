@@ -7,6 +7,12 @@
 ✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete).
 
 ## Last Completed Action
+**TS Clean (2026-09-06, commit 637bbff):**
+- ✅ Resolved 27 TypeScript errors across `apps/api`, `apps/web`, and `packages/domain`
+- Key fixes: `DocumentType` conflict (→ `AIDocumentType`), duplicate constants, `DocumentIntelligenceService` method import, `Card` children optional, `Badge` size prop removed, `formatBytes` added, `Document` type enriched with DB fields, `DocumentRow` prop passing
+- All 5 typechecks now clean
+
+**Earlier milestone:**
 **M9 Complete Pages (2026-09-06, commit 4757f12):**
 - ✅ **8 new pages** (all wired to real API, not mock data):
   - `/mps` + `/mps/[id]` — MP list with state/house filters + MP detail with stats and projects
