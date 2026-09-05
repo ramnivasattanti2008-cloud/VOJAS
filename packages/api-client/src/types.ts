@@ -159,28 +159,147 @@ export type Document = {
   uploadedBy?: { id: string; name: string; email: string };
 };
 
-// ── Risk ──────────────────────────────────────────────────
+// ── Risk (M8) ─────────────────────────────────────────────
 
-export type ProjectRisk = {
+export type RiskSignal = {
   id: string;
   projectId: string;
-  riskLevel: string;
-  riskScore: number;
-  financialScore: number;
-  anomalyScore: number;
-  reportScore: number;
-  satelliteScore: number;
-  primaryDriver?: string;
-  drivers?: unknown;
-  computedAt: string;
+  signalType: string;
+  sourceType: string;
+  sourceId?: string;
+  detectedAt: string;
+  observationDate?: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  value?: number;
+  expectedValue?: number;
+  deviation?: number;
+  explanation?: string;
+  evidenceReferences?: string[];
+  algorithmVersion: string;
 };
 
-export type RiskDashboard = {
-  byLevel: Array<{ riskLevel: string; _count: { _all: number } }>;
-  bySeverity: Array<{ severity: string; _count: { _all: number } }>;
-  topRiskProjects: Array<{
-    riskLevel: string;
-    riskScore: number;
-    project: { id: string; name: string; state: string; district: string };
-  }>;
+export type RiskFinding = {
+  id: string;
+  projectId: string;
+  type: string;
+  title: string;
+  description: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  riskScore: number;
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  status: 'NEW' | 'ACKNOWLEDGED' | 'UNDER_REVIEW' | 'VERIFICATION_REQUIRED' | 'RESOLVED' | 'DISMISSED' | 'ESCALATED';
+  recommendedAction?: string;
+  limitations?: string;
+  signalIds?: string[];
+  algorithmVersion: string;
+  firstObservedAt?: string;
+  lastObservedAt?: string;
+  detectedAt: string;
+  acknowledgedById?: string;
+  acknowledgedAt?: string;
+  resolvedById?: string;
+  resolvedAt?: string;
+  resolution?: string;
+  project?: { id: string; name: string; state: string; district: string };
+};
+
+export type RiskEvent = {
+  id: string;
+  projectId: string;
+  eventType: string;
+  description: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  riskScore?: number;
+  findingId?: string;
+  createdAt: string;
+};
+
+export type ProjectRiskSummary = {
+  projectId: string;
+  project: { name: string; sector: string; status: string; approvedAmount: number; spentAmount: number };
+  risk: {
+    score: number;
+    level: string;
+    confidence: string;
+    primaryDriver?: string;
+    signalsCount: number;
+    findingsCount: number;
+    sourceDiversity: number;
+    computedAt: string;
+    algorithmVersion: string;
+  } | null;
+  signals: {
+    total: number;
+    byType: Record<string, number>;
+    recent: RiskSignal[];
+  };
+  findings: {
+    total: number;
+    bySeverity: Record<string, number>;
+    active: number;
+    recent: RiskFinding[];
+  };
+  events: RiskEvent[];
+};
+
+export type RiskAnalysisResult = {
+  projectId: string;
+  status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'INSUFFICIENT_DATA';
+  riskScore: number;
+  riskLevel: string;
+  confidence: string;
+  signalsCount: number;
+  findingsCount: number;
+  sourceDiversity: number;
+  methodology: string;
+  dataQuality: {
+    sourcesAvailable: boolean;
+    sourceCount: number;
+    completenessScore: number;
+    overallPass: boolean;
+    reasons: string[];
+  };
+  computedAt: string;
+  processingTimeMs: number;
+  algorithmVersion: string;
+};
+
+export type NationalRiskSummary = {
+  totalProjects: number;
+  totalFindings: number;
+  riskDistribution: Record<string, number>;
+  highRiskProjects: number;
+  delayedProjects: number;
+  unresolvedFindings: number;
+  averageRiskScore: number;
+};
+
+export type RiskTrend = {
+  date: string;
+  newFindings: number;
+  resolvedFindings: number;
+  averageRiskScore: number;
+  highRiskProjects: number;
+};
+
+export type RiskHotspot = {
+  latitude: number;
+  longitude: number;
+  projectCount: number;
+  findingsCount: number;
+  averageRiskScore: number;
+  district: string;
+  state: string;
+};
+
+export type RiskRule = {
+  id: string;
+  name: string;
+  category: string;
+  version: string;
+  status: string;
+  enabled: boolean;
+  lastRun?: string;
+  matchCount: number;
 };

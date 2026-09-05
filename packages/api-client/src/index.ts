@@ -7,3 +7,4 @@ export * from './reports';
 export * from './vendors';
 export * from './notifications';
 export * from './changeAnalysis';
+export * from './risk';

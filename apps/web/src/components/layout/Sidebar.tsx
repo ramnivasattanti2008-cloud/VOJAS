@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FolderOpenDot, AlertTriangle, FileText, Settings, type LucideIcon } from 'lucide-react';
+import {
+  LayoutDashboard, FolderOpenDot, AlertTriangle, FileText, Settings,
+  ShieldAlert, ListChecks, ScanSearch, type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -16,6 +19,9 @@ const items: NavItem[] = [
   { label: 'Projects', href: '/projects', icon: FolderOpenDot },
   { label: 'Anomalies', href: '/anomalies', icon: AlertTriangle },
   { label: 'Reports', href: '/reports', icon: FileText },
+  { label: 'Intelligence', href: '/intelligence', icon: ShieldAlert },
+  { label: 'Alerts', href: '/alerts', icon: ListChecks },
+  { label: 'Verification', href: '/verification', icon: ScanSearch },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

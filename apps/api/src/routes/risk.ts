@@ -278,6 +278,7 @@ router.get(
       const [findings, total] = await prisma.$transaction([
         prisma.riskFinding.findMany({
           where,
+          include: { project: { select: { id: true, name: true } } },
           orderBy: { detectedAt: 'desc' },
           skip: (pageNum - 1) * limitNum,
           take: limitNum,
@@ -288,6 +289,8 @@ router.get(
       success(res, {
         findings: findings.map(f => ({
           id: f.id,
+          projectId: f.projectId,
+          project: f.project ? { id: f.project.id, name: f.project.name } : undefined,
           type: f.type,
           title: f.title,
           description: f.description,
@@ -729,6 +732,67 @@ router.get(
           lastRun: r.lastRun,
           matchCount: r.matchCount,
         })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /risk/findings
+ * Global / national findings across all projects
+ */
+router.get(
+  '/risk/findings',
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { status, severity, page = '1', limit = '20' } = req.query;
+
+      const where: Record<string, unknown> = {};
+      if (status) where.status = status;
+      if (severity) where.severity = severity;
+
+      const pageNum = parseInt(String(page));
+      const limitNum = Math.min(50, parseInt(String(limit)));
+
+      const [findings, total] = await prisma.$transaction([
+        prisma.riskFinding.findMany({
+          where,
+          include: { project: { select: { id: true, name: true } } },
+          orderBy: { detectedAt: 'desc' },
+          skip: (pageNum - 1) * limitNum,
+          take: limitNum,
+        }),
+        prisma.riskFinding.count({ where }),
+      ]);
+
+      success(res, {
+        findings: findings.map(f => ({
+          id: f.id,
+          projectId: f.projectId,
+          project: f.project ? { id: f.project.id, name: f.project.name } : undefined,
+          type: f.type,
+          title: f.title,
+          description: f.description,
+          severity: f.severity,
+          riskScore: f.riskScore,
+          confidence: f.confidence,
+          status: f.status,
+          recommendedAction: f.recommendedAction,
+          limitations: f.limitations,
+          signalIds: f.signalIds,
+          evidence: f.evidence,
+          firstObservedAt: f.firstObservedAt,
+          lastObservedAt: f.lastObservedAt,
+          detectedAt: f.detectedAt,
+          algorithmVersion: f.algorithmVersion,
+        })),
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
       });
     } catch (err) {
       next(err);
