@@ -4,7 +4,20 @@
 **NEO Monorepo — All pages complete (2026-09-06).** 15 legacy phases + NEO rebuild + M5/M6/M7/M8/M9 modules live in a pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 4 typechecks pass (api, web, api-client, domain).
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M17 (Performance & Polish).
+
+## Last Completed Action
+**M17 Performance & Polish (2026-09-06, commit 54b0899):**
+- ✅ Global ErrorBoundary wrapping entire app via providers.tsx
+- ✅ AsyncBoundary + Suspense with page-level loading spinner
+- ✅ Skeleton components: CardSkeleton, TableRowSkeleton, StatCardSkeleton, PageSkeleton
+- ✅ loading.tsx + not-found.tsx for dashboard route
+- ✅ SEO metadata on all layouts (dashboard, auth, public) + login/register/report pages
+- ✅ Server-component wrappers for client pages needing metadata
+- ✅ Static India state data extracted to src/data/indiaStates.ts (200+ lines from dashboard page)
+- ✅ console.error → ErrorBanner UI in admin/reports and reports/[id] pages
+- ✅ Theme-color meta tag for PWA installability
+- ✅ All 5 packages: 0 TypeScript errors
 
 ## Last Completed Action
 **TS Clean (2026-09-06, commit 637bbff):**
@@ -62,6 +75,7 @@
 | M7 | Change Analysis | ✅ (a036808) |
 | M8 | Risk Engine + Dashboard | ✅ (0865d11 + 205700e + 5bf746e) |
 | M9 | All Pages Complete | ✅ (4757f12) |
+| M17 | Performance & Polish | ✅ (54b0899) |
 
 ## Verification
 
@@ -72,4 +86,4 @@
 - 18+ feature pages live (Dashboard, Projects, Map, Analytics, Anomalies, Reports, Intelligence, Alerts, Verification, MPs, Vendors, Documents, Notifications, Settings, Project Detail + Time Machine)
 
 ## Next Action
-Decide next phase. Candidates: M10 (Recommendations / Mitigation Workflow), M11 (Predictive Risk Forecasting), or polish/bugfix round. The app is now feature-complete relative to the legacy version and the SIH demo.
+Decide next phase. Candidates: M18 (Export Engine — CSV/PDF/Excel for all tables), M19 (Hindi/regional UI labels), or M20 (PWA install + offline support). The app is now feature-complete and highly polished.
