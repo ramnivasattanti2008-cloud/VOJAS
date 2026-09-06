@@ -18,6 +18,19 @@ export function noContent(res: Response): Response {
   return res.status(204).send();
 }
 
+export function error(
+  res: Response,
+  code: string,
+  message: string,
+  details?: unknown,
+  statusCode = 400,
+): Response {
+  return res.status(statusCode).json({
+    success: false,
+    error: { code, message, details },
+  });
+}
+
 export interface ApiError {
   code: string;
   message: string;

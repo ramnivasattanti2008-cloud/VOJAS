@@ -10,6 +10,8 @@ import changeAnalysisRoutes from './changeAnalysis';
 import auditRoutes from './audit';
 import anomalyRoutes from './anomalies';
 import reportRoutes from './reports';
+import citizenReportRoutes from './citizenReports';
+import reportSearchRoutes from './reportSearch';
 import vendorRoutes from './vendors';
 import notificationRoutes from './notifications';
 import documentRoutes from './documents';
@@ -50,6 +52,12 @@ router.use('/anomalies', anomalyRoutes);
 
 // Report routes
 router.use('/reports', reportRoutes);
+
+// M10: Citizen Reports (extended public + authenticated routes)
+router.use('/reports', citizenReportRoutes);
+
+// M10: Report search
+router.use('/reports', reportSearchRoutes);
 
 // Vendor routes
 router.use('/vendors', vendorRoutes);

@@ -10,7 +10,7 @@ import {
   reportAssignSchema,
   reportResolveSchema,
 } from '@vojas/domain';
-import { AuditAction, UserRole } from '@vojas/shared';
+import { AuditAction, ReportStatus, UserRole } from '@vojas/shared';
 import { authenticate } from '../middleware/auth';
 import { requireRole } from '../auth/rbac';
 import { success, created } from '../utils/apiResponse';
@@ -81,8 +81,18 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const parsed = reportSubmitSchema.safeParse(req.body);
     if (!parsed.success) throw new ValidationError('Invalid report data', parsed.error.errors);
 
+    // Generate unique report reference
+    const year = new Date().getFullYear();
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let suffix = '';
+    for (let i = 0; i < 4; i++) {
+      suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const reportReference = `VOJAS-${year}-${suffix}`;
+
     const report = await prisma.report.create({
       data: {
+        reportReference,
         title: parsed.data.title,
         description: parsed.data.description,
         category: parsed.data.category,
@@ -144,7 +154,7 @@ router.post(
 
       const updated = await prisma.report.update({
         where: { id },
-        data: { status: 'ASSIGNED', assignedToId: parsed.data.assignedToId },
+        data: { status: ReportStatus.ASSIGNED, assignedToId: parsed.data.assignedToId },
       });
 
       // Status log
@@ -152,7 +162,7 @@ router.post(
         data: {
           reportId: id,
           fromStatus: existing.status,
-          toStatus: 'ASSIGNED',
+          toStatus: ReportStatus.ASSIGNED,
           changedById: req.user!.userId,
         },
       });

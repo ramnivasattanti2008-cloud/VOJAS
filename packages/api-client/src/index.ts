@@ -11,3 +11,30 @@ export * from './risk';
 export * from './mps';
 export * from './documents';
 export * from './financial';
+export * from './citizenReports.js';
+
+// Re-export constants from types for convenience
+export { PRIVACY_LABELS, REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS } from './types.js';
+
+// Re-export payload types from citizenReports
+export type {
+  SubmitReportPayload,
+  UpdateReportPayload,
+  ReportFilters,
+  NearbyReportsParams,
+  CitizenReportsApi,
+} from './citizenReports.js';
+
+// Re-export M10 types
+export type {
+  CitizenReport,
+  ReportMedia,
+  CitizenClaim,
+  ReportModeration,
+  AITriageResult,
+  ReportPrivacyLevel,
+  ReportTriageStatus,
+  ReportEvidenceQuality,
+  CitizenClaimType,
+  ModerationAction,
+} from './types.js';

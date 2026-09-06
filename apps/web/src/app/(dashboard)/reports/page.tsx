@@ -1,82 +1,98 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, CheckCircle, AlertCircle, Clock, Search, Filter, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { FileText, CheckCircle, AlertCircle, Clock, Search, Filter, X, Eye } from 'lucide-react';
 import { Card, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useReports } from '@/hooks/useReports';
+import { useCitizenReports } from '@/hooks/useCitizenReports';
+import { REPORT_STATUS_LABELS, REPORT_CATEGORY_LABELS } from '@vojas/api-client';
 import { formatDate } from '@/lib/utils';
 
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   SUBMITTED: 'info',
-  UNDER_REVIEW: 'warning',
-  ASSIGNED: 'warning',
-  INVESTIGATING: 'warning',
+  RECEIVED: 'info',
+  TRIAGED: 'info',
+  PROJECT_MATCHED: 'info',
+  REVIEW_QUEUE: 'warning',
+  UNDER_VERIFICATION: 'warning',
+  VERIFIED: 'success',
   RESOLVED: 'success',
   DISMISSED: 'neutral',
+  ESCALATED: 'danger',
 };
 
-const SEVERITY_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
-  LOW: 'neutral',
-  MEDIUM: 'warning',
-  HIGH: 'danger',
-  CRITICAL: 'danger',
+const TRIAGE_STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+  PENDING: 'warning',
+  PROCESSING: 'info',
+  CATEGORY_SUGGESTED: 'info',
+  PROJECT_MATCHED: 'info',
+  CLAIMS_EXTRACTED: 'info',
+  DUPLICATES_CHECKED: 'info',
+  COMPLETED: 'success',
+  FAILED: 'danger',
 };
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [severityFilter, setSeverityFilter] = useState<string>('');
+  const [triageFilter, setTriageFilter] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
 
-  const { data, isLoading, error } = useReports({
+  const { data, isLoading, error } = useCitizenReports({
     status: statusFilter || undefined,
-    severity: severityFilter || undefined,
+    triageStatus: triageFilter || undefined,
     limit: 50,
   });
 
   const reports = data?.data ?? [];
   const total = data?.total ?? 0;
 
-  const submittedCount = reports.filter((r) => r.status === 'SUBMITTED').length;
-  const investigatingCount = reports.filter(
-    (r) => r.status === 'ASSIGNED' || r.status === 'INVESTIGATING' || r.status === 'UNDER_REVIEW'
+  const pendingCount = reports.filter((r) => r.triageStatus === 'PENDING').length;
+  const reviewCount = reports.filter(
+    (r) => r.status === 'REVIEW_QUEUE' || r.status === 'UNDER_VERIFICATION'
   ).length;
-  const resolvedCount = reports.filter((r) => r.status === 'RESOLVED').length;
+  const resolvedCount = reports.filter((r) => r.status === 'RESOLVED' || r.status === 'VERIFIED').length;
 
-  const hasFilters = !!(statusFilter || severityFilter);
+  const hasFilters = !!(statusFilter || triageFilter);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Citizen Reports</h1>
-        <p className="text-slate-500 text-sm mt-0.5">
-          {isLoading ? 'Loading...' : `${total} reports found`}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Citizen Reports</h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {isLoading ? 'Loading...' : `${total} reports found`}
+          </p>
+        </div>
+        <Button variant="secondary" onClick={() => router.push('/admin/reports')}>
+          Admin View
+        </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardBody className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600">
-              <FileText className="h-5 w-5" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-50 text-amber-600">
+              <Clock className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{submittedCount}</p>
-              <p className="text-sm text-slate-500 mt-0.5">Submitted</p>
+              <p className="text-2xl font-bold text-slate-900">{pendingCount}</p>
+              <p className="text-sm text-slate-500 mt-0.5">Pending Triage</p>
             </div>
           </CardBody>
         </Card>
         <Card>
           <CardBody className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-50 text-amber-600">
-              <Clock className="h-5 w-5" />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600">
+              <AlertCircle className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{investigatingCount}</p>
-              <p className="text-sm text-slate-500 mt-0.5">In Progress</p>
+              <p className="text-2xl font-bold text-slate-900">{reviewCount}</p>
+              <p className="text-sm text-slate-500 mt-0.5">Under Review</p>
             </div>
           </CardBody>
         </Card>
@@ -87,7 +103,7 @@ export default function ReportsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-slate-900">{resolvedCount}</p>
-              <p className="text-sm text-slate-500 mt-0.5">Resolved</p>
+              <p className="text-sm text-slate-500 mt-0.5">Resolved/Verified</p>
             </div>
           </CardBody>
         </Card>
@@ -124,7 +140,7 @@ export default function ReportsPage() {
             size="sm"
             onClick={() => {
               setStatusFilter('');
-              setSeverityFilter('');
+              setTriageFilter('');
             }}
             leftIcon={<X className="h-3 w-3" />}
           >
@@ -144,25 +160,27 @@ export default function ReportsPage() {
             >
               <option value="">All statuses</option>
               <option value="SUBMITTED">Submitted</option>
-              <option value="UNDER_REVIEW">Under Review</option>
-              <option value="ASSIGNED">Assigned</option>
-              <option value="INVESTIGATING">Investigating</option>
+              <option value="RECEIVED">Received</option>
+              <option value="REVIEW_QUEUE">Review Queue</option>
+              <option value="UNDER_VERIFICATION">Under Verification</option>
+              <option value="VERIFIED">Verified</option>
               <option value="RESOLVED">Resolved</option>
               <option value="DISMISSED">Dismissed</option>
+              <option value="ESCALATED">Escalated</option>
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700 block mb-1">Severity</label>
+            <label className="text-sm font-medium text-slate-700 block mb-1">Triage Status</label>
             <select
               className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-200 focus:border-vojas-500"
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
+              value={triageFilter}
+              onChange={(e) => setTriageFilter(e.target.value)}
             >
-              <option value="">All severities</option>
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-              <option value="CRITICAL">Critical</option>
+              <option value="">All triage statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="PROCESSING">Processing</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="FAILED">Failed</option>
             </select>
           </div>
         </CardBody>
@@ -202,6 +220,7 @@ export default function ReportsPage() {
             .filter((r) =>
               search
                 ? r.title.toLowerCase().includes(search.toLowerCase()) ||
+                  r.reportReference.toLowerCase().includes(search.toLowerCase()) ||
                   r.description.toLowerCase().includes(search.toLowerCase())
                 : true
             )
@@ -211,22 +230,33 @@ export default function ReportsPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-mono text-xs text-slate-500">{r.reportReference}</span>
                         <h3 className="font-semibold text-slate-900">{r.title}</h3>
-                        <Badge variant={SEVERITY_VARIANT[r.severity] ?? 'neutral'}>{r.severity}</Badge>
                         <Badge variant={STATUS_VARIANT[r.status] ?? 'neutral'}>
-                          {r.status.replace(/_/g, ' ')}
+                          {REPORT_STATUS_LABELS[r.status] || r.status}
                         </Badge>
+                        <Badge variant={TRIAGE_STATUS_VARIANT[r.triageStatus] ?? 'neutral'}>
+                          {r.triageStatus.replace(/_/g, ' ')}
+                        </Badge>
+                        {r.isAnonymous && <Badge variant="neutral">Anonymous</Badge>}
                       </div>
                       <p className="text-sm text-slate-600 line-clamp-2">{r.description}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 flex-wrap">
-                        <span className="font-mono">{r.category.replace(/_/g, ' ')}</span>
-                        {r.project && <span>→ {r.project.name}</span>}
-                        {r.assignedTo && <span>Assigned: {r.assignedTo.name}</span>}
-                        {r.locationDesc && <span>📍 {r.locationDesc}</span>}
-                        <span>{formatDate(r.createdAt)}</span>
-                        {r.isAnonymous && <Badge variant="neutral">Anonymous</Badge>}
+                        <span className="font-mono">
+                          {REPORT_CATEGORY_LABELS[r.category] || r.category}
+                        </span>
+                        {r.project && <span>Project: {r.project.name}</span>}
+                        <span>{formatDate(r.submittedAt)}</span>
                       </div>
                     </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => router.push(`/reports/${r.id}`)}
+                      leftIcon={<Eye className="h-4 w-4" />}
+                    >
+                      View
+                    </Button>
                   </div>
                 </CardBody>
               </Card>

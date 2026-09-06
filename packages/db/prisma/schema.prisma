@@ -140,21 +140,76 @@ enum ReportSeverity {
 
 enum ReportStatus {
   SUBMITTED
-  UNDER_REVIEW
+  RECEIVED
   ASSIGNED
-  INVESTIGATING
+  TRIAGED
+  PROJECT_MATCHED
+  REVIEW_QUEUE
+  UNDER_VERIFICATION
+  VERIFIED
   RESOLVED
   DISMISSED
+  ESCALATED
+}
+
+enum ReportPrivacyLevel {
+  PUBLIC
+  RESTRICTED
+  CONFIDENTIAL
+  ANONYMOUS
+}
+
+enum ReportTriageStatus {
+  PENDING
+  PROCESSING
+  CATEGORY_SUGGESTED
+  PROJECT_MATCHED
+  CLAIMS_EXTRACTED
+  DUPLICATES_CHECKED
+  COMPLETED
+  FAILED
+}
+
+enum ReportEvidenceQuality {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CitizenClaimType {
+  PROJECT_NOT_STARTED
+  PROJECT_INCOMPLETE
+  QUALITY_CONCERN
+  LOCATION_CONCERN
+  DATE_CONCERN
+  FINANCIAL_CONCERN
+  SAFETY_CONCERN
+  CONTRACTOR_CONCERN
+  DOCUMENT_CONCERN
+  PROGRESS_CONCERN
+  OTHER
+}
+
+enum ModerationAction {
+  PUBLISH
+  RESTRICT
+  REQUEST_MORE_INFORMATION
+  REJECT
+  ESCALATE
 }
 
 enum NotificationType {
   ANOMALY_DETECTED
   ANOMALY_ACKNOWLEDGED
-  ANOMALY_RESOLVED
   ANOMALY_ESCALATED
   ANOMALY_ESCALATED_TO_LAW
   REPORT_SUBMITTED
+  REPORT_RECEIVED
   REPORT_ASSIGNED
+  REPORT_STATUS_CHANGED
+  REPORT_MORE_INFO_REQUESTED
+  REPORT_VERIFIED
+  REPORT_RESOLVED
   RISK_THRESHOLD
   PROJECT_COMPLETED
   SYSTEM_ALERT
@@ -221,6 +276,12 @@ enum AuditAction {
   REPORT_SUBMITTED
   REPORT_ASSIGNED
   REPORT_RESOLVED
+  REPORT_MODERATED
+  REPORT_STATUS_CHANGED
+  REPORT_PROJECT_LINKED
+  REPORT_CLAIMS_EXTRACTED
+  REPORT_MEDIA_UPLOADED
+  REPORT_IDENTITY_ACCESSED
   VENDOR_REGISTERED
   NOTIFICATION_SENT
   RISK_FINDING_DETECTED
@@ -264,6 +325,9 @@ model User {
   anomaliesResolved        Anomaly[]           @relation("AnomalyResolver")
   anomaliesLawEscalated    Anomaly[]           @relation("AnomalyLawEscalator")
   reportsAssigned          Report[]            @relation("ReportAssignee")
+  reportModerations       ReportModeration[]
+  reportMediaVerified     ReportMedia[]
+  citizenClaimsVerified   CitizenClaim[]
   notifications            Notification[]
 
   @@map("users")
@@ -1303,20 +1367,33 @@ model AnomalyRule {
 
 model Report {
   id            String         @id @default(cuid())
+  reportReference String       @unique @map("report_reference") // e.g. VOJAS-2026-XXXX
   title         String
   description   String
   category      ReportCategory
   severity      ReportSeverity @default(LOW)
-  status        ReportStatus   @default(SUBMITTED)
+  status        ReportStatus   @default(RECEIVED)
   // Reporter info
   reporterName  String?        @map("reporter_name")
   reporterEmail String?        @map("reporter_email")
   reporterPhone String?        @map("reporter_phone")
   isAnonymous   Boolean        @default(false) @map("is_anonymous")
+  // Privacy
+  privacyLevel ReportPrivacyLevel @default(RESTRICTED) @map("privacy_level")
   // Location
   locationDesc  String?        @map("location_desc")
   latitude      Float?
   longitude     Float?
+  locationAccuracyM Float?    @map("location_accuracy_m")
+  // Dates
+  incidentDate DateTime?      @map("incident_date") @db.Timestamptz(6)
+  submittedAt  DateTime       @default(now()) @map("submitted_at") @db.Timestamptz(6)
+  // AI / triage
+  triageStatus ReportTriageStatus @default(PENDING) @map("triage_status")
+  aiTriage    Json?          @map("ai_triage") // { suggestedCategory, suggestedPriority, matchedProjectIds, duplicateReportIds, extractedClaims }
+  aiAnalyzedAt DateTime?     @map("ai_analyzed_at") @db.Timestamptz(6)
+  // Evidence quality
+  evidenceQuality ReportEvidenceQuality? @map("evidence_quality")
   // References
   projectId     String?        @map("project_id")
   assignedToId  String?        @map("assigned_to_id")
@@ -1326,22 +1403,29 @@ model Report {
   source        String         @default("WEB")
   ipAddress     String?        @map("ip_address")
   userAgent     String?        @map("user_agent")
-  // AI analysis
-  aiAnalysis    Json?          @map("ai_analysis")
-  aiAnalyzedAt  DateTime?      @map("ai_analyzed_at") @db.Timestamptz(6)
+  // Whistleblower
+  whistleblowerToken String?   @map("whistleblower_token")
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  project    Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  assignedTo User?             @relation("ReportAssignee", fields: [assignedToId], references: [id])
-  statusLogs ReportStatusLog[]
+  project     Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignedTo  User?             @relation("ReportAssignee", fields: [assignedToId], references: [id])
+  media       ReportMedia[]
+  claims      CitizenClaim[]
+  moderations ReportModeration[]
+  statusLogs  ReportStatusLog[]
 
+  @@index([reportReference])
   @@index([status])
   @@index([category])
   @@index([severity])
+  @@index([triageStatus])
   @@index([projectId])
   @@index([assignedToId])
   @@index([createdAt])
+  @@index([submittedAt])
+  @@index([latitude, longitude])
+  @@index([source])
   @@map("reports")
 }
 
@@ -1358,6 +1442,126 @@ model ReportStatusLog {
 
   @@index([reportId])
   @@map("report_status_logs")
+}
+
+// ────────────────────────────────────────────────────────────
+// CITIZEN REPORT MEDIA (M10)
+// ────────────────────────────────────────────────────────────
+
+model ReportMedia {
+  id               String    @id @default(cuid())
+  reportId         String    @map("report_id")
+  filename         String
+  originalName     String    @map("original_name")
+  mimeType         String    @map("mime_type")
+  size             Int
+  url              String
+  mediaType        String    @map("media_type") // IMAGE | VIDEO | AUDIO | DOCUMENT
+  // Privacy-aware metadata
+  captureDate      DateTime? @map("capture_date") @db.Timestamptz(6)
+  captureLat       Float?    @map("capture_lat")
+  captureLng       Float?    @map("capture_lng")
+  stripLocation    Boolean   @default(false) @map("strip_location") // metadata stripped for public view
+  // Forensic signals (not accusations)
+  forensicStatus   String    @default("PENDING") @map("forensic_status") // PENDING | REVIEW_REQUIRED | CLEAN | ANOMALY_DETECTED
+  forensicSignals  Json?     @map("forensic_signals") // { metadataInconsistency, timestampInconsistency, duplicateMedia, perceptualSimilarity, manipulationIndicators, compressionAnomalies }
+  verifiedById     String?   @map("verified_by_id")
+  verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  verifiedBy User? @relation(fields: [verifiedById], references: [id])
+
+  @@index([reportId])
+  @@map("report_media")
+}
+
+// ────────────────────────────────────────────────────────────
+// CITIZEN CLAIMS — structured AI-extracted claims (M10)
+// ────────────────────────────────────────────────────────────
+
+model CitizenClaim {
+  id                  String          @id @default(cuid())
+  reportId            String          @map("report_id")
+  claimType           CitizenClaimType @map("claim_type")
+  claimText           String          @map("claim_text")
+  extractedEntities    Json?           @map("extracted_entities") // { projectName, contractorName, amount, dates, locations }
+  confidence          String          @default("MEDIUM") // LOW | MEDIUM | HIGH
+  confidenceScore     Float           @default(0) @map("confidence_score") // 0-100
+  evidenceReferences  Json?           @map("evidence_references") // [{ type, id, description }]
+  status              String          @default("PENDING") // PENDING | VERIFIED | DISPUTED | REJECTED
+  verifiedById        String?         @map("verified_by_id")
+  verifiedAt          DateTime?       @map("verified_at") @db.Timestamptz(6)
+  verificationNote    String?         @map("verification_note")
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  report     Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  verifiedBy User?  @relation(fields: [verifiedById], references: [id])
+
+  @@index([reportId])
+  @@index([claimType])
+  @@index([status])
+  @@map("citizen_claims")
+}
+
+// ────────────────────────────────────────────────────────────
+// REPORT MODERATION (M10)
+// ────────────────────────────────────────────────────────────
+
+model ReportModeration {
+  id           String            @id @default(cuid())
+  reportId     String            @map("report_id")
+  action       ModerationAction
+  reason       String
+  moderatorId  String            @map("moderator_id")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  report    Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  moderator User   @relation(fields: [moderatorId], references: [id])
+
+  @@index([reportId])
+  @@index([action])
+  @@map("report_moderations")
+}
+
+// ────────────────────────────────────────────────────────────
+// REPORTER IDENTITY — privacy-separated from public content (M10)
+// ────────────────────────────────────────────────────────────
+
+model ReporterIdentity {
+  id             String   @id @default(cuid())
+  email          String?  @unique
+  phoneHash      String?  @map("phone_hash") // hashed for lookup without storing plain
+  name           String?
+  // Access token for anonymous follow-up
+  accessToken    String   @unique @map("access_token") // bearer token for report lookup
+  accessTokenExp DateTime @map("access_token_exp") @db.Timestamptz(6)
+  // Preferred contact for notifications
+  notifyEmail    Boolean  @default(false) @map("notify_email")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([accessToken])
+  @@map("reporter_identities")
+}
+
+// ────────────────────────────────────────────────────────────
+// ANONYMOUS REPORT ACCESS (M10)
+// ────────────────────────────────────────────────────────────
+
+model AnonymousReportAccess {
+  id             String   @id @default(cuid())
+  reportId       String   @map("report_id")
+  accessToken    String   @unique @map("access_token")
+  accessTokenExp DateTime @map("access_token_exp") @db.Timestamptz(6)
+  // What the anonymous user can see
+  canViewStatus  Boolean  @default(true) @map("can_view_status")
+  canViewUpdates Boolean  @default(true) @map("can_view_updates")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([reportId])
+  @@index([accessToken])
+  @@map("anonymous_report_accesses")
 }
 
 // ────────────────────────────────────────────────────────────

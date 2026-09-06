@@ -85,6 +85,144 @@ export type Report = {
   assignedTo?: { id: string; name: string; email: string };
 };
 
+// ── M10: Citizen Intelligence types ──────────────────────────────────────────
+
+export type ReportPrivacyLevel = 'PUBLIC' | 'RESTRICTED' | 'CONFIDENTIAL' | 'ANONYMOUS';
+export type ReportTriageStatus = 'PENDING' | 'PROCESSING' | 'CATEGORY_SUGGESTED' | 'PROJECT_MATCHED' | 'CLAIMS_EXTRACTED' | 'DUPLICATES_CHECKED' | 'COMPLETED' | 'FAILED';
+export type ReportEvidenceQuality = 'LOW' | 'MEDIUM' | 'HIGH';
+export type CitizenClaimType = 'PROJECT_NOT_STARTED' | 'PROJECT_INCOMPLETE' | 'QUALITY_CONCERN' | 'LOCATION_CONCERN' | 'DATE_CONCERN' | 'FINANCIAL_CONCERN' | 'SAFETY_CONCERN' | 'CONTRACTOR_CONCERN' | 'DOCUMENT_CONCERN' | 'PROGRESS_CONCERN' | 'OTHER';
+export type ModerationAction = 'PUBLISH' | 'RESTRICT' | 'REQUEST_MORE_INFORMATION' | 'REJECT' | 'ESCALATE';
+
+export interface ReportMedia {
+  id: string;
+  reportId: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  mediaType: string;
+  captureDate?: string;
+  stripLocation: boolean;
+  forensicStatus: string;
+  forensicSignals?: Record<string, unknown>;
+  verifiedById?: string;
+  verifiedAt?: string;
+  createdAt: string;
+}
+
+export interface CitizenClaim {
+  id: string;
+  reportId: string;
+  claimType: CitizenClaimType;
+  claimText: string;
+  extractedEntities?: Record<string, unknown>;
+  confidence: string;
+  confidenceScore: number;
+  evidenceReferences?: Array<{ type: string; id: string; description: string }>;
+  status: string;
+  verifiedById?: string;
+  verifiedAt?: string;
+  verificationNote?: string;
+  createdAt: string;
+}
+
+export interface ReportModeration {
+  id: string;
+  reportId: string;
+  action: ModerationAction;
+  reason: string;
+  moderatorId: string;
+  createdAt: string;
+}
+
+export interface AITriageResult {
+  suggestedCategory?: string;
+  suggestedPriority?: string;
+  matchedProjectIds?: string[];
+  duplicateReportIds?: string[];
+  extractedClaims?: CitizenClaim[];
+  evidenceQuality?: ReportEvidenceQuality;
+  notes?: string;
+}
+
+// Extend the existing Report type with M10 fields
+export interface CitizenReport {
+  id: string;
+  reportReference: string;
+  title: string;
+  description: string;
+  category: string;
+  severity: string;
+  status: string;
+  privacyLevel: ReportPrivacyLevel;
+  reporterName?: string;
+  reporterEmail?: string;
+  reporterPhone?: string;
+  isAnonymous: boolean;
+  locationDesc?: string;
+  latitude?: number;
+  longitude?: number;
+  locationAccuracyM?: number;
+  incidentDate?: string;
+  submittedAt: string;
+  triageStatus: ReportTriageStatus;
+  aiTriage?: AITriageResult;
+  aiAnalyzedAt?: string;
+  evidenceQuality?: ReportEvidenceQuality;
+  projectId?: string;
+  assignedToId?: string;
+  resolution?: string;
+  resolvedAt?: string;
+  source: string;
+  project?: { id: string; name: string; state: string; district: string };
+  assignedTo?: { id: string; name: string };
+  media?: ReportMedia[];
+  claims?: CitizenClaim[];
+  moderations?: ReportModeration[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Privacy level labels for UI
+export const PRIVACY_LABELS: Record<ReportPrivacyLevel, { label: string; description: string }> = {
+  PUBLIC: { label: 'Public', description: 'Report may appear in transparency view after moderation.' },
+  RESTRICTED: { label: 'Restricted', description: 'Visible only to authorized reviewers.' },
+  CONFIDENTIAL: { label: 'Confidential', description: 'Identity and content access strongly restricted.' },
+  ANONYMOUS: { label: 'Anonymous', description: 'No reporter identity attached.' },
+};
+
+// Category labels for UI
+export const REPORT_CATEGORY_LABELS: Record<string, string> = {
+  PROJECT_NOT_STARTED: 'Project Not Started',
+  PROJECT_DELAY: 'Project Delay',
+  WORK_QUALITY: 'Work Quality Issue',
+  PROJECT_INCOMPLETE: 'Project Incomplete',
+  LOCATION_MISMATCH: 'Location Mismatch',
+  PUBLIC_SAFETY: 'Public Safety Concern',
+  ENVIRONMENTAL_CONCERN: 'Environmental Concern',
+  FINANCIAL_CONCERN: 'Financial Concern',
+  DOCUMENT_CONCERN: 'Document Concern',
+  CONTRACTOR_CONCERN: 'Contractor Concern',
+  BRIBERY_ALLEGATION: 'Bribery Allegation',
+  CORRUPTION_CONCERN: 'Corruption Concern',
+  OTHER: 'Other',
+};
+
+// Status labels for UI
+export const REPORT_STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: 'Submitted',
+  RECEIVED: 'Received',
+  TRIAGED: 'Triaged',
+  PROJECT_MATCHED: 'Project Matched',
+  REVIEW_QUEUE: 'In Review Queue',
+  UNDER_VERIFICATION: 'Under Verification',
+  VERIFIED: 'Verified',
+  RESOLVED: 'Resolved',
+  DISMISSED: 'Dismissed',
+  ESCALATED: 'Escalated',
+};
+
 // ── Vendors ────────────────────────────────────────────────
 
 export interface VendorProject {
