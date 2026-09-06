@@ -19,6 +19,7 @@ import documentRoutes from './documents';
 import mpRoutes from './mps';
 import riskRoutes from './risk';
 import sectorsRoutes from './sectors';
+import adminRoutes from './admin';
 
 const router = Router();
 
@@ -81,5 +82,8 @@ router.use('/', riskRoutes);
 
 // M13: Sector framework routes
 router.use('/sectors', sectorsRoutes);
+
+// Admin: System stats, audit, alerts, users (requires ADMIN role)
+router.use('/admin', adminRoutes);
 
 export default router;

@@ -11,6 +11,8 @@ declare global {
   }
 }
 
+export const requireAuth = authenticate;
+
 export function authenticate(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -35,4 +37,20 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
     } catch { /* ignore invalid token for optional auth */ }
   }
   next();
+}
+
+/**
+ * Require the request to have one of the specified roles.
+ * Must be used AFTER authenticate() middleware.
+ */
+export function requireRole(...roles: string[]) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return next(new UnauthorizedError('Authentication required'));
+    }
+    if (!roles.includes(req.user.role)) {
+      return next(new UnauthorizedError(`Insufficient permissions. Required: ${roles.join(' or ')}`));
+    }
+    next();
+  };
 }
