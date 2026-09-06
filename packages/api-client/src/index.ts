@@ -12,6 +12,7 @@ export * from './mps';
 export * from './documents';
 export * from './financial';
 export * from './citizenReports';
+export * from './sectors';
 
 // Re-export constants from types for convenience
 export { PRIVACY_LABELS, REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS } from './types';

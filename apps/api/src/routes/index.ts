@@ -18,6 +18,7 @@ import notificationRoutes from './notifications';
 import documentRoutes from './documents';
 import mpRoutes from './mps';
 import riskRoutes from './risk';
+import sectorsRoutes from './sectors';
 
 const router = Router();
 
@@ -77,5 +78,8 @@ router.use('/mps', mpRoutes);
 
 // Risk routes (project-scoped: /projects/:id/risk; global: /summary, /findings, etc.)
 router.use('/', riskRoutes);
+
+// M13: Sector framework routes
+router.use('/sectors', sectorsRoutes);
 
 export default router;

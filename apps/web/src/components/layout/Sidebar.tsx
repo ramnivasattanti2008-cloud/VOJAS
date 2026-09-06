@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, FolderOpenDot, AlertTriangle, FileText, Settings,
   ShieldAlert, ListChecks, ScanSearch, Map, BarChart3, Bell,
-  Users, Briefcase, FileArchive, type LucideIcon,
+  Users, Briefcase, FileArchive, Layers, type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ const items: NavItem[] = [
   { label: 'Projects', href: '/projects', icon: FolderOpenDot },
   { label: 'Map View', href: '/map-view', icon: Map },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { label: 'Sectors', href: '/sectors', icon: Layers },
   { label: 'Anomalies', href: '/anomalies', icon: AlertTriangle },
   { label: 'Reports', href: '/reports', icon: FileText },
   { label: 'Intelligence', href: '/intelligence', icon: ShieldAlert },
