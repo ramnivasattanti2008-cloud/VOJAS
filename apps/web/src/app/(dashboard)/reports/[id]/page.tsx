@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Bot,
   MessageSquare,
+  X,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -71,13 +72,14 @@ export default function ReportDetailPage() {
   const updateMutation = useUpdateCitizenReport();
   const moderateMutation = useModerateReport();
   const triageMutation = useRunReportTriage();
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleStatusChange = async (status: string) => {
     if (!report) return;
     try {
       await updateMutation.mutateAsync({ id: report.id, payload: { status } });
-    } catch (err) {
-      console.error('Status update failed:', err);
+    } catch {
+      setActionError('Status update failed. Please try again.');
     }
   };
 
@@ -92,8 +94,8 @@ export default function ReportDetailPage() {
       setShowModerationModal(false);
       setModerationAction(null);
       setModerationReason('');
-    } catch (err) {
-      console.error('Moderation failed:', err);
+    } catch {
+      setActionError('Moderation action failed. Please try again.');
     }
   };
 
@@ -101,8 +103,8 @@ export default function ReportDetailPage() {
     if (!report) return;
     try {
       await triageMutation.mutateAsync(report.id);
-    } catch (err) {
-      console.error('Triage failed:', err);
+    } catch {
+      setActionError('AI triage failed. Please try again.');
     }
   };
 
@@ -131,6 +133,15 @@ export default function ReportDetailPage() {
 
   return (
     <div className="space-y-6">
+      {actionError && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{actionError}</span>
+          <button onClick={() => setActionError(null)} className="hover:text-red-900" aria-label="Dismiss">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

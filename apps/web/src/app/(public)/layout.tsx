@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'VOJAS — MPLAD Accountability Platform',
+  description: 'Submit reports, track projects, and monitor MPLAD fund accountability in your constituency.',
+  robots: { index: true, follow: true },
+};
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (

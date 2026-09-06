@@ -1,5 +1,17 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | VOJAS',
+    default: 'Dashboard | VOJAS',
+  },
+  robots: { index: false, follow: false },
+  other: {
+    'theme-color': '#1e40af',
+  },
+};
 import { Header } from '@/components/layout/Header';
 import { AuthGate } from '@/components/auth/AuthGate';
 

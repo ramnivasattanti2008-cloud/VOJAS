@@ -1,7 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Filter, X, Eye, CheckCircle, XCircle, AlertTriangle, Clock, Play } from 'lucide-react';
+
+function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+      <AlertCircle className="h-4 w-4 shrink-0" />
+      <span className="flex-1">{message}</span>
+      <button onClick={onDismiss} className="hover:text-red-900" aria-label="Dismiss error">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+import { Search, Filter, X, Eye, CheckCircle, XCircle, AlertTriangle, Clock, Play, AlertCircle } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -60,6 +72,8 @@ export default function AdminReportsPage() {
 
   const moderateMutation = useModerateReport();
   const triageMutation = useRunReportTriage();
+  const [moderationError, setModerationError] = useState<string | null>(null);
+  const [triageError, setTriageError] = useState<string | null>(null);
 
   const reports = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -82,16 +96,16 @@ export default function AdminReportsPage() {
       setModerationAction(null);
       setModerationReason('');
       setShowDetailModal(false);
-    } catch (err) {
-      console.error('Moderation failed:', err);
+    } catch {
+      setModerationError('Moderation action failed. Please try again.');
     }
   };
 
   const handleRunTriage = async (id: string) => {
     try {
       await triageMutation.mutateAsync(id);
-    } catch (err) {
-      console.error('Triage failed:', err);
+    } catch {
+      setTriageError(`Triage failed for this report. Please try again.`);
     }
   };
 
@@ -101,6 +115,12 @@ export default function AdminReportsPage() {
 
   return (
     <div className="space-y-6">
+      {(moderationError || triageError) && (
+        <div className="space-y-2">
+          {moderationError && <ErrorBanner message={moderationError} onDismiss={() => setModerationError(null)} />}
+          {triageError && <ErrorBanner message={triageError} onDismiss={() => setTriageError(null)} />}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

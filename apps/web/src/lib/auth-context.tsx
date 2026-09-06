@@ -12,12 +12,42 @@ import {
 import { createAuthApi } from '@vojas/api-client';
 import type { ApiClient, User, AuthResponse } from '@vojas/api-client';
 import { setAccessTokenGetter } from './api';
+import {
+  hasPermission,
+  hasAnyPermission,
+  canVerify,
+  isAdminRole,
+  isOfficerRole,
+  isMPRole,
+  isCitizenRole,
+  isContractorRole,
+  getRoleCategory,
+  getPermissions,
+  getRoleColor,
+  type Permission,
+} from '@vojas/domain';
+import type { UserRole } from '@vojas/shared';
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: User | null;
+  role: UserRole | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   accessToken: string | null;
+  // Permission helpers
+  can: (permission: Permission) => boolean;
+  canAny: (permissions: Permission[]) => boolean;
+  // Role shortcuts
+  isAdmin: boolean;
+  isOfficer: boolean;
+  isMP: boolean;
+  isCitizen: boolean;
+  isContractor: boolean;
+  canVerifyFindings: boolean;
+  roleCategory: string;
+  roleColor: string;
+  permissions: Permission[];
+  // Auth methods
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -107,19 +137,35 @@ export function AuthProvider({ children, apiClient, onAuthError }: AuthProviderP
     }
   }, [authApi, onAuthError]);
 
+  const role = (user?.role as UserRole) ?? null;
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      role,
       isLoading,
       isAuthenticated: !!user,
       accessToken,
+      // Permission helpers
+      can: (permission: Permission) => role ? hasPermission(role, permission) : false,
+      canAny: (permissions: Permission[]) => role ? hasAnyPermission(role, permissions) : false,
+      // Role shortcuts
+      isAdmin: isAdminRole(role ?? 'VIEWER'),
+      isOfficer: isOfficerRole(role ?? 'VIEWER'),
+      isMP: isMPRole(role ?? 'VIEWER'),
+      isCitizen: isCitizenRole(role ?? 'VIEWER'),
+      isContractor: isContractorRole(role ?? 'VIEWER'),
+      canVerifyFindings: canVerify(role ?? 'VIEWER'),
+      roleCategory: getRoleCategory(role ?? 'VIEWER'),
+      roleColor: getRoleColor(role ?? 'VIEWER'),
+      permissions: getPermissions(role ?? 'VIEWER'),
+      // Auth methods
       login,
       register,
       logout,
       refresh,
       setAccessToken,
     }),
-    [user, isLoading, accessToken, login, register, logout, refresh]
+    [user, isLoading, accessToken, login, register, logout, refresh, role]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
