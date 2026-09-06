@@ -20,6 +20,7 @@ import mpRoutes from './mps';
 import riskRoutes from './risk';
 import sectorsRoutes from './sectors';
 import adminRoutes from './admin';
+import exportRoutes from './export';
 
 const router = Router();
 
@@ -85,5 +86,8 @@ router.use('/sectors', sectorsRoutes);
 
 // Admin: System stats, audit, alerts, users (requires ADMIN role)
 router.use('/admin', adminRoutes);
+
+// M18: Export routes (CSV download)
+router.use('/export', exportRoutes);
 
 export default router;

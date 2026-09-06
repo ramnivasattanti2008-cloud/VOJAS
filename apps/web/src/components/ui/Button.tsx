@@ -1,7 +1,7 @@
 'use client';
 
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -28,7 +28,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: 'px-6 py-3 text-base',
 };
 
-export function Button({
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
   variant = 'primary',
   size = 'md',
   isLoading = false,
@@ -38,9 +38,10 @@ export function Button({
   disabled,
   children,
   ...props
-}: ButtonProps) {
+}, ref) => {
   return (
     <button
+      ref={ref}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
@@ -62,4 +63,5 @@ export function Button({
       {!isLoading && rightIcon}
     </button>
   );
-}
+});
+Button.displayName = 'Button';
