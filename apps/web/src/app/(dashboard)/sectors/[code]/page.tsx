@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Layers, BarChart3, AlertTriangle, Map as MapIcon, Satellite, FileText, Database, Brain, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Layers, BarChart3, AlertTriangle, Map as MapIcon, FileText, Database, Brain, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';

@@ -1,3 +1,8 @@
+export const metadata = {
+  title: 'Settings | VOJAS',
+  description: 'Account settings, profile, and preferences.',
+};
+
 export default function SettingsPage() {
   return (
     <div className="space-y-4">

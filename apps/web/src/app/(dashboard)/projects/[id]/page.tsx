@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, AlertCircle, FileText, ImageIcon, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { ArrowLeft, MapPin, AlertCircle, FileText, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
@@ -12,11 +13,25 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { SatelliteTab } from '@/components/satellite/SatelliteTab';
-import { ChangeAnalysisTab } from '@/components/changeAnalysis/ChangeAnalysisTab';
-import { ProjectDocumentsTab } from '@/components/project/DocumentsTab';
-import { FinancialTab } from '@/components/project/FinancialTab';
 import { formatCurrency, formatDate, formatDateTime, cn } from '@/lib/utils';
+
+// Lazy-load heavy tab components to reduce initial bundle size
+const SatelliteTab = dynamic(
+  () => import('@/components/satellite/SatelliteTab').then((m) => m.SatelliteTab),
+  { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
+);
+const ChangeAnalysisTab = dynamic(
+  () => import('@/components/changeAnalysis/ChangeAnalysisTab').then((m) => m.ChangeAnalysisTab),
+  { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
+);
+const ProjectDocumentsTab = dynamic(
+  () => import('@/components/project/DocumentsTab').then((m) => m.ProjectDocumentsTab),
+  { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
+);
+const FinancialTab = dynamic(
+  () => import('@/components/project/FinancialTab').then((m) => m.FinancialTab),
+  { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
+);
 
 const projectsApi = createProjectsApi(apiClient);
 
