@@ -1,5 +1,5 @@
 import { PrismaClient } from '@vojas/db';
-import { ValidationError } from '../errors/index.js';
+import { ValidationError } from '../errors/index';
 import { z } from 'zod';
 import { AuditAction } from '@vojas/shared';
 

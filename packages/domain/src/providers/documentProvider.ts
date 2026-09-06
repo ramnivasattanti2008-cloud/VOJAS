@@ -1,4 +1,4 @@
-import { ProviderStatus } from './types.js';
+import { ProviderStatus } from './types';
 
 export interface DocumentUploadResult {
   url: string;

@@ -22,7 +22,7 @@ import type {
   SignalSeverity,
   FindingConfidence,
   ScoringWeights,
-} from './types.js';
+} from './types';
 
 export class CorrelationEngine {
   private prisma: PrismaClient;

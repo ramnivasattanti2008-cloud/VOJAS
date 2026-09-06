@@ -1,5 +1,5 @@
 import { PrismaClient } from '@vojas/db';
-import { NotFoundError, ValidationError } from '../errors/index.js';
+import { NotFoundError, ValidationError } from '../errors/index';
 import { AnomalySeverity, RiskLevel } from '@vojas/shared';
 
 const SEVERITY_WEIGHTS: Record<AnomalySeverity, number> = {

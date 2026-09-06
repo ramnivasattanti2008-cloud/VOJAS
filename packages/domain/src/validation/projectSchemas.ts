@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ProjectStatus, ProjectSector } from '@vojas/shared';
-import { coordinateSchema } from './common.js';
+import { coordinateSchema } from './common';
 
 export const createProjectSchema = z
   .object({

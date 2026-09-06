@@ -20,19 +20,19 @@
 
 import { PrismaClient } from '@vojas/db';
 import type { Prisma } from '@vojas/db';
-import { SignalGenerator } from './signalGenerator.js';
-import { CorrelationEngine } from './correlationEngine.js';
-import { RiskScorer, ProjectRiskResult } from './riskScorer.js';
-import { DataQualityGate } from './dataQualityGate.js';
-import { AIExplainer } from './aiExplainer.js';
-import { RiskRuleEngine, ProjectDataSnapshot } from './ruleEngine.js';
+import { SignalGenerator } from './signalGenerator';
+import { CorrelationEngine } from './correlationEngine';
+import { RiskScorer, ProjectRiskResult } from './riskScorer';
+import { DataQualityGate } from './dataQualityGate';
+import { AIExplainer } from './aiExplainer';
+import { RiskRuleEngine, ProjectDataSnapshot } from './ruleEngine';
 import type {
   RiskSignal,
   CorrelatedFinding,
   RiskFindingInput,
   DataQualityAssessment,
   RiskLevel,
-} from './types.js';
+} from './types';
 
 const ALGORITHM_VERSION = 'rule-engine-v1.0';
 

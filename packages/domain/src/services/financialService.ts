@@ -1,6 +1,6 @@
 import { PrismaClient } from '@vojas/db';
-import { NotFoundError, ValidationError } from '../errors/index.js';
-import { recordExpenditureSchema, RecordExpenditureInput } from '../validation/financialSchemas.js';
+import { NotFoundError, ValidationError } from '../errors/index';
+import { recordExpenditureSchema, RecordExpenditureInput } from '../validation/financialSchemas';
 
 export class FinancialService {
   constructor(private readonly prisma: PrismaClient) {}

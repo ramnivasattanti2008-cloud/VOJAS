@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { geoJSONPolygonSchema } from './common.js';
+import { geoJSONPolygonSchema } from './common';
 
 export const satelliteFiltersSchema = z
   .object({

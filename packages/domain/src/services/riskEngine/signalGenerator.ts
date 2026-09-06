@@ -11,8 +11,8 @@
  */
 
 import { PrismaClient } from '@vojas/db';
-import type { RiskSignal, SignalTypeEnum, SignalSeverity, SignalConfidence, SourceType } from './types.js';
-import { ProjectDataSnapshot } from './ruleEngine.js';
+import type { RiskSignal, SignalTypeEnum, SignalSeverity, SignalConfidence, SourceType } from './types';
+import { ProjectDataSnapshot } from './ruleEngine';
 
 export class SignalGenerator {
   private prisma: PrismaClient;

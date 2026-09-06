@@ -1,23 +1,23 @@
 // Re-export provider interfaces and types
-export type { ProviderStatus, ProviderConfig } from './types.js';
+export type { ProviderStatus, ProviderConfig } from './types';
 export type {
   SatelliteProvider,
   SatelliteScene,
   SatelliteFilters,
-} from './satelliteProvider.js';
+} from './satelliteProvider';
 export type {
   GovernmentDataProvider,
   GovernmentProjectRecord,
-} from './governmentDataProvider.js';
-export type { MapsProvider, GeocodeResult } from './mapsProvider.js';
+} from './governmentDataProvider';
+export type { MapsProvider, GeocodeResult } from './mapsProvider';
 export type {
   AIProvider,
   AIDocumentAnalysis,
   AIAnomalyExplanation,
   AIDocumentType,
-} from './aiProvider.js';
-export type { DocumentProvider, DocumentUploadResult } from './documentProvider.js';
-export type { StorageProvider, StorageObject } from './storageProvider.js';
+} from './aiProvider';
+export type { DocumentProvider, DocumentUploadResult } from './documentProvider';
+export type { StorageProvider, StorageObject } from './storageProvider';
 
 // Re-export null providers
 export {
@@ -27,7 +27,7 @@ export {
   NullAIProvider,
   NullDocumentProvider,
   NullStorageProvider,
-} from './nullProviders.js';
+} from './nullProviders';
 
 // Re-export factory
 export {
@@ -37,4 +37,4 @@ export {
   createAIProvider,
   createDocumentProvider,
   createStorageProvider,
-} from './factory.js';
+} from './factory';

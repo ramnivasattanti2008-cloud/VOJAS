@@ -35,8 +35,8 @@ import type {
   SourceType,
   EvidenceNode,
   RiskLevel,
-} from './types.js';
-import { DEFAULT_SCORING_WEIGHTS } from './types.js';
+} from './types';
+import { DEFAULT_SCORING_WEIGHTS } from './types';
 
 // ── Rule Engine ────────────────────────────────────────────────────
 

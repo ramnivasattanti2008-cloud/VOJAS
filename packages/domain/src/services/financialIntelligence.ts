@@ -20,7 +20,7 @@ import type {
   Document,
   Project,
 } from '@vojas/db';
-import { NotFoundError, ValidationError } from '../errors/index.js';
+import { NotFoundError, ValidationError } from '../errors/index';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
