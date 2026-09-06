@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   other: {
     'theme-color': '#1e40af',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'VOJAS',
+  },
 };
 import { Header } from '@/components/layout/Header';
 import { AuthGate } from '@/components/auth/AuthGate';
