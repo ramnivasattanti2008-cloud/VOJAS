@@ -23,11 +23,17 @@ import { AuthGate } from '@/components/auth/AuthGate';
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGate>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-vojas-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:ring-2 focus:ring-vojas-400"
+      >
+        Skip to main content
+      </a>
       <div className="flex bg-slate-50 min-h-screen">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header />
-          <main className="flex-1 p-6" role="main">
+          <main id="main-content" className="flex-1 p-6" role="main">
             {children}
           </main>
         </div>

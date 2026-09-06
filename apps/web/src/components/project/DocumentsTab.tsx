@@ -155,11 +155,11 @@ export function ProjectDocumentsTab({ projectId }: { projectId: string }) {
       {documents.length === 0 ? (
         <Card>
           <CardBody className="py-12 text-center">
-            <Upload className="h-8 w-8 mx-auto mb-3 text-slate-300" />
+            <Upload className="h-8 w-8 mx-auto mb-3 text-slate-400" />
             <p className="text-sm font-semibold text-slate-600">
               {searchQuery ? 'No matching documents' : 'No documents uploaded'}
             </p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               {searchQuery ? 'Try a different search term' : 'Upload invoices, contracts, photos, and more'}
             </p>
           </CardBody>
@@ -224,7 +224,10 @@ function DocumentRow({
         role="button"
         aria-expanded={isExpanded}
       >
-        <button className="text-slate-400 hover:text-slate-600 transition-colors">
+        <button
+          aria-label={isExpanded ? 'Collapse document' : 'Expand document'}
+          className="text-slate-500 hover:text-slate-700 transition-colors"
+        >
           {isExpanded
             ? <ChevronDown className="h-4 w-4" />
             : <ChevronRight className="h-4 w-4" />}
@@ -250,7 +253,7 @@ function DocumentRow({
               </Badge>
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             {formatBytes(doc.size)} · {formatDate(doc.createdAt)}
             {doc.suggestedType && doc.suggestedType !== doc.type && (
               <span className="ml-2 text-amber-600">

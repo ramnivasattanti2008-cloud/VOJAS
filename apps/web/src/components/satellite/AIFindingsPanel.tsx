@@ -45,9 +45,9 @@ export function AIFindingsPanel({ analyses, comparison }: AIFindingsPanelProps) 
     return (
       <Card>
         <CardBody className="py-12 text-center">
-          <Brain className="h-8 w-8 mx-auto mb-3 text-slate-300" />
+          <Brain className="h-8 w-8 mx-auto mb-3 text-slate-400" />
           <p className="text-sm font-semibold text-slate-600">No AI findings yet</p>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+          <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
             AI analysis runs when at least two satellite observations are available for a project.
           </p>
         </CardBody>

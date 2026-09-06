@@ -59,8 +59,8 @@ export function CitizenVoice({ projectId }: CitizenVoiceProps) {
           </h3>
         </CardHeader>
         <CardBody className="text-center py-8">
-          <MessageSquare className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-          <p className="text-sm text-slate-500">No citizen reports for this project yet.</p>
+          <MessageSquare className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+          <p className="text-sm text-slate-600">No citizen reports for this project yet.</p>
           <Link href="/report" className="inline-block mt-3">
             <Button variant="secondary" size="sm">
               Submit a Report

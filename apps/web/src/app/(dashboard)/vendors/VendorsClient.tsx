@@ -75,8 +75,9 @@ export default function VendorsPage() {
           className="max-w-[180px]"
         />
         <div>
-          <label className="text-sm font-medium text-slate-700 block mb-1">Status</label>
+          <label htmlFor="vendor-status-filter" className="text-sm font-medium text-slate-700 block mb-1">Status</label>
           <select
+            id="vendor-status-filter"
             className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-200 focus:border-vojas-500"
             value={status}
             onChange={(e) => setStatus(e.target.value)}

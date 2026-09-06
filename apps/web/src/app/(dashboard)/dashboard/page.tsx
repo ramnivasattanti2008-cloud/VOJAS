@@ -278,6 +278,7 @@ function FilterBar({
       <select
         value={sectorFilter}
         onChange={(e) => setSectorFilter(e.target.value)}
+        aria-label="Filter by sector"
         className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-vojas-500 bg-white"
       >
         <option value="">All Sectors</option>
@@ -290,6 +291,7 @@ function FilterBar({
       <select
         value={statusFilter}
         onChange={(e) => setStatusFilter(e.target.value)}
+        aria-label="Filter by status"
         className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-vojas-500 bg-white"
       >
         <option value="">All Status</option>

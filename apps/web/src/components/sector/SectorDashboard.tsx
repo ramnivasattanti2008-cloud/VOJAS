@@ -60,9 +60,9 @@ function DataAvailBadge({ avail }: { avail: string }) {
     AVAILABLE: 'bg-green-50 text-green-700 border-green-200',
     PARTIAL: 'bg-amber-50 text-amber-700 border-amber-200',
     STALE: 'bg-red-50 text-red-700 border-red-200',
-    UNAVAILABLE: 'bg-slate-50 text-slate-400 border-slate-200',
+    UNAVAILABLE: 'bg-slate-50 text-slate-500 border-slate-200',
     REQUIRES_AUTH: 'bg-slate-50 text-slate-500 border-slate-200',
-    NOT_APPLICABLE: 'bg-slate-50 text-slate-300 border-slate-200',
+    NOT_APPLICABLE: 'bg-slate-50 text-slate-500 border-slate-200',
   };
   return (
     <span className={cn('text-xs px-1.5 py-0.5 rounded border font-mono', styles[avail] ?? styles.UNAVAILABLE)}>
@@ -84,11 +84,11 @@ function KPICard({ label, value, sublabel, icon: Icon, color, source }: {
           <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', `${color}/10`)}>
             <Icon className={cn('h-4 w-4', color)} />
           </div>
-          {source && <span className="text-xs text-slate-400">{source}</span>}
+          {source && <span className="text-xs text-slate-500">{source}</span>}
         </div>
         <p className="text-2xl font-bold text-slate-800">{value}</p>
         <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-        {sublabel && <p className="text-xs text-slate-400">{sublabel}</p>}
+        {sublabel && <p className="text-xs text-slate-500">{sublabel}</p>}
       </CardBody>
     </Card>
   );
@@ -108,16 +108,16 @@ function IndicatorRow({ indicator, currentValue }: {
           <IndicatorTypeBadge type={indicator.type} />
           <DataAvailBadge avail={indicator.dataAvailability} />
         </div>
-        <p className="text-xs text-slate-400 mt-0.5">{indicator.description}</p>
+        <p className="text-xs text-slate-500 mt-0.5">{indicator.description}</p>
         {indicator.dataNote && (
-          <p className="text-xs text-slate-400 italic mt-0.5">{indicator.dataNote}</p>
+          <p className="text-xs text-slate-500 italic mt-0.5">{indicator.dataNote}</p>
         )}
       </div>
       <div className="text-right shrink-0">
         <p className="text-sm font-mono text-slate-600">
           {currentValue != null ? `${currentValue} ${indicator.unit}` : `— ${indicator.unit}`}
         </p>
-        <p className="text-xs text-slate-400">Source: {indicator.source}</p>
+        <p className="text-xs text-slate-500">Source: {indicator.source}</p>
       </div>
     </div>
   );

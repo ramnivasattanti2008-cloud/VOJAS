@@ -108,8 +108,8 @@ export function ReportTimeline({ reports, projectId }: ReportTimelineProps) {
       <CardBody>
         {filteredReports.length === 0 ? (
           <div className="text-center py-8">
-            <MessageSquare className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-            <p className="text-sm text-slate-500">
+            <MessageSquare className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+            <p className="text-sm text-slate-600">
               {statusFilter ? 'No reports match the selected filter.' : 'No citizen reports for this project.'}
             </p>
           </div>

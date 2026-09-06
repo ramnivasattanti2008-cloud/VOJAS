@@ -23,16 +23,19 @@ const sizeClasses = {
 export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Trap focus and close on Escape
+  // Save and restore focus, close on Escape
   useEffect(() => {
     if (!isOpen) return;
+
+    // Save the currently focused element so we can restore it later
+    const previousFocus = document.activeElement as HTMLElement | null;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    // Focus the dialog
+    // Focus the dialog so keyboard users start inside it
     dialogRef.current?.focus();
     // Prevent body scroll
     document.body.style.overflow = 'hidden';
@@ -40,6 +43,8 @@ export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }:
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
+      // Restore focus to the element that opened the modal
+      previousFocus?.focus();
     };
   }, [isOpen, onClose]);
 

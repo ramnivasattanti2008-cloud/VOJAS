@@ -60,7 +60,7 @@ export function InformationClassificationBanner({
           );
         })}
       </div>
-      <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">
+      <p className="text-xs text-slate-500 mt-2.5 leading-relaxed">
         Information on this page comes from multiple sources. Not all data is independently verified.
         AI-interpreted information is derived from satellite imagery analysis.
       </p>

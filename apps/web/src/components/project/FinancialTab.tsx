@@ -301,7 +301,7 @@ function OverviewPanel({
                   </div>
                   <p className="text-sm text-slate-600 mt-1">{sig.explanation}</p>
                   {sig.deviationPercent !== null && (
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Deviation: {sig.deviationPercent}%{sig.expectedValue != null ? ` (expected: ${sig.expectedValue})` : ''}
                     </p>
                   )}
@@ -315,7 +315,7 @@ function OverviewPanel({
           <CardBody className="py-8 text-center">
             <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-400" />
             <p className="text-sm font-semibold text-slate-700">No financial anomalies detected</p>
-            <p className="text-xs text-slate-400 mt-1">Financial signals are clean for this project.</p>
+            <p className="text-xs text-slate-500 mt-1">Financial signals are clean for this project.</p>
           </CardBody>
         </Card>
       ) : null}
@@ -413,9 +413,9 @@ function TransactionsPanel({ observations, isLoading }: { observations: any[] | 
     return (
       <Card>
         <CardBody className="py-12 text-center">
-          <DollarSign className="h-8 w-8 mx-auto mb-3 text-slate-300" />
+          <DollarSign className="h-8 w-8 mx-auto mb-3 text-slate-400" />
           <p className="text-sm font-semibold text-slate-600">No financial transactions</p>
-          <p className="text-xs text-slate-400 mt-1">No financial observations recorded for this project yet.</p>
+          <p className="text-xs text-slate-500 mt-1">No financial observations recorded for this project yet.</p>
         </CardBody>
       </Card>
     );
@@ -602,7 +602,7 @@ function ReconciliationPanel({ reconciliation, isLoading }: { reconciliation: an
               </Badge>
               <p className="text-sm text-slate-600 mt-2">{reconciliation.correlation.explanation}</p>
               {reconciliation.correlation.discrepancyPercent != null && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Discrepancy: {reconciliation.correlation.discrepancyPercent.toFixed(1)}%
                 </p>
               )}
@@ -633,7 +633,7 @@ function BenchmarkPanel({
     return (
       <Card>
         <CardBody className="py-12 text-center">
-          <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-slate-400" />
+          <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-slate-500" />
           <p className="text-sm text-slate-500">Computing peer benchmarks…</p>
         </CardBody>
       </Card>
@@ -644,9 +644,9 @@ function BenchmarkPanel({
     return (
       <Card>
         <CardBody className="py-12 text-center">
-          <BarChart2 className="h-8 w-8 mx-auto mb-3 text-slate-300" />
+          <BarChart2 className="h-8 w-8 mx-auto mb-3 text-slate-400" />
           <p className="text-sm font-semibold text-slate-600">Peer benchmarking unavailable</p>
-          <p className="text-xs text-slate-400 mt-1">Not enough comparable projects found for benchmarking.</p>
+          <p className="text-xs text-slate-500 mt-1">Not enough comparable projects found for benchmarking.</p>
         </CardBody>
       </Card>
     );
@@ -686,12 +686,12 @@ function BenchmarkPanel({
               <p className="text-xs text-slate-500">This Project</p>
               <p className="text-2xl font-bold text-vojas-700">
                 ₹{benchmark.ourUnitCost.toLocaleString('en-IN')}
-                <span className="text-sm font-normal text-slate-400 ml-1">/unit</span>
+                <span className="text-sm font-normal text-slate-500 ml-1">/unit</span>
               </p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Median (Peers)</p>
-              <p className="text-2xl font-bold text-slate-400">
+              <p className="text-2xl font-bold text-slate-500">
                 ₹{benchmark.unitCostStats.median.toLocaleString('en-IN')}
               </p>
             </div>
@@ -720,7 +720,7 @@ function BenchmarkPanel({
               const pct = maxVal > 0 ? (item.value / maxVal) * 100 : 0;
               return (
                 <div key={item.label} className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 w-16 text-right shrink-0">{item.label}</span>
+                  <span className="text-xs text-slate-500 w-16 text-right shrink-0">{item.label}</span>
                   <div className="flex-1 bg-slate-100 rounded-full h-4 overflow-hidden">
                     <div
                       className={cn(

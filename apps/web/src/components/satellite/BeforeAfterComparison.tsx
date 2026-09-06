@@ -41,9 +41,9 @@ export function BeforeAfterComparison({
     return (
       <Card>
         <CardBody className="py-12 text-center">
-          <SplitSquareVertical className="h-8 w-8 mx-auto mb-3 text-slate-300" />
+          <SplitSquareVertical className="h-8 w-8 mx-auto mb-3 text-slate-400" />
           <p className="text-sm font-semibold text-slate-600">No observations to compare</p>
-          <p className="text-xs text-slate-400 mt-1">At least two satellite observations are needed for a before/after comparison.</p>
+          <p className="text-xs text-slate-500 mt-1">At least two satellite observations are needed for a before/after comparison.</p>
         </CardBody>
       </Card>
     );

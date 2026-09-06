@@ -40,7 +40,8 @@ export function Sidebar() {
   return (
     <aside
       className="w-60 bg-white border-r border-slate-200 h-screen flex flex-col sticky top-0"
-      aria-label="Primary navigation"
+      role="complementary"
+      aria-label="Sidebar"
     >
       {/* Logo */}
       <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
@@ -51,7 +52,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav aria-label="Main navigation" className="flex-1 px-3 py-4 space-y-1">
         {items.map((item) => {
           const isActive =
             pathname === item.href ||

@@ -80,8 +80,9 @@ export default function MPsClient() {
           className="max-w-[200px]"
         />
         <div>
-          <label className="text-sm font-medium text-slate-700 block mb-1">House</label>
+          <label htmlFor="house-filter" className="text-sm font-medium text-slate-700 block mb-1">House</label>
           <select
+            id="house-filter"
             className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-200 focus:border-vojas-500"
             value={house}
             onChange={(e) => setHouse(e.target.value)}

@@ -28,12 +28,13 @@ export function DataTable<T extends { id?: string }>({
 }: DataTableProps<T>) {
   return (
     <div className={cn('overflow-x-auto rounded-lg border border-slate-200', className)}>
-      <table className="w-full text-sm" role="table">
+      <table className="w-full text-sm" role="table" aria-label="Data table">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200">
             {columns.map((col) => (
               <th
                 key={col.key}
+                scope="col"
                 className={cn(
                   'px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider',
                   col.className
@@ -59,7 +60,7 @@ export function DataTable<T extends { id?: string }>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-4 py-12 text-center text-slate-400"
+                className="px-4 py-12 text-center text-slate-500"
               >
                 {emptyMessage}
               </td>

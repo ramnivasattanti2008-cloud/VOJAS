@@ -65,6 +65,7 @@ export function ExportButton({
   const [loading, setLoading] = useState<ExportFormat | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const menuId = 'export-menu-dropdown';
 
   // Close on outside click
   useEffect(() => {
@@ -82,7 +83,10 @@ export function ExportButton({
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btnRef.current?.focus();
+      }
     };
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
@@ -124,15 +128,20 @@ export function ExportButton({
             onClick={() => setOpen(!open)}
             disabled={disabled}
             className={cn('gap-1.5', className)}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-controls={open ? menuId : undefined}
             rightIcon={<ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} />}
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-4 w-4" aria-hidden="true" />
             {label ?? 'Export'}
           </Button>
 
           {open && (
             <div
               ref={menuRef}
+              id={menuId}
+              role="menu"
               className="absolute right-0 z-50 mt-1.5 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100"
             >
               <div className="px-3 py-1.5 text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -141,13 +150,15 @@ export function ExportButton({
               {options.map((opt) => (
                 <button
                   key={opt.format}
+                  role="menuitem"
                   onClick={() => handleExport(opt.format)}
                   disabled={opt.format === 'csv' && !csvEndpoint}
+                  aria-label={opt.label}
                   className={cn(
                     'w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
                   )}
                 >
-                  <span className="mt-0.5 text-slate-400 shrink-0">{opt.icon}</span>
+                  <span className="mt-0.5 text-slate-400 shrink-0" aria-hidden="true">{opt.icon}</span>
                   <div>
                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{opt.label}</div>
                     <div className="text-xs text-slate-500 mt-0.5">{opt.description}</div>
@@ -164,7 +175,7 @@ export function ExportButton({
           disabled={disabled}
           className={cn('gap-1.5', className)}
         >
-          <Download className="h-4 w-4" />
+          <Download className="h-4 w-4" aria-hidden="true" />
           {label ?? options[0].label}
         </Button>
       )}

@@ -108,10 +108,10 @@ function MetricCard({ label, value, unit, note }: { label: string; value: string
     <div className="bg-slate-50 rounded-xl p-3">
       <div className="text-xs text-slate-500 uppercase tracking-wide font-medium">{label}</div>
       <div className="text-lg font-semibold text-slate-900 mt-1">
-        {value ?? <span className="text-slate-400 italic text-sm">—</span>}
+        {value ?? <span className="text-slate-500 italic text-sm">—</span>}
         {unit && value != null && <span className="text-sm font-normal text-slate-500 ml-1">{unit}</span>}
       </div>
-      {note && <div className="text-[11px] text-slate-400 mt-0.5">{note}</div>}
+      {note && <div className="text-[11px] text-slate-500 mt-0.5">{note}</div>}
     </div>
   );
 }
@@ -145,7 +145,7 @@ function ConfidenceFactorsPanel({ factors }: { factors: ChangeAnalysis['confiden
                   'w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs',
                   level === 'HIGH' ? 'bg-green-100 text-green-600' :
                   level === 'MEDIUM' ? 'bg-amber-100 text-amber-600' :
-                  'bg-slate-100 text-slate-400'
+                  'bg-slate-100 text-slate-500'
                 )}>
                   <Icon className="h-3.5 w-3.5" />
                 </div>
@@ -226,7 +226,7 @@ function AnalysisDetail({
               className="p-1 rounded hover:bg-slate-100 transition-colors"
               aria-label={expanded ? 'Collapse details' : 'Expand details'}
             >
-              {expanded ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+              {expanded ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
             </button>
           </div>
         </div>
@@ -553,9 +553,9 @@ export function ChangeAnalysisTab({ projectId, userRole }: ChangeAnalysisTabProp
             </div>
           ) : !latest ? (
             <div className="bg-slate-50 rounded-xl p-8 text-center">
-              <BarChart2 className="h-8 w-8 text-slate-300 mx-auto mb-3" />
+              <BarChart2 className="h-8 w-8 text-slate-400 mx-auto mb-3" />
               <p className="text-sm font-semibold text-slate-600">No change analysis yet</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Run an analysis to see observable physical changes at this project location.
               </p>
               <Button
@@ -625,9 +625,9 @@ export function ChangeAnalysisTab({ projectId, userRole }: ChangeAnalysisTabProp
             </div>
           ) : analyses.length === 0 ? (
             <div className="bg-slate-50 rounded-xl p-8 text-center">
-              <Clock className="h-8 w-8 text-slate-300 mx-auto mb-3" />
+              <Clock className="h-8 w-8 text-slate-400 mx-auto mb-3" />
               <p className="text-sm font-semibold text-slate-600">No analyses run yet</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Change analyses will appear here after running.
               </p>
             </div>
@@ -661,14 +661,14 @@ export function ChangeAnalysisTab({ projectId, userRole }: ChangeAnalysisTabProp
                   .map((obs) => (
                     <div key={obs.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
                       <div className="flex items-center gap-2">
-                        <Camera className="h-3.5 w-3.5 text-slate-400" />
+                        <Camera className="h-3.5 w-3.5 text-slate-500" />
                         <span className="font-medium text-slate-700">
                           {formatDate(obs.observationDate)}
                         </span>
-                        <span className="text-xs text-slate-400">{obs.satellite}</span>
+                        <span className="text-xs text-slate-500">{obs.satellite}</span>
                       </div>
                       {obs.cloudCover != null && (
-                        <span className="text-xs text-slate-400">Cloud: {obs.cloudCover}%</span>
+                        <span className="text-xs text-slate-500">Cloud: {obs.cloudCover}%</span>
                       )}
                     </div>
                   ))}

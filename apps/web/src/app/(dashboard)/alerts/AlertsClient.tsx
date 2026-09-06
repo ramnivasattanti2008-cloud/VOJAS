@@ -159,7 +159,7 @@ export function AlertsClient() {
           <CardBody className="py-12 text-center">
             <CheckCircle className="h-8 w-8 mx-auto mb-3 text-green-400" />
             <p className="text-sm font-semibold text-slate-600">No alerts found</p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               {hasFilters ? 'Try adjusting your filters' : 'All clear — no active alerts'}
             </p>
           </CardBody>

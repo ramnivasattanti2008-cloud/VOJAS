@@ -13,6 +13,7 @@ export function Header() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = 'user-menu-dropdown';
   const { data: notifCount } = useNotificationCount();
   const unread = notifCount?.unreadCount ?? 0;
 
@@ -27,6 +28,14 @@ export function Header() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
+
+  // Keyboard navigation for menu
+  const handleMenuKeyDown = (e: React.KeyboardEvent) => {
+    if (!open) return;
+    if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
 
   const onLogout = async () => {
     setOpen(false);
@@ -55,9 +64,11 @@ export function Header() {
           <button
             type="button"
             onClick={() => setOpen((s) => !s)}
+            onKeyDown={handleMenuKeyDown}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-50 text-sm text-slate-700"
             aria-haspopup="menu"
             aria-expanded={open}
+            aria-controls={open ? menuId : undefined}
             aria-label="User menu"
           >
             <div className="w-7 h-7 rounded-full bg-vojas-100 text-vojas-700 flex items-center justify-center text-xs font-semibold">
@@ -69,6 +80,7 @@ export function Header() {
 
           {open && (
             <div
+              id={menuId}
               role="menu"
               className={cn(
                 'absolute right-0 mt-2 w-48 bg-white rounded-lg border border-slate-200 shadow-lg py-1 z-20'
@@ -87,6 +99,7 @@ export function Header() {
                 type="button"
                 role="menuitem"
                 onClick={onLogout}
+                aria-label="Sign out"
                 className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />

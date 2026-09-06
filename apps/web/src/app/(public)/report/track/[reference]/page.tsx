@@ -230,11 +230,11 @@ export default function TrackReportPage() {
                           {isComplete ? (
                             <CheckCircle className={`h-4 w-4 ${isCurrent ? 'text-vojas-600' : 'text-green-600'}`} />
                           ) : (
-                            <Clock className="h-4 w-4 text-slate-400" />
+                            <Clock className="h-4 w-4 text-slate-500" />
                           )}
                         </div>
                         <div className="flex-1 pt-1">
-                          <p className={`font-medium ${isComplete ? 'text-slate-900' : 'text-slate-400'}`}>
+                          <p className={`font-medium ${isComplete ? 'text-slate-900' : 'text-slate-600'}`}>
                             {step.replace(/_/g, ' ')}
                           </p>
                         </div>
@@ -277,7 +277,7 @@ export default function TrackReportPage() {
       {!searchReference && !isLoading && (
         <Card>
           <CardBody className="py-12 text-center">
-            <FileText className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+            <FileText className="h-10 w-10 mx-auto mb-3 text-slate-400" />
             <p className="text-slate-600">Enter your reference number above to track your report.</p>
           </CardBody>
         </Card>
