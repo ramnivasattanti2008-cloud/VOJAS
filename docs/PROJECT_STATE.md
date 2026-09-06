@@ -4,9 +4,17 @@
 **NEO Monorepo — All pages complete (2026-09-06).** 15 legacy phases + NEO rebuild + M5/M6/M7/M8/M9 modules live in a pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 4 typechecks pass (api, web, api-client, domain).
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization).
 
 ## Last Completed Action
+**M20 Performance & Bundle Optimization (2026-09-06, commit 4c5bf93):**
+- ✅ All pages split into server wrapper (metadata) + client component: analytics, map-view, notifications, intelligence, alerts, verification, settings, sectors
+- ✅ All 13 pages now have loading.tsx skeleton: dashboard, projects, anomalies, reports, map-view, analytics, mps, vendors, notifications, sectors, projects/[id], settings, admin
+- ✅ Heavy tab components (SatelliteTab, ChangeAnalysisTab, FinancialTab, ProjectDocumentsTab) already lazy-loaded with next/dynamic + skeleton loading
+- ✅ Sidebar uses Next.js Link (auto-prefetch on hover/viewport)
+- ✅ Dead code audit: unused imports removed
+- ✅ All 5 packages: 0 TypeScript errors
+
 **M19 PWA Install + Offline Support (2026-09-06, commit 4218657):**
 - ✅ PWA manifest.json with VOJAS branding, shortcuts to /projects and /report
 - ✅ Service worker (public/sw.js) — cache-first for static assets, network-first for API, HTML pages fall back to /offline
@@ -75,6 +83,7 @@
 | M17 | Performance & Polish | ✅ (54b0899) |
 | M18 | Export Engine | ✅ (d0b4f13) |
 | M19 | PWA Install + Offline | ✅ (4218657) |
+| M20 | Performance & Bundle Optimization | ✅ (4c5bf93) |
 
 ## Verification
 
@@ -85,4 +94,4 @@
 - 18+ feature pages live (Dashboard, Projects, Map, Analytics, Anomalies, Reports, Intelligence, Alerts, Verification, MPs, Vendors, Documents, Notifications, Settings, Project Detail + Time Machine)
 
 ## Next Action
-Decide next phase. Candidates: M20 (Advanced visual polish), M21 (Performance audit + bundle optimization), or M22 (Accessibility audit WCAG 2.1). The app is now feature-complete and highly polished.
+Decide next phase. Candidates: M21 (WCAG 2.1 accessibility audit), M22 (End-to-end smoke tests), or M23 (Final deployment verification). The app is now feature-complete and highly polished.
