@@ -7,19 +7,7 @@
 ✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline).
 
 ## Last Completed Action
-**M17 Performance & Polish (2026-09-06, commit 54b0899):**
-- ✅ Global ErrorBoundary wrapping entire app via providers.tsx
-- ✅ AsyncBoundary + Suspense with page-level loading spinner
-- ✅ Skeleton components: CardSkeleton, TableRowSkeleton, StatCardSkeleton, PageSkeleton
-- ✅ loading.tsx + not-found.tsx for dashboard route
-- ✅ SEO metadata on all layouts (dashboard, auth, public) + login/register/report pages
-- ✅ Server-component wrappers for client pages needing metadata
-- ✅ Static India state data extracted to src/data/indiaStates.ts (200+ lines from dashboard page)
-- ✅ console.error → ErrorBanner UI in admin/reports and reports/[id] pages
-- ✅ Theme-color meta tag for PWA installability
-- ✅ All 5 packages: 0 TypeScript errors
-
-**M19 PWA Install + Offline Support (2026-09-06, commit <NEW>):
+**M19 PWA Install + Offline Support (2026-09-06, commit 4218657):**
 - ✅ PWA manifest.json with VOJAS branding, shortcuts to /projects and /report
 - ✅ Service worker (public/sw.js) — cache-first for static assets, network-first for API, HTML pages fall back to /offline
 - ✅ Offline fallback page (public/offline.html) — dark-themed, branded, retry button
@@ -27,12 +15,9 @@
 - ✅ InstallPrompt component — dismissible card with Install Now CTA, renders in root layout
 - ✅ Apple PWA meta tags (apple-mobile-web-app-*) in root layout
 - ✅ SVG app icons (icon-192.svg, icon-512.svg) in public/icons/
+- ✅ All 5 packages: 0 TypeScript errors
 
 **M18 Export Engine (2026-09-06, commit d0b4f13):**
-- ✅ ... (export engine completed)
-
-## Last Completed Action
-**TS Clean (2026-09-06, commit 637bbff):**
 - ✅ Resolved 27 TypeScript errors across `apps/api`, `apps/web`, and `packages/domain`
 - Key fixes: `DocumentType` conflict (→ `AIDocumentType`), duplicate constants, `DocumentIntelligenceService` method import, `Card` children optional, `Badge` size prop removed, `formatBytes` added, `Document` type enriched with DB fields, `DocumentRow` prop passing
 - All 5 typechecks now clean
@@ -89,7 +74,7 @@
 | M9 | All Pages Complete | ✅ (4757f12) |
 | M17 | Performance & Polish | ✅ (54b0899) |
 | M18 | Export Engine | ✅ (d0b4f13) |
-| M19 | PWA Install + Offline | ✅ (pending push) |
+| M19 | PWA Install + Offline | ✅ (4218657) |
 
 ## Verification
 
