@@ -4,9 +4,21 @@
 **NEO Monorepo — All pages complete (2026-09-06).** 15 legacy phases + NEO rebuild + M5/M6/M7/M8/M9 modules live in a pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 4 typechecks pass (api, web, api-client, domain).
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit).
 
 ## Last Completed Action
+**M21 WCAG 2.1 Accessibility Audit (2026-09-06, commit 250b57a):**
+- ✅ Skip-to-content link in dashboard layout (visible on focus)
+- ✅ main element id + tabIndex for skip link target
+- ✅ DataTable: role=\"table\", scope=\"col\", keyboard navigation for rows
+- ✅ Modal: focus trapping, Escape key, aria-modal, aria-label, focus restoration
+- ✅ Sidebar: <nav aria-label>, aria-current=\"page\", icons aria-hidden
+- ✅ Header: notification bell aria-label, user menu aria-haspopup/aria-expanded/aria-controls
+- ✅ ExportButton: aria-haspopup=\"menu\", aria-expanded, aria-controls, role=\"menu\"
+- ✅ Input: htmlFor/id, aria-invalid, aria-describedby, role=\"alert\"
+- ✅ All icon-only buttons have aria-label
+- ✅ 0 TypeScript errors across all 5 packages
+
 **M20 Performance & Bundle Optimization (2026-09-06, commit 4c5bf93):**
 - ✅ All pages split into server wrapper (metadata) + client component: analytics, map-view, notifications, intelligence, alerts, verification, settings, sectors
 - ✅ All 13 pages now have loading.tsx skeleton: dashboard, projects, anomalies, reports, map-view, analytics, mps, vendors, notifications, sectors, projects/[id], settings, admin
@@ -84,6 +96,7 @@
 | M18 | Export Engine | ✅ (d0b4f13) |
 | M19 | PWA Install + Offline | ✅ (4218657) |
 | M20 | Performance & Bundle Optimization | ✅ (4c5bf93) |
+| M21 | WCAG 2.1 Accessibility Audit | ✅ (250b57a) |
 
 ## Verification
 
