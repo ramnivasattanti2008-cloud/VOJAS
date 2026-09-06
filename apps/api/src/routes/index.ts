@@ -12,6 +12,7 @@ import anomalyRoutes from './anomalies';
 import reportRoutes from './reports';
 import citizenReportRoutes from './citizenReports';
 import reportSearchRoutes from './reportSearch';
+import publicProjectsRoutes from './publicProjects';
 import vendorRoutes from './vendors';
 import notificationRoutes from './notifications';
 import documentRoutes from './documents';
@@ -58,6 +59,9 @@ router.use('/reports', citizenReportRoutes);
 
 // M10: Report search
 router.use('/reports', reportSearchRoutes);
+
+// M12: Public projects (no auth required)
+router.use('/projects', publicProjectsRoutes);
 
 // Vendor routes
 router.use('/vendors', vendorRoutes);

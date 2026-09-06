@@ -2,6 +2,75 @@ import type { ApiClient } from './client';
 import type { PaginatedResponse } from './types';
 import type { ProjectStatus, ProjectSector } from '@vojas/shared';
 
+// ── Public-safe types ──────────────────────────────────────────────────────────
+
+export interface ProjectSummary {
+  totalProjects: number;
+  completedProjects: number;
+  inProgressProjects: number;
+  delayedProjects: number;
+  totalSanctioned: number;
+  totalSpent: number;
+  lastUpdated: string;
+}
+
+export interface StateSummary {
+  state: string;
+  totalProjects: number;
+  completedProjects: number;
+  inProgressProjects: number;
+  delayedProjects: number;
+  totalSanctioned: number;
+  totalSpent: number;
+}
+
+export interface DistrictSummary {
+  state: string;
+  district: string;
+  totalProjects: number;
+  completedProjects: number;
+  inProgressProjects: number;
+  delayedProjects: number;
+  totalSanctioned: number;
+  totalSpent: number;
+}
+
+export interface PublicProject {
+  id: string;
+  name: string;
+  sector: string;
+  status: string;
+  state: string;
+  district: string;
+  constituency?: string;
+  approvedAmount?: number;
+  spentAmount?: number;
+  progressPercent?: number;
+  startDate?: string;
+  expectedEndDate?: string;
+  completionDate?: string;
+  sectorLabel: string;
+  statusLabel: string;
+  sourceDataSource?: string;
+  dataQuality?: string;
+  lastUpdated?: string;
+}
+
+export interface ProjectCluster {
+  id: string;
+  type: 'state' | 'district' | 'constituency' | 'project';
+  name: string;
+  state?: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
+  projectCount: number;
+  completedCount: number;
+  delayedCount: number;
+  totalSanctioned: number;
+  totalSpent: number;
+}
+
 export interface ProjectLocation {
   id: string;
   latitude: number;
@@ -127,6 +196,20 @@ export function createProjectsApi(client: ApiClient) {
     },
     findNearby(params: { latitude: number; longitude: number; radiusKm?: number }) {
       return client.get<Project[]>('/projects/nearby', params);
+    },
+    public: {
+      getSummary() {
+        return client.get<ProjectSummary>('/projects/public/summary');
+      },
+      getStateSummaries() {
+        return client.get<StateSummary[]>('/projects/public/states');
+      },
+      getDistrictSummaries(state: string) {
+        return client.get<DistrictSummary[]>('/projects/public/districts', { state });
+      },
+      getProjectCluster(projectId: string) {
+        return client.get<ProjectCluster>(`/projects/public/cluster/${projectId}`);
+      },
     },
   };
 }
