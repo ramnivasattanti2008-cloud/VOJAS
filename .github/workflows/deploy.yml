@@ -29,8 +29,12 @@ on:
   push:
     branches: [master, main]
     paths:
-      - "backend/**"
-      - "frontend/**"
+      - "apps/api/**"
+      - "apps/web/**"
+      - "packages/db/**"
+      - "packages/domain/**"
+      - "packages/api-client/**"
+      - "packages/shared/**"
       - "docker-compose.yml"
       - "render.yaml"
       - "cyclic.json"
@@ -88,8 +92,8 @@ jobs:
       - name: Build & push backend
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
@@ -151,5 +155,5 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./frontend
+          working-directory: ./apps/web
           vercel-args: "--prod"

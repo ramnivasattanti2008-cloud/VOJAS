@@ -2,8 +2,9 @@
 
 ## Current Commit
 ```
-b7f51a0 docs: PROJECT_STATE — M24 committed, build verified
+677b9b8 M25: final deployment verification + status doc
 ```
+(Pushed to `master` on GitHub)
 
 ## Live URL Status
 
@@ -28,10 +29,12 @@ b7f51a0 docs: PROJECT_STATE — M24 committed, build verified
 | CORS allows Vercel domain | RISK | `ALLOWED_ORIGINS` defaults to `http://localhost:3000`. **Must be set to** `https://vojas-frontend.vercel.app` on Render |
 | `apps/web/vercel.json` | **MISSING** | Root `vercel.json` points to legacy `backend/dist/` and `frontend/dist/` — not applicable to monorepo |
 | Root `vercel.json` | STALE | References non-existent paths in the monorepo. Should be removed or replaced |
-| Render `render.yaml` | NEEDS UPDATE | References `rootDir: backend` and `rootDir: frontend` — old paths. Needs `apps/api` and `apps/web` |
+| Render `render.yaml` | UPDATED | `rootDir: backend` → `rootDir: apps/api`. Note: `apps/api/Dockerfile` doesn't exist yet |
+| `apps/api/Dockerfile` | **MISSING** | Required for Render Docker runtime. Must be authored before Render deploy works |
 | Database URL on Render | UNKNOWN | `render.yaml` uses Render-managed PostgreSQL. The actual Render dashboard secret must be verified |
 | Prisma schema uncommitted | RISK | `packages/db/prisma/schema.prisma` modified but not committed |
 | New domain services uncommitted | INFO | 4 new analytics service files in `packages/domain/src/services/` — untracked, not blocking deploy |
+| `.github/workflows/deploy.yml` | UPDATED | Path filters now watch `apps/**` and `packages/**`. Docker build context moved to `apps/api`. Vercel working directory moved to `apps/web` |
 
 ---
 
@@ -60,13 +63,16 @@ The root `vercel.json` at project root is stale — it references legacy paths. 
 7. Save and trigger **Redeploy**
 
 ### Step 4: Wake up and redeploy Backend on Render
-1. Go to https://dashboard.render.com → vojas-backend
-2. Click **Manual Deploy** → **Deploy latest commit**
-3. Wait ~60s for free-tier wake-up + build
-4. Verify: `curl https://vojas-backend.onrender.com/health`
-5. If deploy fails, update `render.yaml`:
-   - `rootDir: backend` → `rootDir: apps/api`
-   - Update `dockerfilePath` if needed
+1. **FIRST**: Author `apps/api/Dockerfile` (or switch Render to Node runtime — see "Issue 6" below)
+2. Go to https://dashboard.render.com → vojas-backend
+3. **Settings → Build & Deploy**:
+   - If using Docker: ensure `apps/api/Dockerfile` exists
+   - If using Node: Set Build Command = `pnpm install --frozen-lockfile && pnpm --filter @vojas/api build`, Start Command = `cd apps/api && node dist/server.js`
+4. Set `ALLOWED_ORIGINS` env var to `https://vojas-frontend.vercel.app,https://vojas-backend.onrender.com`
+5. Set `DATABASE_URL` env var to your actual PostgreSQL connection string
+6. Click **Manual Deploy** → **Deploy latest commit**
+7. Wait ~60s for free-tier wake-up + build
+8. Verify: `curl https://vojas-backend.onrender.com/health`
 
 ### Step 5: Verify end-to-end
 ```bash
@@ -101,6 +107,19 @@ curl https://vojas-frontend.vercel.app
 ### Issue 5: Render free tier auto-sleep
 **Impact**: Backend takes 30-60s to respond after dormancy.  
 **Workaround**: Upgrade to Render "Starter" ($7/month) for always-on backend, or use a ping cron job.
+
+### Issue 6: Missing `apps/api/Dockerfile`
+**Impact**: Render's Docker runtime will fail to find a Dockerfile.  
+**Workaround (Option A)**: Author a `Dockerfile` in `apps/api` that:
+- Uses `node:20-alpine` as base
+- Copies the workspace files
+- Runs `pnpm install --frozen-lockfile && pnpm --filter @vojas/api build`
+- Exposes port 5000
+- Starts with `node apps/api/dist/server.js`
+
+**Workaround (Option B)**: Switch Render runtime from "Docker" to "Node" with the commands listed in Step 4.
+
+**Workaround (Option C — easiest)**: Use Render's "Node" runtime and skip the Dockerfile entirely. The Express + Prisma app doesn't need Docker for a single-instance deploy.
 
 ---
 

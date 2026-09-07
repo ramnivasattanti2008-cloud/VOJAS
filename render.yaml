@@ -27,8 +27,13 @@ services:
     name: vojas-backend
     plan: starter
     runtime: docker
-    rootDir: backend
+    rootDir: apps/api
     dockerfilePath: ./Dockerfile
+    # NOTE: apps/api/Dockerfile does not exist yet. See DEPLOY-STATUS.md "Issue 6".
+    # Until then, set Render to use a "Node" runtime with:
+    #   Build Command: pnpm install --frozen-lockfile && pnpm --filter @vojas/api build
+    #   Start Command: cd apps/api && node dist/server.js
+    #   Health Check: /api/v1/health
     region: oregon
     healthCheckPath: /api/v1/health
     envVars:
