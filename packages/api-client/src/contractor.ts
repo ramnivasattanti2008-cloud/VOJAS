@@ -1,5 +1,5 @@
-import type { ApiClient } from './client';
-import type { PaginatedResponse } from './types';
+import type { ApiClient } from './client.js';
+import type { PaginatedResponse } from './types.js';
 import type { ProjectStatus, ProjectSector } from '@vojas/shared';
 
 // ── Contractor Types ────────────────────────────────────────────────────────────

@@ -2,8 +2,8 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { NotFoundError } from '@vojas/domain';
-import { authenticate } from '../middleware/auth';
-import { success } from '../utils/apiResponse';
+import { authenticate } from '../middleware/auth.js';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 

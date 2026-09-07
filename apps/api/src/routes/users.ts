@@ -6,9 +6,9 @@ import { AuditService } from '@vojas/domain';
 import { ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
 import { AuditAction } from '@vojas/shared';
 import { UserRole } from '@vojas/shared';
-import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/auth';
-import { success, created } from '../utils/apiResponse';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
+import { success, created } from '../utils/apiResponse.js';
 
 const router = Router();
 const auditService = new AuditService(prisma);
@@ -95,7 +95,7 @@ router.post(
   requireRole(UserRole.ADMIN),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { hashPassword } = await import('../auth/password');
+      const { hashPassword } = await import('../auth/password.js');
       const { registerSchema } = await import('@vojas/domain');
       const parsed = registerSchema.safeParse(req.body);
       if (!parsed.success) {

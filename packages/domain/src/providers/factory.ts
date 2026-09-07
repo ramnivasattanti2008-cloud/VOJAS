@@ -7,12 +7,12 @@
  * 2. Implement the interface
  * 3. Update factory to detect and return it
  */
-import { SatelliteProvider } from './satelliteProvider';
-import { GovernmentDataProvider } from './governmentDataProvider';
-import { MapsProvider } from './mapsProvider';
-import { AIProvider } from './aiProvider';
-import { DocumentProvider } from './documentProvider';
-import { StorageProvider } from './storageProvider';
+import { SatelliteProvider } from './satelliteProvider.js';
+import { GovernmentDataProvider } from './governmentDataProvider.js';
+import { MapsProvider } from './mapsProvider.js';
+import { AIProvider } from './aiProvider.js';
+import { DocumentProvider } from './documentProvider.js';
+import { StorageProvider } from './storageProvider.js';
 import {
   NullSatelliteProvider,
   NullGovernmentDataProvider,
@@ -20,7 +20,7 @@ import {
   NullAIProvider,
   NullDocumentProvider,
   NullStorageProvider,
-} from './nullProviders';
+} from './nullProviders.js';
 
 export function createSatelliteProvider(): SatelliteProvider {
   // Example: const provider = process.env.SATELLITE_PROVIDER;

@@ -4,9 +4,9 @@ import { prisma } from '@vojas/db';
 import { NotFoundError, ValidationError } from '@vojas/domain';
 import { addLocationSchema } from '@vojas/domain';
 import { UserRole } from '@vojas/shared';
-import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/auth';
-import { success, created } from '../utils/apiResponse';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
+import { success, created } from '../utils/apiResponse.js';
 
 const router = Router();
 

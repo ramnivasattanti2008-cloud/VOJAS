@@ -1,5 +1,5 @@
-import type { ApiClient } from './client';
-import type { Notification, NotificationCount, PaginatedResponse } from './types';
+import type { ApiClient } from './client.js';
+import type { Notification, NotificationCount, PaginatedResponse } from './types.js';
 
 export function createNotificationApi(client: ApiClient) {
   return {

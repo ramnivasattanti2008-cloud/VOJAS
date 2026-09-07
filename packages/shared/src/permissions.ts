@@ -5,7 +5,7 @@
  * Permissions are resource.action strings (e.g., "project.read.internal").
  */
 
-import { UserRole } from './enums';
+import { UserRole } from './enums.js';
 
 // ── Permission Constants ─────────────────────────────────────────────────────
 

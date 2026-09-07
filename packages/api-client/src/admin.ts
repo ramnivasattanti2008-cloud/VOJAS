@@ -3,7 +3,7 @@
  * Full administrative operations for VOJAS platform
  */
 
-import type { ApiClient } from './client';
+import type { ApiClient } from './client.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

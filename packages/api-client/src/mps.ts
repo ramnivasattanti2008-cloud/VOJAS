@@ -1,6 +1,6 @@
-import type { ApiClient } from './client';
-import type { MP, PaginatedResponse } from './types';
-import type { Project } from './projects';
+import type { ApiClient } from './client.js';
+import type { MP, PaginatedResponse } from './types.js';
+import type { Project } from './projects.js';
 
 export function createMpApi(client: ApiClient) {
   return {

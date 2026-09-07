@@ -1,5 +1,5 @@
-import type { ApiClient } from './client';
-import type { Anomaly, AnomalyStats, PaginatedResponse } from './types';
+import type { ApiClient } from './client.js';
+import type { Anomaly, AnomalyStats, PaginatedResponse } from './types.js';
 
 export function createAnomalyApi(client: ApiClient) {
   return {

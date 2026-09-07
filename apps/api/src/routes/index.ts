@@ -29,6 +29,8 @@ const router = Router();
 
 // Auth routes
 router.use('/auth', authRoutes);
+// Health route (mounted at /api/v1/health for compatibility with smoke tests)
+router.get('/health', (_req, res) => { res.json({ status: 'ok', timestamp: new Date().toISOString() }); });
 
 // User routes
 router.use('/users', userRoutes);

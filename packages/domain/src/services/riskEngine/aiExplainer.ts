@@ -17,7 +17,7 @@
  * The deterministic engine produces the structured facts. The LLM explains them.
  */
 
-import type { CorrelatedFinding, RiskSignal, RiskFindingInput } from './types';
+import type { CorrelatedFinding, RiskSignal, RiskFindingInput } from './types.js';
 
 export interface AIExplanationInput {
   finding: CorrelatedFinding;

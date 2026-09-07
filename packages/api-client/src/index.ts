@@ -1,19 +1,19 @@
-export * from './types';
-export * from './client';
-export * from './auth';
-export * from './projects';
-export * from './anomalies';
-export * from './reports';
-export * from './vendors';
-export * from './notifications';
-export * from './changeAnalysis';
-export * from './risk';
+export * from './types.js';
+export * from './client.js';
+export * from './auth.js';
+export * from './projects.js';
+export * from './anomalies.js';
+export * from './reports.js';
+export * from './vendors.js';
+export * from './notifications.js';
+export * from './changeAnalysis.js';
+export * from './risk.js';
 // ./mps conflicts with ./mp for createMpApi/MpApi; re-export with rename
-export { createMpApi as createMpsApi, type MpApi as MpsApi } from './mps';
-export * from './documents';
-export * from './financial';
-export * from './citizenReports';
-export * from './sectors';
+export { createMpApi as createMpsApi, type MpApi as MpsApi } from './mps.js';
+export * from './documents.js';
+export * from './financial.js';
+export * from './citizenReports.js';
+export * from './sectors.js';
 // Selective exports from admin to avoid RiskRule conflict with ./types
 export {
   createAdminApi,
@@ -37,7 +37,7 @@ export {
   type HealthStatus,
   type SecurityEvent,
   type SystemOverview,
-} from './admin';
+} from './admin.js';
 // Selective exports from contractor (ContractorResponse lives here)
 export {
   createContractorApi,
@@ -53,7 +53,7 @@ export {
   type ContractorUpdate,
   type Inspection,
   type WorkDiaryEntry,
-} from './contractor';
+} from './contractor.js';
 // Selective exports from officer to avoid ContractorResponse conflict with ./contractor
 export {
   createOfficerApi,
@@ -63,14 +63,14 @@ export {
   type Evidence,
   type FieldInspection,
   type CaseAction,
-} from './officer';
-export * from './citizen';
+} from './officer.js';
+export * from './citizen.js';
 
 // Selective export from ./mp (avoids createMpApi conflict with ./mps)
-export { createMpApi as createMPCommandApi, type MPApi as MPCommandApi, type MPConstituencySummary, type MPFinancialSummary, type MPDemandCluster, type MPCitizenSignal } from './mp';
+export { createMpApi as createMPCommandApi, type MPApi as MPCommandApi, type MPConstituencySummary, type MPFinancialSummary, type MPDemandCluster, type MPCitizenSignal } from './mp.js';
 
 // Re-export constants from types for convenience
-export { PRIVACY_LABELS, REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS } from './types';
+export { PRIVACY_LABELS, REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS } from './types.js';
 
 // Re-export payload types from citizenReports
 export type {
@@ -79,7 +79,7 @@ export type {
   ReportFilters,
   NearbyReportsParams,
   CitizenReportsApi,
-} from './citizenReports';
+} from './citizenReports.js';
 
 // Re-export M10 types
 export type {
@@ -93,4 +93,4 @@ export type {
   ReportEvidenceQuality,
   CitizenClaimType,
   ModerationAction,
-} from './types';
+} from './types.js';

@@ -2,9 +2,9 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
-import { authenticate, requireAnyPermission } from '../middleware/auth';
+import { authenticate, requireAnyPermission } from '../middleware/auth.js';
 import { PERMISSIONS } from '@vojas/shared';
-import { success } from '../utils/apiResponse';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 

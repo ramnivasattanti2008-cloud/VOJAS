@@ -12,8 +12,8 @@
  */
 
 import { PrismaClient } from '@vojas/db';
-import type { DataQualityAssessment } from './types';
-import { ProjectDataSnapshot } from './ruleEngine';
+import type { DataQualityAssessment } from './types.js';
+import { ProjectDataSnapshot } from './ruleEngine.js';
 
 export class DataQualityGate {
   private prisma: PrismaClient;

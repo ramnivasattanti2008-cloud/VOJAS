@@ -6,7 +6,7 @@
  */
 
 import type { PrismaClient, Document } from '@vojas/db';
-import { NotFoundError } from '../errors/index';
+import { NotFoundError } from '../errors/index.js';
 import crypto from 'crypto';
 
 // ─── Types ──────────────────────────────────────────────────────────────────

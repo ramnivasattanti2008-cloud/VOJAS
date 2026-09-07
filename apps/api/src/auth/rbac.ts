@@ -19,7 +19,7 @@ export {
   requirePermission,
   requireAnyPermission,
   requireAllPermissions,
-} from '../middleware/auth';
+} from '../middleware/auth.js';
 
 // Also re-export shared helpers for convenience
 export {

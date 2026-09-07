@@ -1,7 +1,7 @@
-import type { ApiClient } from './client';
-import type { ApiResponse, PaginatedResponse } from './types';
-import type { MP } from './types';
-import type { Project } from './projects';
+import type { ApiClient } from './client.js';
+import type { ApiResponse, PaginatedResponse } from './types.js';
+import type { MP } from './types.js';
+import type { Project } from './projects.js';
 
 // ── MP Command Center API ──────────────────────────────────────────────────────
 

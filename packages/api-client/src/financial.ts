@@ -1,4 +1,4 @@
-import type { ApiClient } from './client';
+import type { ApiClient } from './client.js';
 import type {
   FundLifecycle,
   FinancialObservation,
@@ -6,7 +6,7 @@ import type {
   PeerBenchmark,
   FinancialRiskSignals,
   CrossSourceCorrelation,
-} from './types';
+} from './types.js';
 
 export function createFinancialApi(client: ApiClient) {
   return {

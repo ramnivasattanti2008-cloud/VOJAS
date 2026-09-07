@@ -1,5 +1,5 @@
-import type { ApiClient } from './client';
-import type { Vendor, PaginatedResponse } from './types';
+import type { ApiClient } from './client.js';
+import type { Vendor, PaginatedResponse } from './types.js';
 
 export function createVendorApi(client: ApiClient) {
   return {

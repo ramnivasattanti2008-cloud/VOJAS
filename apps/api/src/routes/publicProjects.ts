@@ -14,7 +14,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { success } from '../utils/apiResponse';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 

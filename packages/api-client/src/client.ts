@@ -1,4 +1,4 @@
-import type { ApiResponse } from './types';
+import type { ApiResponse } from './types.js';
 
 export interface ApiClientOptions {
   baseUrl: string;

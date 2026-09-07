@@ -3,7 +3,7 @@
  */
 
 // Core types
-export * from './types';
+export * from './types.js';
 
 // Rule engine
 export {
@@ -12,26 +12,26 @@ export {
   ProgressSatelliteMismatchRule,
   FinancialPhysicalMismatchRule,
   ProjectDelayRule,
-} from './ruleEngine';
-export type { ProjectDataSnapshot } from './ruleEngine';
+} from './ruleEngine.js';
+export type { ProjectDataSnapshot } from './ruleEngine.js';
 
 // Signal generation
-export { SignalGenerator } from './signalGenerator';
+export { SignalGenerator } from './signalGenerator.js';
 
 // Correlation
-export { CorrelationEngine } from './correlationEngine';
+export { CorrelationEngine } from './correlationEngine.js';
 
 // Risk scoring
-export { RiskScorer } from './riskScorer';
-export type { ProjectRiskResult, ScoreContributor } from './riskScorer';
+export { RiskScorer } from './riskScorer.js';
+export type { ProjectRiskResult, ScoreContributor } from './riskScorer.js';
 
 // Data quality
-export { DataQualityGate } from './dataQualityGate';
+export { DataQualityGate } from './dataQualityGate.js';
 
 // AI explainer
-export { AIExplainer } from './aiExplainer';
-export type { AIExplanationInput, AIExplanationOutput } from './aiExplainer';
+export { AIExplainer } from './aiExplainer.js';
+export type { AIExplanationInput, AIExplanationOutput } from './aiExplainer.js';
 
 // Orchestrator
-export { RiskAnalysisOrchestrator } from './riskAnalysisOrchestrator';
-export type { RiskAnalysisResult } from './riskAnalysisOrchestrator';
+export { RiskAnalysisOrchestrator } from './riskAnalysisOrchestrator.js';
+export type { RiskAnalysisResult } from './riskAnalysisOrchestrator.js';

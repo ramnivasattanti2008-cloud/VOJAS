@@ -8,8 +8,8 @@ import {
   CreateProjectInput,
   UpdateProjectInput,
   AddLocationInput,
-} from '../validation/projectSchemas';
-import { NotFoundError, ValidationError, ForbiddenError } from '../errors/index';
+} from '../validation/projectSchemas.js';
+import { NotFoundError, ValidationError, ForbiddenError } from '../errors/index.js';
 import { UserRole } from '@vojas/shared';
 
 export interface PaginatedResult<T> {

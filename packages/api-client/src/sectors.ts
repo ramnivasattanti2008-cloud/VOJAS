@@ -2,7 +2,7 @@
  * Sectors API Client — M13 16-Sector Framework
  */
 
-import type { ApiClient } from './client';
+import type { ApiClient } from './client.js';
 import type { ProjectSector } from '@vojas/shared';
 
 // ── Types ────────────────────────────────────────────────────────────────────

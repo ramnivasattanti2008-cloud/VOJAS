@@ -1,7 +1,7 @@
 /**
  * M8: Risk Analysis API client
  */
-import type { ApiClient } from './client';
+import type { ApiClient } from './client.js';
 import type {
   RiskSignal,
   RiskFinding,
@@ -12,7 +12,7 @@ import type {
   RiskTrend,
   RiskHotspot,
   RiskRule,
-} from './types';
+} from './types.js';
 
 export function createRiskApi(client: ApiClient) {
   return {

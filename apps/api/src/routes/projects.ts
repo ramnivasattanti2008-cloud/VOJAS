@@ -8,8 +8,8 @@ import {
   projectFiltersSchema,
 } from '@vojas/domain';
 import { UserRole } from '@vojas/shared';
-import { authenticate, requireRole } from '../middleware/auth';
-import { success, created } from '../utils/apiResponse';
+import { authenticate, requireRole } from '../middleware/auth.js';
+import { success, created } from '../utils/apiResponse.js';
 
 const router = Router();
 const auditService = new AuditService(prisma);

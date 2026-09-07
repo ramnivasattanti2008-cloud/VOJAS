@@ -33,9 +33,9 @@ import {
   ModerationAction,
   UserRole,
 } from '@vojas/shared';
-import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/auth';
-import { success, created, error } from '../utils/apiResponse';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
+import { success, created, error } from '../utils/apiResponse.js';
 import { MediaValidationService } from '../services/mediaValidationService.js';
 
 const router = Router();

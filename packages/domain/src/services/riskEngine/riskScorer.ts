@@ -30,7 +30,7 @@ import type {
   ScoringWeights,
   RiskLevel,
   FindingConfidence,
-} from './types';
+} from './types.js';
 
 export class RiskScorer {
   private weights: ScoringWeights;

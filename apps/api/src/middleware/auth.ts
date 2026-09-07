@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../auth/jwt';
+import { verifyAccessToken } from '../auth/jwt.js';
 import { UnauthorizedError, ForbiddenError } from '@vojas/domain';
-import type { JWTPayload } from '../auth/jwt';
+import type { JWTPayload } from '../auth/jwt.js';
 import {
   UserRole,
   Permission,

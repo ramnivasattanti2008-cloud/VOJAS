@@ -6,9 +6,9 @@ import { z } from 'zod';
 import { prisma } from '@vojas/db';
 import { NotFoundError, ValidationError } from '@vojas/domain';
 import { AuditAction, UserRole } from '@vojas/shared';
-import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/auth';
-import { success, created } from '../utils/apiResponse';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
+import { success, created } from '../utils/apiResponse.js';
 import {
   ALLOWED_EXTENSIONS,
   ALLOWED_MIME_TYPES,

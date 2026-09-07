@@ -10,8 +10,8 @@ import { z } from 'zod';
 import { prisma } from '@vojas/db';
 import { ValidationError } from '@vojas/domain';
 import { UserRole } from '@vojas/shared';
-import { authenticate } from '../middleware/auth';
-import { success } from '../utils/apiResponse';
+import { authenticate } from '../middleware/auth.js';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 
@@ -45,7 +45,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     }
 
     const { q, type, state, district, sector, page, limit } = parsed.data;
-    const searchTerm = { contains: q, mode: 'insensitive' as const };
+    const searchTerm = { contains: q };
     const skip = (page - 1) * limit;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const results: Record<string, any> = {};
@@ -58,7 +58,6 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
         OR: [
           { name: searchTerm },
           { description: searchTerm },
-          { status: searchTerm },
         ],
       };
       if (state) projectWhere.state = state;

@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { authenticate } from '../middleware/auth';
-import { sendCsv } from '../services/exportService';
+import { authenticate } from '../middleware/auth.js';
+import { sendCsv } from '../services/exportService.js';
 
 const router = Router();
 

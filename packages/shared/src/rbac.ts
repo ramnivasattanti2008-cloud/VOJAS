@@ -4,8 +4,8 @@
  * Provides resource-level access checks for projects, findings, and cases.
  */
 
-import { UserRole } from './enums';
-import { Permission, PERMISSIONS, ROLE_PERMISSIONS, getPermissionsForRole } from './permissions';
+import { UserRole } from './enums.js';
+import { Permission, PERMISSIONS, ROLE_PERMISSIONS, getPermissionsForRole } from './permissions.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

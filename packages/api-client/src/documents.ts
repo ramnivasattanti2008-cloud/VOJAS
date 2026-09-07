@@ -1,5 +1,5 @@
-import type { ApiClient } from './client';
-import type { Document, PaginatedResponse } from './types';
+import type { ApiClient } from './client.js';
+import type { Document, PaginatedResponse } from './types.js';
 
 // Document intelligence types
 export type DocumentExtraction = {

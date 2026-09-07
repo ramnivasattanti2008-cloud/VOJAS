@@ -1,8 +1,8 @@
 /**
  * M14: Government Officer Command Center API client
  */
-import type { ApiClient } from './client';
-import type { PaginatedResponse } from './types';
+import type { ApiClient } from './client.js';
+import type { PaginatedResponse } from './types.js';
 
 export interface OfficerCase {
   id: string;

@@ -1,4 +1,4 @@
-import type { ApiClient } from './client';
+import type { ApiClient } from './client.js';
 import { UserRole } from '@vojas/shared';
 
 export interface User {

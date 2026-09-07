@@ -1,5 +1,5 @@
-import type { ApiClient } from './client';
-import type { Report, PaginatedResponse } from './types';
+import type { ApiClient } from './client.js';
+import type { Report, PaginatedResponse } from './types.js';
 
 export function createReportApi(client: ApiClient) {
   return {

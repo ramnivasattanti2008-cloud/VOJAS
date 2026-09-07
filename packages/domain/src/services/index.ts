@@ -1,12 +1,12 @@
 // Re-export all domain services
-export { ProjectService } from './projectService';
-export type { PaginatedResult } from './projectService';
-export { SatelliteService } from './satelliteService';
-export { FinancialService } from './financialService';
-export { RiskService } from './riskService';
+export { ProjectService } from './projectService.js';
+export type { PaginatedResult } from './projectService.js';
+export { SatelliteService } from './satelliteService.js';
+export { FinancialService } from './financialService.js';
+export { RiskService } from './riskService.js';
 
 // M9: Financial Intelligence
-export { FinancialIntelligenceService } from './financialIntelligence';
+export { FinancialIntelligenceService } from './financialIntelligence.js';
 export type {
   FundLifecycle,
   ReconciliationResult,
@@ -14,13 +14,13 @@ export type {
   CostAnomalySignal,
   CrossSourceCorrelation,
   FinancialRiskSignals,
-} from './financialIntelligence';
-export type { RiskFinding } from './riskService';
-export { DataSourceService } from './dataSourceService';
-export { AuditService } from './auditService';
+} from './financialIntelligence.js';
+export type { RiskFinding } from './riskService.js';
+export { DataSourceService } from './dataSourceService.js';
+export { AuditService } from './auditService.js';
 
 // M9: Document Intelligence
-export { DocumentIntelligenceService } from './documentIntelligence';
+export { DocumentIntelligenceService } from './documentIntelligence.js';
 export {
   DOCUMENT_TYPES,
   type DocumentType,
@@ -32,7 +32,7 @@ export {
   type DocumentClassification,
   type CrossCheckResult,
   type DocumentSearchResult,
-} from './documentIntelligence';
+} from './documentIntelligence.js';
 
 // M8: Risk Engine
 export {
@@ -43,8 +43,8 @@ export {
   DataQualityGate,
   AIExplainer,
   RiskRuleEngine,
-} from './riskEngine/index';
+} from './riskEngine/index.js';
 export type {
   RiskAnalysisResult,
-} from './riskEngine/index';
-export * from './riskEngine/types';
+} from './riskEngine/index.js';
+export * from './riskEngine/types.js';

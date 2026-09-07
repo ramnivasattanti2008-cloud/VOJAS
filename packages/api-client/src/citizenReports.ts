@@ -1,4 +1,4 @@
-import type { ApiClient } from './client';
+import type { ApiClient } from './client.js';
 import type {
   CitizenReport,
   ReportMedia,
@@ -6,7 +6,7 @@ import type {
   PaginatedResponse,
   ReportPrivacyLevel,
   ModerationAction,
-} from './types';
+} from './types.js';
 
 export interface SubmitReportPayload {
   title: string;

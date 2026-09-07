@@ -12,9 +12,9 @@ import {
   anomalyCreateSchema,
 } from '@vojas/domain';
 import { AuditAction, UserRole, PERMISSIONS, getPermissionsForRole, getFindingVisibilityFilter } from '@vojas/shared';
-import { authenticate } from '../middleware/auth';
-import { requireRole } from '../middleware/auth';
-import { success, created } from '../utils/apiResponse';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
+import { success, created } from '../utils/apiResponse.js';
 
 const router = Router();
 const auditService = new AuditService(prisma);

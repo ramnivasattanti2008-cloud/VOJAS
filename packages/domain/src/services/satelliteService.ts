@@ -1,6 +1,6 @@
 import { PrismaClient } from '@vojas/db';
-import { NotFoundError, ValidationError } from '../errors/index';
-import { satelliteFiltersSchema } from '../validation/satelliteSchemas';
+import { NotFoundError, ValidationError } from '../errors/index.js';
+import { satelliteFiltersSchema } from '../validation/satelliteSchemas.js';
 
 export class SatelliteService {
   constructor(private readonly prisma: PrismaClient) {}

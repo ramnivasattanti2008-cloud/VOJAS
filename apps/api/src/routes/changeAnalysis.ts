@@ -20,8 +20,8 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { NotFoundError } from '@vojas/domain';
-import { authenticate, requirePermission } from '../middleware/auth';
-import { success } from '../utils/apiResponse';
+import { authenticate, requirePermission } from '../middleware/auth.js';
+import { success } from '../utils/apiResponse.js';
 import { changeAnalysisJobQueue } from '../services/changeAnalysisJobQueue.js';
 import type { ChangeClassification, Confidence } from '../services/changeAnalysisEngine.js';
 

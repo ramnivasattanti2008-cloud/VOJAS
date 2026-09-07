@@ -6,7 +6,7 @@
  * (the wrapper { success, data, error } is already unwrapped by client.ts).
  */
 
-import type { ApiClient } from './client';
+import type { ApiClient } from './client.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

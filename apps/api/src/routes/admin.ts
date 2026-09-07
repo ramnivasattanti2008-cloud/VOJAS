@@ -9,7 +9,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { ValidationError, NotFoundError } from '@vojas/domain';
-import { success, created } from '../utils/apiResponse';
+import { success, created } from '../utils/apiResponse.js';
 import { UserRole } from '@vojas/shared';
 
 const router = Router();
@@ -619,11 +619,11 @@ router.get('/activity', async (req: Request, res: Response, next: NextFunction) 
     ]);
 
     // Daily breakdown for projects
-    const startDate = since.toISOString().split('T')[0];
+    
     const dailyProjects = await prisma.$queryRaw<any[]>`
       SELECT DATE(created_at) as date, COUNT(*)::int as count
       FROM projects
-      WHERE created_at >= ${startDate}
+      WHERE created_at >= ${since}
       GROUP BY DATE(created_at)
       ORDER BY date
     `;
