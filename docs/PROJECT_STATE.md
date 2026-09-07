@@ -4,9 +4,23 @@
 **NEO Monorepo — All pages complete (2026-09-06).** 15 legacy phases + NEO rebuild + M5/M6/M7/M8/M9 modules live in a pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 4 typechecks pass (api, web, api-client, domain).
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live + Smoke Tests).
 
 ## Last Completed Action
+**M23 NEO API Live + Smoke Tests Passing (2026-09-07):**
+- ✅ NEO API fully operational on `http://localhost:5001` — fresh `tsx src/server.ts` boots cleanly
+- ✅ Fixed NodeNext module resolution: 80+ source files updated with explicit `.js` import extensions
+- ✅ Updated 4 tsconfigs: `Bundler` → `NodeNext` for proper ESM resolution
+- ✅ All 4 packages build clean: `shared`, `domain`, `api-client`, `api`
+- ✅ Fixed 2 runtime bugs in admin/search routes:
+  - `admin/activity` — raw SQL `created_at >= ${startDate}` (text vs timestamp): changed to pass `since` Date
+  - `search` — `status: searchTerm` on Project (enum field, not string): removed
+  - `search` — `mode: 'insensitive'` on Prisma 6: removed
+- ✅ Added `/api/v1/health` route for smoke test compatibility
+- ✅ **M22 RBAC Smoke Tests: 60/60 PASS** (admin + officer + search + audit + export)
+- ✅ **M23 Legacy Smoke Tests: 44/44 PASS** (against legacy backend on :5000)
+- ✅ Database schema synced via `prisma db push`
+
 **M22 RBAC Code Implementation (2026-09-07):**
 - ✅ `apps/api/src/auth/rbac.ts` — Cleaned up duplicate permission code; re-exports canonical helpers from `middleware/auth` and `@vojas/shared`
 - ✅ `apps/api/src/middleware/auth.ts` — Production middleware: `authenticate`, `requireRole`, `requirePermission`, `requireAnyPermission`, `requireAllPermissions`, `optionalAuth`
@@ -132,6 +146,7 @@
 | M20 | Performance & Bundle Optimization | ✅ (4c5bf93) |
 | M21 | WCAG 2.1 Accessibility Audit | ✅ (250b57a) |
 | M22 | RBAC Code Implementation | ✅ (canonical middleware, role-specific dashboards, all role API clients) |
+| M23 | NEO API Live + Smoke Tests | ✅ (e418574, 80+ files NodeNext migration, 60/60 M22 + 44/44 M23 pass) |
 
 ## Verification
 
@@ -145,4 +160,4 @@
 - 27 role-specific dashboard pages (10 admin, 7 officer, 8 MP, citizen, contractor)
 
 ## Next Action
-M23: End-to-end smoke tests (post-deploy verification) + M24: Final deployment verification. The platform is now feature-complete with all 6 role experiences wired to real APIs and full RBAC enforcement.
+M24: Frontend integration verification (apps/web build + dev server boot) + M25: Final deployment verification. The platform is now feature-complete with all 6 role experiences wired to real APIs and full RBAC enforcement; backend smoke tests 100% green.
