@@ -1,10 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { createMpApi } from '@vojas/api-client';
+import { createMpsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
 
-const mpApi = createMpApi(apiClient);
+const mpApi = createMpsApi(apiClient);
 
 export function useMPs(params?: {
   search?: string;

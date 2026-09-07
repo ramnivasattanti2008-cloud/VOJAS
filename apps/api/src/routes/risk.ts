@@ -23,8 +23,8 @@ import {
   NotFoundError,
   ValidationError,
 } from '@vojas/domain';
-import { AuditAction } from '@vojas/shared';
-import { authenticate, optionalAuth } from '../middleware/auth.js';
+import { AuditAction, PERMISSIONS, getPermissionsForRole } from '@vojas/shared';
+import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
 
 const router = Router();
@@ -41,6 +41,7 @@ const orchestrator = new RiskAnalysisOrchestrator(prisma);
 router.post(
   '/projects/:id/risk/analyze',
   authenticate,
+  requirePermission('risk.trigger'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -449,6 +450,7 @@ router.get(
 router.patch(
   '/findings/:id/status',
   authenticate,
+  requirePermission('finding.review'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const findingId = req.params.id as string;
@@ -517,6 +519,7 @@ router.patch(
 router.get(
   '/risk/summary',
   authenticate,
+  requirePermission('risk.read'),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const [
@@ -601,6 +604,7 @@ router.get(
 router.get(
   '/risk/trends',
   authenticate,
+  requirePermission('risk.read'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { days = '30' } = req.query;
@@ -655,6 +659,7 @@ router.get(
 router.get(
   '/risk/hotspots',
   authenticate,
+  requirePermission('risk.read'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { minScore = '50', limit = '20' } = req.query;
@@ -715,6 +720,7 @@ router.get(
 router.get(
   '/risk/rules',
   authenticate,
+  requirePermission('risk.read'),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const rules = await prisma.riskRule.findMany({
@@ -742,10 +748,12 @@ router.get(
 /**
  * GET /risk/findings
  * Global / national findings across all projects
+ * Requires finding.read permission
  */
 router.get(
   '/risk/findings',
   authenticate,
+  requirePermission('finding.read'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { status, severity, page = '1', limit = '20' } = req.query;
@@ -807,6 +815,7 @@ router.get(
 router.get(
   '/risk/aggregate/by-state',
   authenticate,
+  requirePermission('risk.read'),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const byState = await prisma.$queryRaw<

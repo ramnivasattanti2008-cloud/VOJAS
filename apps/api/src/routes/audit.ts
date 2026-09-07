@@ -2,9 +2,8 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
-import { authenticate } from '../middleware/auth';
-import { requirePermission } from '../auth/rbac';
-import { Permissions } from '../auth/rbac';
+import { authenticate, requireAnyPermission } from '../middleware/auth';
+import { PERMISSIONS } from '@vojas/shared';
 import { success } from '../utils/apiResponse';
 
 const router = Router();
@@ -24,7 +23,7 @@ const querySchema = z.object({
 router.get(
   '/',
   authenticate,
-  requirePermission(Permissions.AUDIT_READ, Permissions.SYSTEM_CONFIG),
+  requireAnyPermission([PERMISSIONS.AUDIT_READ]),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = querySchema.safeParse(req.query);

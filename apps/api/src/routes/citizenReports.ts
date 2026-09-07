@@ -34,7 +34,7 @@ import {
   UserRole,
 } from '@vojas/shared';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../auth/rbac';
+import { requireRole } from '../middleware/auth';
 import { success, created, error } from '../utils/apiResponse';
 import { MediaValidationService } from '../services/mediaValidationService.js';
 

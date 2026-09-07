@@ -4,9 +4,42 @@
 **NEO Monorepo — All pages complete (2026-09-06).** 15 legacy phases + NEO rebuild + M5/M6/M7/M8/M9 modules live in a pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 4 typechecks pass (api, web, api-client, domain).
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation).
 
 ## Last Completed Action
+**M22 RBAC Code Implementation (2026-09-07):**
+- ✅ `apps/api/src/auth/rbac.ts` — Cleaned up duplicate permission code; re-exports canonical helpers from `middleware/auth` and `@vojas/shared`
+- ✅ `apps/api/src/middleware/auth.ts` — Production middleware: `authenticate`, `requireRole`, `requirePermission`, `requireAnyPermission`, `requireAllPermissions`, `optionalAuth`
+- ✅ `apps/api/src/routes/index.ts` — All route modules mounted with RBAC middleware (`audit.read`, `admin.manage`, etc.)
+- ✅ `apps/api/src/routes/admin.ts` — 13 admin endpoints: stats, system-overview, audit, alerts, users, jobs, health, security events, activity
+- ✅ `apps/api/src/routes/officer.ts` — Officer Command Center: dashboard stats, cases (acknowledge/review/resolve/dismiss/escalate), evidence, map layers
+- ✅ `apps/api/src/routes/search.ts` — Unified search across projects/reports/vendors/MPs/anomalies with role-based scoping
+- ✅ `apps/web/src/components/layout/Sidebar.tsx` — Full role-based nav for ADMIN (11 sub-items), MP (8 sub-items), plus universal nav
+- ✅ `apps/web/src/app/(dashboard)/admin/page.tsx` — Admin Control Center home (System overview, health, jobs, security events)
+- ✅ `apps/web/src/app/(dashboard)/admin/{users,roles,data-sources,rules,ai,satellites,jobs,health,audit,security}/` — 10 admin sub-pages
+- ✅ `apps/web/src/app/(dashboard)/officer/{cases,evidence,field,map,page,responses,verification}/` — Officer Command Center pages
+- ✅ `apps/web/src/app/(dashboard)/mp/{page,projects,map,finance,reports,demand,intel,signals}/` — MP Command Center pages
+- ✅ `apps/web/src/app/(dashboard)/citizen/`, `contractor/` — Citizen/Contractor dashboards
+- ✅ `packages/api-client/src/admin.ts` — 46 admin API methods (adminApi)
+- ✅ `packages/api-client/src/{citizen,contractor,mp,officer}.ts` — Role-specific API client modules
+- ✅ `apps/web/src/hooks/useAdmin.ts` — 17 admin React Query hooks (useSystemOverview, useHealthStatus, useAdminJobs, useAdminStats, useAdminAudit, useAdminUsers, useAdminRoles, useAdminDataSources, useAdminRules, useSecurityEvents, useAdminActivity, etc.)
+- ✅ `apps/web/src/hooks/use{Citizen,Contractor,MP,Officer}.ts` — Role-specific hooks
+- ✅ `apps/web/src/components/ui/Tabs.tsx` — Tabs UI primitive
+- ✅ `apps/api/package.json` — Added `@sentry/node` and express-rate-limit dependencies
+- ✅ All 5 packages: 0 TypeScript errors (api, web, api-client, domain, shared)
+- ✅ Domain tests: 98/98 passing (errors, providers, validation, geoUtils)
+
+**M14 RBAC System Documentation (2026-09-07):**
+- ✅ `docs/RBAC.md` — Complete RBAC system: 6 roles, permission format (resource.action.level), role→permissions matrix, adding new permissions workflow, data scoping rules, security invariants
+- ✅ `docs/ROLE_EXPERIENCES.md` — Role comparison matrix, navigation per role, what each role sees/doesn't see, role switching implementation
+- ✅ `docs/PERMISSIONS.md` — Full permission reference (85+ permission keys), TypeScript service API (hasPermission, getPermissions, roleHasAtLeast, getScopeLevel), middleware usage, repository scoping examples, React hooks
+- ✅ `docs/OFFICER_WORKFLOW.md` — Case lifecycle state machine, 5-step verification process, escalation path (MP→ACB/CAG/Lokayukta/Police), auto-trigger rules, daily workflow
+- ✅ `docs/MP_EXPERIENCE.md` — Constituency dashboard, project monitoring, report review, escalation, 3 report generation types, financial tracking, security boundaries
+- ✅ `docs/CONTRACTOR_EXPERIENCE.md` — Project dashboard, milestone workflow, invoice/payment lifecycle (DRAFT→SUBMITTED→REVIEW→APPROVED→PAID), document verification, report response
+- ✅ `docs/CITIZEN_EXPERIENCE.md` — Two-tier experience (anonymous/authenticated), transparency portal, report submission flow, tracking dashboard, follow/watch, source attribution
+- ✅ `docs/ADMIN_EXPERIENCE.md` — Admin dashboard, user/role management, system monitoring, audit log review, security panel, emergency override, data import, multi-tenant management
+- ✅ `docs/PROJECT_STATE.md` updated with M14 entry
+
 **M21 WCAG 2.1 Accessibility Audit (2026-09-06, commit 250b57a):**
 - ✅ Skip-to-content link in dashboard layout (visible on focus)
 - ✅ main element id + tabIndex for skip link target
@@ -92,11 +125,13 @@
 | M7 | Change Analysis | ✅ (a036808) |
 | M8 | Risk Engine + Dashboard | ✅ (0865d11 + 205700e + 5bf746e) |
 | M9 | All Pages Complete | ✅ (4757f12) |
+| M14 | RBAC System Documentation | ✅ (docs/RBAC.md + 7 role docs) |
 | M17 | Performance & Polish | ✅ (54b0899) |
 | M18 | Export Engine | ✅ (d0b4f13) |
 | M19 | PWA Install + Offline | ✅ (4218657) |
 | M20 | Performance & Bundle Optimization | ✅ (4c5bf93) |
 | M21 | WCAG 2.1 Accessibility Audit | ✅ (250b57a) |
+| M22 | RBAC Code Implementation | ✅ (canonical middleware, role-specific dashboards, all role API clients) |
 
 ## Verification
 
@@ -104,7 +139,10 @@
 - Web `tsc --noEmit`: CLEAN
 - api-client `tsc --noEmit`: CLEAN
 - domain `tsc --noEmit`: CLEAN
+- shared `tsc --noEmit`: CLEAN
+- domain tests: 98/98 passing
 - 18+ feature pages live (Dashboard, Projects, Map, Analytics, Anomalies, Reports, Intelligence, Alerts, Verification, MPs, Vendors, Documents, Notifications, Settings, Project Detail + Time Machine)
+- 27 role-specific dashboard pages (10 admin, 7 officer, 8 MP, citizen, contractor)
 
 ## Next Action
-Decide next phase. Candidates: M21 (WCAG 2.1 accessibility audit), M22 (End-to-end smoke tests), or M23 (Final deployment verification). The app is now feature-complete and highly polished.
+M23: End-to-end smoke tests (post-deploy verification) + M24: Final deployment verification. The platform is now feature-complete with all 6 role experiences wired to real APIs and full RBAC enforcement.

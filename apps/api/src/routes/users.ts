@@ -7,7 +7,7 @@ import { ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
 import { AuditAction } from '@vojas/shared';
 import { UserRole } from '@vojas/shared';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../auth/rbac';
+import { requireRole } from '../middleware/auth';
 import { success, created } from '../utils/apiResponse';
 
 const router = Router();

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import app from './app';
+import app from './app.js';
 import { connectDb, disconnectDb } from '@vojas/db';
 
 const PORT = parseInt(process.env.PORT ?? '5000');

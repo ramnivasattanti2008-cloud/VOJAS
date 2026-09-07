@@ -3,19 +3,19 @@ import {
   loginSchema,
   registerSchema,
   refreshTokenSchema,
-} from '../src/validation/authSchemas.js';
+} from '../src/validation/authSchemas';
 import {
   createProjectSchema,
   projectFiltersSchema,
   addLocationSchema,
-} from '../src/validation/projectSchemas.js';
+} from '../src/validation/projectSchemas';
 import {
   satelliteFiltersSchema,
   createObservationSchema,
   sceneMetadataSchema,
-} from '../src/validation/satelliteSchemas.js';
-import { recordExpenditureSchema } from '../src/validation/financialSchemas.js';
-import { documentMetadataSchema } from '../src/validation/documentSchemas.js';
+} from '../src/validation/satelliteSchemas';
+import { recordExpenditureSchema } from '../src/validation/financialSchemas';
+import { documentMetadataSchema } from '../src/validation/documentSchemas';
 import {
   paginationSchema,
   idSchema,
@@ -23,7 +23,7 @@ import {
   geoJSONPointSchema,
   geoJSONPolygonSchema,
   dateRangeSchema,
-} from '../src/validation/common.js';
+} from '../src/validation/common';
 import { ProjectSector, ProjectStatus } from '@vojas/shared';
 
 describe('auth schemas', () => {

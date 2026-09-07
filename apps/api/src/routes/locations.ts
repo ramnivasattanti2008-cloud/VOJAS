@@ -5,7 +5,7 @@ import { NotFoundError, ValidationError } from '@vojas/domain';
 import { addLocationSchema } from '@vojas/domain';
 import { UserRole } from '@vojas/shared';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../auth/rbac';
+import { requireRole } from '../middleware/auth';
 import { success, created } from '../utils/apiResponse';
 
 const router = Router();

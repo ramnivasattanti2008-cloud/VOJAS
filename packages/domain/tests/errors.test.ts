@@ -7,7 +7,7 @@ import {
   ValidationError,
   ConflictError,
   InternalServerError,
-} from '../src/errors/index.js';
+} from '../src/errors/index';
 
 describe('AppError hierarchy', () => {
   it('NotFoundError has statusCode 404 and code NOT_FOUND', () => {

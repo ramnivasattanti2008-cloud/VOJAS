@@ -19,8 +19,8 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { NotFoundError, ForbiddenError } from '@vojas/domain';
-import { authenticate } from '../middleware/auth';
+import { NotFoundError } from '@vojas/domain';
+import { authenticate, requirePermission } from '../middleware/auth';
 import { success } from '../utils/apiResponse';
 import { changeAnalysisJobQueue } from '../services/changeAnalysisJobQueue.js';
 import type { ChangeClassification, Confidence } from '../services/changeAnalysisEngine.js';
@@ -264,17 +264,12 @@ router.get(
 router.post(
   '/projects/:id/analysis/run',
   authenticate,
+  requirePermission('risk.trigger'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
       if (!isValidId(projectId)) {
         return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid project ID' } });
-      }
-
-      const user = (req as Request & { user?: { role?: string } }).user;
-      const role = user?.role ?? 'CITIZEN';
-      if (!['ADMIN', 'OFFICER', 'ANALYST'].includes(role)) {
-        throw new ForbiddenError('Insufficient role to trigger change analysis');
       }
 
       const { observationBeforeId, observationAfterId, sector, primarySignal } = req.body as {

@@ -6,7 +6,7 @@ import {
   NullAIProvider,
   NullDocumentProvider,
   NullStorageProvider,
-} from '../src/providers/nullProviders.js';
+} from '../src/providers/nullProviders';
 import {
   createSatelliteProvider,
   createGovernmentDataProvider,
@@ -14,7 +14,7 @@ import {
   createAIProvider,
   createDocumentProvider,
   createStorageProvider,
-} from '../src/providers/factory.js';
+} from '../src/providers/factory';
 
 describe('Null providers return missing_credentials', () => {
   it('NullSatelliteProvider.getStatus()', () => {

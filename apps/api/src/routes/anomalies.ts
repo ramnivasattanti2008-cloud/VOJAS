@@ -11,16 +11,16 @@ import {
   anomalyEscalateSchema,
   anomalyCreateSchema,
 } from '@vojas/domain';
-import { AuditAction, UserRole } from '@vojas/shared';
+import { AuditAction, UserRole, PERMISSIONS, getPermissionsForRole, getFindingVisibilityFilter } from '@vojas/shared';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../auth/rbac';
+import { requireRole } from '../middleware/auth';
 import { success, created } from '../utils/apiResponse';
 
 const router = Router();
 const auditService = new AuditService(prisma);
 
 /**
- * GET /anomalies — list with filters
+ * GET /anomalies — list with filters and permission scoping
  */
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -28,7 +28,17 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     if (!parsed.success) throw new ValidationError('Invalid query parameters', parsed.error.errors);
 
     const f = parsed.data;
-    const where: Record<string, unknown> = {};
+    const user = req.user!;
+    const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+
+    // Apply permission-based visibility filter
+    const visibilityFilter = getFindingVisibilityFilter({
+      userId: user.userId,
+      role: user.role,
+      permissions: perms as any,
+    });
+
+    const where: Record<string, unknown> = { ...visibilityFilter };
     if (f.status) where.status = f.status;
     if (f.severity) where.severity = f.severity;
     if (f.category) where.category = f.category;

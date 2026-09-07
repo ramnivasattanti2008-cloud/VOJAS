@@ -1,42 +1,71 @@
 'use client';
 
 /**
- * Admin Dashboard — System overview, stats, audit trail, alerts, user management
+ * M14 Admin: System Control Center Home
+ * System-wide health overview, active jobs, provider status, security events
  */
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  BarChart3, AlertTriangle, Users, FileText, MapPin, DollarSign,
-  Satellite, Shield, Clock, TrendingUp, Activity, CheckCircle2,
-  XCircle, Eye, ChevronRight, RefreshCw, Settings,
+  Shield, Activity, Server, Database, Cloud, Brain, Satellite,
+  Clock, AlertTriangle, CheckCircle2, XCircle, RefreshCw,
+  Users, FileText, HardDrive, Play, Settings, Eye, ChevronRight,
+  Zap, Globe, Lock, BarChart3, Cpu, Timer, TrendingUp, AlertCircle,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { cn, formatCurrency, formatDateTime } from '@/lib/utils';
-import { useAdminStats, useAdminAudit, useAdminAlerts, useAdminActivity } from '@/hooks/useAdmin';
+import { cn, formatDateTime } from '@/lib/utils';
+import { useSystemOverview, useHealthStatus, useAdminJobs, useSecurityEvents, useAdminStats } from '@/hooks/useAdmin';
 
-export default function AdminPage() {
-  const router = useRouter();
+// Status colors for providers
+const PROVIDER_STATUS_COLORS = {
+  ONLINE: 'text-emerald-500',
+  HEALTHY: 'text-emerald-500',
+  DEGRADED: 'text-amber-500',
+  DOWN: 'text-red-500',
+  OFFLINE: 'text-red-500',
+  UNHEALTHY: 'text-red-500',
+  UNKNOWN: 'text-slate-400',
+};
+
+const PROVIDER_STATUS_BG = {
+  ONLINE: 'bg-emerald-50',
+  HEALTHY: 'bg-emerald-50',
+  DEGRADED: 'bg-amber-50',
+  DOWN: 'bg-red-50',
+  OFFLINE: 'bg-red-50',
+  UNHEALTHY: 'bg-red-50',
+  UNKNOWN: 'bg-slate-50',
+};
+
+const JOB_STATUS_COLORS = {
+  QUEUED: 'bg-blue-100 text-blue-700',
+  RUNNING: 'bg-purple-100 text-purple-700',
+  COMPLETED: 'bg-emerald-100 text-emerald-700',
+  FAILED: 'bg-red-100 text-red-700',
+  RETRYING: 'bg-amber-100 text-amber-700',
+  CANCELLED: 'bg-slate-100 text-slate-600',
+};
+
+export default function AdminCommandCenterPage() {
   const [refreshing, setRefreshing] = useState(false);
-
-  const { data: stats, isLoading: statsLoading } = useAdminStats();
-  const { data: audit, isLoading: auditLoading } = useAdminAudit({ limit: 20 });
-  const { data: alerts, isLoading: alertsLoading } = useAdminAlerts({ limit: 10 });
-  const { data: activity, isLoading: activityLoading } = useAdminActivity({ days: 7 });
+  const { data: overview, isLoading: overviewLoading } = useSystemOverview();
+  const { data: health } = useHealthStatus();
+  const { data: jobsData } = useAdminJobs({ limit: 10 });
+  const { data: securityData } = useSecurityEvents({ limit: 10 });
+  const { data: stats } = useAdminStats();
 
   const handleRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
-    router.refresh();
   };
 
   const severityVariant = (s: string): 'success' | 'warning' | 'danger' | 'info' | 'neutral' => {
     switch (s) {
       case 'CRITICAL': return 'danger';
-      case 'HIGH': return 'warning';
+      case 'HIGH': return 'danger';
       case 'MEDIUM': return 'warning';
       case 'LOW': return 'success';
       default: return 'neutral';
@@ -52,9 +81,9 @@ export default function AdminPage() {
             <Shield className="h-4 w-4" />
             <span>System Administration</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">SYSTEM CONTROL CENTER</h1>
           <p className="text-sm text-slate-500 mt-1">
-            System-wide statistics, audit trail, risk alerts, and user management.
+            Real-time system health, provider status, and operational overview
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -66,321 +95,428 @@ export default function AdminPage() {
           >
             Refresh
           </Button>
-          <Link href="/admin/reports">
-            <Button variant="secondary" size="sm" leftIcon={<FileText className="h-4 w-4" />}>
-              Citizen Reports
-            </Button>
-          </Link>
         </div>
       </div>
 
-      {/* System Stats */}
-      {statsLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i}><CardBody className="p-4 animate-pulse">
-              <div className="h-8 bg-slate-200 rounded mb-2" />
-              <div className="h-4 bg-slate-100 rounded w-2/3" />
-            </CardBody></Card>
-          ))}
-        </div>
-      ) : stats ? (
-        <>
-          {/* Project / Anomaly / Report / User stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard
-              icon={MapPin}
-              label="Total Projects"
-              value={stats.projects.total.toLocaleString()}
-              sublabel={`${stats.projects.completed} completed · ${stats.projects.inProgress} in progress`}
-              color="text-indigo-600"
-              bgColor="bg-indigo-50"
-            />
-            <StatCard
-              icon={AlertTriangle}
-              label="Anomalies"
-              value={stats.anomalies.total.toLocaleString()}
-              sublabel={`${stats.anomalies.open} open · ${stats.anomalies.resolvedRate.toFixed(0)}% resolved`}
-              color="text-red-600"
-              bgColor="bg-red-50"
-            />
-            <StatCard
-              icon={FileText}
-              label="Reports"
-              value={stats.reports.total.toLocaleString()}
-              sublabel={`${stats.reports.pending} pending review`}
-              color="text-blue-600"
-              bgColor="bg-blue-50"
-            />
-            <StatCard
-              icon={Users}
-              label="Users"
-              value={stats.users.total.toLocaleString()}
-              sublabel={`${stats.users.active} active`}
-              color="text-emerald-600"
-              bgColor="bg-emerald-50"
-            />
-          </div>
-
-          {/* Financial / Satellite / Vendors */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard
-              icon={DollarSign}
-              label="Total Sanctioned"
-              value={formatCurrency(stats.financial.totalSanctioned)}
-              sublabel={`${stats.financial.utilizationRate.toFixed(1)}% utilized`}
-              color="text-amber-600"
-              bgColor="bg-amber-50"
-            />
-            <StatCard
-              icon={DollarSign}
-              label="Total Spent"
-              value={formatCurrency(stats.financial.totalSpent)}
-              sublabel={`${formatCurrency(stats.financial.totalSanctioned - stats.financial.totalSpent)} unspent`}
-              color="text-blue-600"
-              bgColor="bg-blue-50"
-            />
-            <StatCard
-              icon={Satellite}
-              label="Satellite Obs"
-              value={stats.satellite.totalObservations.toLocaleString()}
-              sublabel="Sentinel-2 observations"
-              color="text-purple-600"
-              bgColor="bg-purple-50"
-            />
-            <StatCard
-              icon={Activity}
-              label="Vendors"
-              value={stats.vendors.total.toLocaleString()}
-              sublabel="registered vendors"
-              color="text-slate-600"
-              bgColor="bg-slate-50"
-            />
-          </div>
-
-          {/* Project completion rate bar */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-800">Project Status Overview</h3>
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Completed: {stats.projects.completed}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500" />
-                    In Progress: {stats.projects.inProgress}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500" />
-                    Delayed: {stats.projects.delayed}
-                  </span>
+      {/* Quick Navigation */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {[
+          { href: '/admin/users', icon: Users, label: 'Users', color: 'text-blue-600', bg: 'bg-blue-50' },
+          { href: '/admin/roles', icon: Lock, label: 'Roles', color: 'text-purple-600', bg: 'bg-purple-50' },
+          { href: '/admin/data-sources', icon: Database, label: 'Data Sources', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { href: '/admin/rules', icon: Settings, label: 'Rules', color: 'text-amber-600', bg: 'bg-amber-50' },
+          { href: '/admin/jobs', icon: Play, label: 'Jobs', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { href: '/admin/health', icon: Activity, label: 'Health', color: 'text-red-600', bg: 'bg-red-50' },
+          { href: '/admin/ai', icon: Brain, label: 'AI Control', color: 'text-pink-600', bg: 'bg-pink-50' },
+          { href: '/admin/satellites', icon: Satellite, label: 'Satellites', color: 'text-cyan-600', bg: 'bg-cyan-50' },
+          { href: '/admin/audit', icon: FileText, label: 'Audit Logs', color: 'text-slate-600', bg: 'bg-slate-50' },
+          { href: '/admin/security', icon: Lock, label: 'Security', color: 'text-red-600', bg: 'bg-red-50' },
+        ].map(({ href, icon: Icon, label, color, bg }) => (
+          <Link key={href} href={href}>
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardBody className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', bg)}>
+                    <Icon className={cn('h-4 w-4', color)} />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700">{label}</span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="flex gap-1 h-4 rounded-full overflow-hidden">
-                {stats.projects.total > 0 && (
-                  <>
-                    <div
-                      className="bg-emerald-500 transition-all"
-                      style={{ width: `${(stats.projects.completed / stats.projects.total) * 100}%` }}
-                    />
-                    <div
-                      className="bg-blue-500 transition-all"
-                      style={{ width: `${(stats.projects.inProgress / stats.projects.total) * 100}%` }}
-                    />
-                    <div
-                      className="bg-red-500 transition-all"
-                      style={{ width: `${(stats.projects.delayed / stats.projects.total) * 100}%` }}
-                    />
-                  </>
-                )}
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-slate-400">Completion rate: {stats.projects.completionRate.toFixed(1)}%</span>
-                <span className="text-xs text-slate-400">Total: {stats.projects.total.toLocaleString()} projects</span>
+              </CardBody>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* System Health Overview */}
+      {overviewLoading ? (
+        <Card>
+          <CardBody className="p-6">
+            <div className="animate-pulse space-y-3">
+              <div className="h-4 bg-slate-200 rounded w-1/4" />
+              <div className="h-8 bg-slate-100 rounded w-1/2" />
+            </div>
+          </CardBody>
+        </Card>
+      ) : overview ? (
+        <>
+          {/* Overall Status Banner */}
+          <Card className={cn(
+            'border-2',
+            overview.status.overall === 'HEALTHY' && 'border-emerald-200',
+            overview.status.overall === 'DEGRADED' && 'border-amber-200',
+            overview.status.overall === 'UNHEALTHY' && 'border-red-200'
+          )}>
+            <CardBody className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    'w-16 h-16 rounded-xl flex items-center justify-center',
+                    overview.status.overall === 'HEALTHY' && 'bg-emerald-100',
+                    overview.status.overall === 'DEGRADED' && 'bg-amber-100',
+                    overview.status.overall === 'UNHEALTHY' && 'bg-red-100'
+                  )}>
+                    {overview.status.overall === 'HEALTHY' && <CheckCircle2 className="h-8 w-8 text-emerald-600" />}
+                    {overview.status.overall === 'DEGRADED' && <AlertTriangle className="h-8 w-8 text-amber-600" />}
+                    {overview.status.overall === 'UNHEALTHY' && <XCircle className="h-8 w-8 text-red-600" />}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">
+                      System Status: {overview.status.overall}
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Health Score: {overview.status.score}/100
+                      {' '} | {overview.status.checks.healthy}/{overview.status.checks.total} checks healthy
+                    </p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="flex items-center gap-1 text-xs text-emerald-600">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        {overview.status.checks.healthy} healthy
+                      </span>
+                      {overview.status.checks.degraded > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-amber-600">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          {overview.status.checks.degraded} degraded
+                        </span>
+                      )}
+                      {overview.status.checks.unhealthy > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-red-600">
+                          <span className="w-2 h-2 rounded-full bg-red-500" />
+                          {overview.status.checks.unhealthy} unhealthy
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Link href="/admin/health">
+                  <Button variant="secondary" size="sm" rightIcon={<ChevronRight className="h-4 w-4" />}>
+                    View Details
+                  </Button>
+                </Link>
               </div>
             </CardBody>
           </Card>
-        </>
-      ) : null}
 
-      {/* Two-column layout: Alerts + Audit */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Active Alerts */}
+          {/* Jobs & Providers Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Jobs Summary */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Timer className="h-4 w-4 text-indigo-500" />
+                    <h3 className="text-sm font-semibold text-slate-800">Background Jobs</h3>
+                  </div>
+                  <Link href="/admin/jobs">
+                    <Button variant="ghost" size="sm" rightIcon={<ChevronRight className="h-3.5 w-3.5" />}>
+                      View All
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardBody className="p-0">
+                <div className="grid grid-cols-2 gap-4 p-4">
+                  <div className="text-center p-3 rounded-lg bg-blue-50">
+                    <p className="text-2xl font-bold text-blue-600">{overview.jobs.queued}</p>
+                    <p className="text-xs text-slate-500 mt-1">Queued</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-purple-50">
+                    <p className="text-2xl font-bold text-purple-600">{overview.jobs.active}</p>
+                    <p className="text-xs text-slate-500 mt-1">Running</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-red-50">
+                    <p className="text-2xl font-bold text-red-600">{overview.jobs.failed}</p>
+                    <p className="text-xs text-slate-500 mt-1">Failed</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-amber-50">
+                    <p className="text-2xl font-bold text-amber-600">{overview.jobs.retrying}</p>
+                    <p className="text-xs text-slate-500 mt-1">Retrying</p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+
+            {/* Provider Status */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cloud className="h-4 w-4 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-800">Provider Status</h3>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardBody className="p-0">
+                <div className="divide-y divide-slate-100">
+                  {[
+                    { name: 'Database', icon: Database, status: overview.providers.database },
+                    { name: 'Satellite', icon: Satellite, status: overview.providers.satellite },
+                    { name: 'Map Services', icon: Globe, status: overview.providers.map },
+                    { name: 'AI Services', icon: Brain, status: overview.providers.ai },
+                  ].map(({ name, icon: Icon, status }) => (
+                    <div key={name} className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-3">
+                        <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', PROVIDER_STATUS_BG[status] ?? PROVIDER_STATUS_BG.UNKNOWN)}>
+                          <Icon className={cn('h-4 w-4', PROVIDER_STATUS_COLORS[status] ?? PROVIDER_STATUS_COLORS.UNKNOWN)} />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700">{name}</span>
+                      </div>
+                      <Badge
+                        variant={
+                          status === 'ONLINE' ? 'success' :
+                          status === 'DEGRADED' ? 'warning' :
+                          'danger'
+                        }
+                      >
+                        {status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </Card>
+          </div>
+
+          {/* Data & Satellite Processing */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Data Ingestion */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4 text-emerald-500" />
+                  <h3 className="text-sm font-semibold text-slate-800">Data Ingestion</h3>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      Last Sync: {overview.dataIngestion.lastSync
+                        ? formatDateTime(overview.dataIngestion.lastSync)
+                        : 'Never'
+                      }
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {overview.dataIngestion.recordsToday.toLocaleString()} records today
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      overview.dataIngestion.status === 'IDLE' ? 'success' :
+                      overview.dataIngestion.status === 'SYNCING' ? 'info' :
+                      'danger'
+                    }
+                  >
+                    {overview.dataIngestion.status}
+                  </Badge>
+                </div>
+                <Link href="/admin/data-sources">
+                  <Button variant="secondary" size="sm" className="w-full">
+                    Manage Data Sources
+                  </Button>
+                </Link>
+              </CardBody>
+            </Card>
+
+            {/* Satellite Processing */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Satellite className="h-4 w-4 text-cyan-500" />
+                  <h3 className="text-sm font-semibold text-slate-800">Satellite Processing</h3>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{overview.satelliteProcessing.queueDepth}</p>
+                    <p className="text-xs text-slate-500">Queue Depth</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-900">{overview.satelliteProcessing.observationsToday}</p>
+                    <p className="text-xs text-slate-500">Observations Today</p>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-500 mb-4">
+                  Avg Processing: {(overview.satelliteProcessing.avgProcessingTime / 1000).toFixed(1)}s
+                </div>
+                <Link href="/admin/satellites">
+                  <Button variant="secondary" size="sm" className="w-full">
+                    Manage Satellites
+                  </Button>
+                </Link>
+              </CardBody>
+            </Card>
+          </div>
+
+          {/* Recent Admin Actions & Security Events */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Admin Actions */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-slate-500" />
+                    <h3 className="text-sm font-semibold text-slate-800">Recent Admin Actions</h3>
+                  </div>
+                  <Link href="/admin/audit">
+                    <Button variant="ghost" size="sm" rightIcon={<ChevronRight className="h-3.5 w-3.5" />}>
+                      View All
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardBody className="p-0">
+                {overview.recentAdminActions.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <Activity className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400">No recent admin actions</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                    {overview.recentAdminActions.map((action) => (
+                      <div key={action.id} className="flex items-start gap-3 p-3">
+                        <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700">{action.action}</p>
+                          <p className="text-xs text-slate-400">by {action.actor}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{formatDateTime(action.timestamp)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+
+            {/* Security Events (Last 24h) */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-red-500" />
+                    <h3 className="text-sm font-semibold text-slate-800">Security Events (Last 24h)</h3>
+                  </div>
+                  <Link href="/admin/security">
+                    <Button variant="ghost" size="sm" rightIcon={<ChevronRight className="h-3.5 w-3.5" />}>
+                      View All
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 rounded-lg bg-slate-50">
+                    <p className="text-2xl font-bold text-slate-900">{overview.securityEventsLast24h.total}</p>
+                    <p className="text-xs text-slate-500">Total</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-red-50">
+                    <p className="text-2xl font-bold text-red-600">{overview.securityEventsLast24h.critical}</p>
+                    <p className="text-xs text-slate-500">Critical</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-amber-50">
+                    <p className="text-2xl font-bold text-amber-600">{overview.securityEventsLast24h.high}</p>
+                    <p className="text-xs text-slate-500">High</p>
+                  </div>
+                </div>
+                <Link href="/admin/security">
+                  <Button variant="secondary" size="sm" className="w-full">
+                    Security Dashboard
+                  </Button>
+                </Link>
+              </CardBody>
+            </Card>
+          </div>
+        </>
+      ) : (
+        <Card>
+          <CardBody className="p-6 text-center">
+            <AlertCircle className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm text-slate-500">Unable to load system overview</p>
+            <Button variant="secondary" size="sm" onClick={handleRefresh} className="mt-4">
+              Retry
+            </Button>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Live Job Monitor (if jobs exist) */}
+      {jobsData?.jobs && jobsData.jobs.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <h3 className="text-sm font-semibold text-slate-800">Active Risk Alerts</h3>
+                <Zap className="h-4 w-4 text-indigo-500" />
+                <h3 className="text-sm font-semibold text-slate-800">Active Job Queue</h3>
               </div>
-              <Link href="/alerts">
+              <Link href="/admin/jobs">
                 <Button variant="ghost" size="sm" rightIcon={<ChevronRight className="h-3.5 w-3.5" />}>
-                  View All
+                  Monitor Jobs
                 </Button>
               </Link>
             </div>
           </CardHeader>
           <CardBody className="p-0">
-            {alertsLoading ? (
-              <div className="p-4 space-y-3">
-                {[1,2,3].map(i => <div key={i} className="h-12 bg-slate-100 rounded animate-pulse" />)}
-              </div>
-            ) : alerts?.openAnomalies?.length === 0 ? (
-              <div className="p-6 text-center">
-                <CheckCircle2 className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">No active alerts</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {(alerts?.recentHighSeverity ?? []).map((alert: any) => (
-                  <div key={alert.id} className="flex items-start gap-3 p-3 hover:bg-slate-50">
-                    <AlertTriangle className={cn('h-4 w-4 shrink-0 mt-0.5',
-                      alert.severity === 'CRITICAL' ? 'text-red-700' :
-                      alert.severity === 'HIGH' ? 'text-red-500' : 'text-amber-500'
-                    )} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 truncate">{alert.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Badge variant={severityVariant(alert.severity)} className="text-xs">{alert.severity}</Badge>
-                        <span className="text-xs text-slate-400">{alert.category?.replace(/_/g, ' ')}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Anomaly breakdown */}
-                {alerts?.byCategory && alerts.byCategory.length > 0 && (
-                  <div className="p-3 bg-slate-50">
-                    <p className="text-xs font-medium text-slate-500 mb-2">By Category</p>
-                    <div className="space-y-1">
-                      {alerts.byCategory.map((b: any) => (
-                        <div key={b.category} className="flex justify-between items-center">
-                          <span className="text-xs text-slate-600">{b.category?.replace(/_/g, ' ')}</span>
-                          <Badge variant="neutral" className="text-xs">{b.count}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardBody>
-        </Card>
-
-        {/* Recent Audit Events */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-slate-500" />
-                <h3 className="text-sm font-semibold text-slate-800">Recent Audit Events</h3>
-              </div>
-              <span className="text-xs text-slate-400">{audit?.length ?? 0} events</span>
-            </div>
-          </CardHeader>
-          <CardBody className="p-0">
-            {auditLoading ? (
-              <div className="p-4 space-y-3">
-                {[1,2,3].map(i => <div key={i} className="h-10 bg-slate-100 rounded animate-pulse" />)}
-              </div>
-            ) : !audit || audit.length === 0 ? (
-              <div className="p-6 text-center">
-                <Activity className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">No audit events yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-                {audit.map((event: any) => (
-                  <div key={event.id} className="flex items-start gap-3 p-3 hover:bg-slate-50">
-                    <div className={cn('w-2 h-2 rounded-full mt-1.5 shrink-0',
-                      event.action === 'DELETE' ? 'bg-red-400' :
-                      event.action === 'CREATE' ? 'bg-emerald-400' :
-                      event.action === 'UPDATE' ? 'bg-blue-400' : 'bg-slate-400'
-                    )} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-xs font-medium text-slate-700">
-                          {event.actorType === 'USER' ? event.actorId?.split('-')[0] ?? 'User' : event.actorType}
-                        </p>
-                        <Badge variant="neutral" className="text-xs">{event.action}</Badge>
-                        <span className="text-xs text-slate-400">{event.entityType}</span>
-                      </div>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {formatDateTime(event.timestamp)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Activity Summary */}
-      {activity && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-indigo-500" />
-                <h3 className="text-sm font-semibold text-slate-800">Activity — Last {activity.period.days} Days</h3>
-              </div>
-              <span className="text-xs text-slate-400">Since {formatDateTime(activity.period.since)}</span>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {[
-                { label: 'New Projects', value: activity.summary.newProjects, icon: MapPin, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                { label: 'New Reports', value: activity.summary.newReports, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-                { label: 'New Anomalies', value: activity.summary.newAnomalies, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
-                { label: 'Resolved', value: activity.summary.resolvedAnomalies, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { label: 'New Users', value: activity.summary.newUsers, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
-                { label: 'Audit Events', value: activity.summary.auditEvents, icon: Clock, color: 'text-slate-600', bg: 'bg-slate-50' },
-              ].map(({ label, value, icon: Icon, color, bg }) => (
-                <div key={label} className={cn('rounded-lg p-3', bg)}>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Icon className={cn('h-3.5 w-3.5', color)} />
-                    <span className="text-xs text-slate-500">{label}</span>
-                  </div>
-                  <p className={cn('text-xl font-bold', color)}>{value?.toLocaleString() ?? 0}</p>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Type</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Status</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Created</th>
+                    <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobsData.jobs.slice(0, 5).map((job) => (
+                    <tr key={job.id} className="border-b border-slate-50 hover:bg-slate-50">
+                      <td className="px-4 py-2 text-sm font-medium text-slate-700">{job.type}</td>
+                      <td className="px-4 py-2">
+                        <span className={cn('inline-flex px-2 py-0.5 rounded-full text-xs font-medium', JOB_STATUS_COLORS[job.status] ?? JOB_STATUS_COLORS.QUEUED)}>
+                          {job.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-xs text-slate-500">{formatDateTime(job.createdAt)}</td>
+                      <td className="px-4 py-2 text-xs text-slate-500">
+                        {job.duration ? `${(job.duration / 1000).toFixed(1)}s` : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </CardBody>
         </Card>
       )}
-    </div>
-  );
-}
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
-
-function StatCard({ icon: Icon, label, value, sublabel, color, bgColor }: {
-  icon: any;
-  label: string;
-  value: string;
-  sublabel?: string;
-  color: string;
-  bgColor: string;
-}) {
-  return (
-    <Card>
-      <CardBody className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', bgColor)}>
-            <Icon className={cn('h-4 w-4', color)} />
-          </div>
+      {/* Stats Footer */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card>
+            <CardBody className="p-4 text-center">
+              <p className="text-xl font-bold text-slate-900">{stats.projects.total.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1">Total Projects</p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="p-4 text-center">
+              <p className="text-xl font-bold text-red-600">{stats.anomalies.open.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1">Open Anomalies</p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="p-4 text-center">
+              <p className="text-xl font-bold text-blue-600">{stats.reports.total.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1">Total Reports</p>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody className="p-4 text-center">
+              <p className="text-xl font-bold text-purple-600">{stats.users.total.toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1">Total Users</p>
+            </CardBody>
+          </Card>
         </div>
-        <p className={cn('text-xl font-bold', color)}>{value}</p>
-        <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-        {sublabel && <p className="text-xs text-slate-400 mt-0.5">{sublabel}</p>}
-      </CardBody>
-    </Card>
+      )}
+    </div>
   );
 }

@@ -1,18 +1,22 @@
 /**
- * Admin Routes — System Statistics, Audit Trail, Risk Overview, User Management
+ * Admin Routes — M14 API Security
+ * System Statistics, Audit Trail, User Management, Health, Jobs
+ *
+ * All routes require admin.manage permission (enforced at route level in index.ts)
  */
 
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { success } from '../utils/apiResponse';
-import { authenticate, requireRole } from '../middleware/auth';
+import { ValidationError, NotFoundError } from '@vojas/domain';
+import { success, created } from '../utils/apiResponse';
+import { UserRole } from '@vojas/shared';
 
 const router = Router();
 
 // ── GET /admin/stats — system-wide statistics ───────────────────────────────
 
-router.get('/stats', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/stats', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const [
       totalProjects,
@@ -87,9 +91,73 @@ router.get('/stats', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (_
   }
 });
 
+// ── GET /admin/system-overview — aggregated system overview for Control Center ─
+
+router.get('/system-overview', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalProjects,
+      activeProjects,
+      totalAnomalies,
+      openAnomalies,
+      criticalAnomalies,
+      totalReports,
+      pendingReports,
+      totalUsers,
+      activeUsers,
+      totalSatelliteObs,
+      recentAudits,
+      recentJobs,
+    ] = await Promise.all([
+      prisma.project.count(),
+      prisma.project.count({ where: { status: { in: ['APPROVED', 'SANCTIONED', 'IN_PROGRESS'] } } }),
+      prisma.anomaly.count(),
+      prisma.anomaly.count({ where: { status: { in: ['OPEN', 'ACKNOWLEDGED', 'UNDER_INVESTIGATION'] } } }),
+      prisma.anomaly.count({ where: { severity: 'CRITICAL', status: { notIn: ['RESOLVED', 'DISMISSED'] } } }),
+      prisma.report.count(),
+      prisma.report.count({ where: { status: { in: ['SUBMITTED', 'RECEIVED', 'TRIAGED'] } } }),
+      prisma.user.count(),
+      prisma.user.count({ where: { isActive: true } }),
+      prisma.satelliteObservation.count(),
+      prisma.auditEvent.count({ where: { timestamp: { gte: sevenDaysAgo } } }),
+      prisma.auditEvent.count({
+        where: {
+          timestamp: { gte: sevenDaysAgo },
+          action: { in: ['SATELLITE_ANALYSIS_RUN', 'RISK_RULE_TRIGGERED'] },
+        },
+      }),
+    ]);
+
+    success(res, {
+      system: {
+        status: 'operational',
+        uptime: process.uptime(),
+        version: process.env.npm_package_version ?? '2.0.0',
+        timestamp: now.toISOString(),
+      },
+      counts: {
+        projects: { total: totalProjects, active: activeProjects },
+        anomalies: { total: totalAnomalies, open: openAnomalies, critical: criticalAnomalies },
+        reports: { total: totalReports, pending: pendingReports },
+        users: { total: totalUsers, active: activeUsers },
+        satelliteObservations: totalSatelliteObs,
+      },
+      activity: {
+        auditEventsLast7d: recentAudits,
+        jobsLast7d: recentJobs,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /admin/audit — recent audit events ─────────────────────────────────
 
-router.get('/audit', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/audit', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 200);
 
@@ -106,12 +174,12 @@ router.get('/audit', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (r
 
 // ── GET /admin/alerts — active risk alerts summary ──────────────────────────
 
-router.get('/alerts', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/alerts', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 100);
     const severity = req.query.severity as string | undefined;
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (severity) where.severity = severity;
 
     const [openAnomalies, recentHighSeverity, byCategory] = await Promise.all([
@@ -159,15 +227,17 @@ router.get('/alerts', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (
 
 // ── GET /admin/users — user list ─────────────────────────────────────────────
 
-router.get('/users', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/users', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 100);
     const role = req.query.role as string | undefined;
     const search = req.query.search as string | undefined;
+    const isActive = req.query.isActive;
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (role) where.role = role;
+    if (isActive !== undefined) where.isActive = isActive === 'true';
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -208,9 +278,325 @@ router.get('/users', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (r
   }
 });
 
-// ── GET /admin/activity — recent activity summary ───────────────────────────
+// ── POST /admin/users — create user ──────────────────────────────────────────
 
-router.get('/activity', authenticate, requireRole('ADMIN', 'SUPER_ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/users', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    if (!name || !email || !password || !role) {
+      throw new ValidationError('name, email, password, and role are required');
+    }
+
+    if (!Object.values(UserRole).includes(role)) {
+      throw new ValidationError(`Invalid role. Must be one of: ${Object.values(UserRole).join(', ')}`);
+    }
+
+    // Check if email already exists
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ValidationError('User with this email already exists');
+    }
+
+    // Hash password
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash: hashedPassword,
+        role,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    created(res, user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PUT /admin/users/:id/roles — update user roles ──────────────────────────
+
+router.put('/users/:id/roles', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const { role } = req.body;
+
+    if (!role) {
+      throw new ValidationError('role is required');
+    }
+
+    if (!Object.values(UserRole).includes(role)) {
+      throw new ValidationError(`Invalid role. Must be one of: ${Object.values(UserRole).join(', ')}`);
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('User');
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { role },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+      },
+    });
+
+    success(res, user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PUT /admin/users/:id/disable — disable user ──────────────────────────────
+
+router.put('/users/:id/disable', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('User');
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+      },
+    });
+
+    success(res, user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PUT /admin/users/:id/enable — enable user ────────────────────────────────
+
+router.put('/users/:id/enable', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('User');
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        updatedAt: true,
+      },
+    });
+
+    success(res, user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/health — system health check ─────────────────────────────────
+
+router.get('/health', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dbStart = Date.now();
+    const dbCheck = await Promise.allSettled([prisma.$queryRaw`SELECT 1`]);
+    const dbLatency = Date.now() - dbStart;
+    const dbHealthy = dbCheck[0].status === 'fulfilled';
+
+    const overall: 'HEALTHY' | 'DEGRADED' | 'UNHEALTHY' =
+      dbHealthy ? 'HEALTHY' : 'UNHEALTHY';
+
+    success(res, {
+      overall,
+      timestamp: new Date().toISOString(),
+      checks: [
+        {
+          service: 'database',
+          status: dbHealthy ? 'HEALTHY' : 'UNHEALTHY',
+          latencyMs: dbLatency,
+          lastCheck: new Date().toISOString(),
+        },
+        {
+          service: 'api',
+          status: 'HEALTHY',
+          latencyMs: 0,
+          lastCheck: new Date().toISOString(),
+        },
+      ],
+      history: [],
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/health/history — health history ───────────────────────────────
+
+router.get('/health/history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hours = Math.max(1, Math.min(parseInt(String(req.query.hours ?? '24'), 10), 168));
+    // No history table yet — return empty array so the API contract holds
+    success(res, []);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/security/events — security events log ─────────────────────────
+
+router.get('/security/events', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 200);
+    const severity = req.query.severity as string | undefined;
+
+    const where: Record<string, unknown> = {};
+    if (severity) where.severity = severity;
+
+    // Security events aren't a dedicated table yet — derive from audit events
+    // (auth failures, role changes, permission denials).
+    const [events, total] = await Promise.all([
+      prisma.auditEvent.findMany({
+        where: {
+          ...where,
+          action: {
+            in: ['AUTH_FAILED_LOGIN', 'AUTH_LOGIN', 'USER_ROLE_CHANGED'],
+          },
+        },
+        orderBy: { timestamp: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.auditEvent.count({ where }),
+    ]);
+
+    const bySeverity: Record<string, number> = {};
+    const byResult: Record<string, number> = {};
+
+    success(res, {
+      events: events.map((e) => {
+        const result = e.action.includes('FAILED') || e.action.includes('DENIED') ? 'FAILURE' : 'SUCCESS';
+        byResult[result] = (byResult[result] ?? 0) + 1;
+        return {
+          id: e.id,
+          type: e.action,
+          severity: 'LOW',
+          actorId: e.actorId,
+          ipAddress: e.ipAddress ?? undefined,
+          resource: e.entityType,
+          action: e.action,
+          result,
+          metadata: e.metadata,
+          timestamp: e.timestamp,
+        };
+      }),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      summary: { bySeverity, byResult },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/jobs — background jobs list ──────────────────────────────────
+
+router.get('/jobs', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 100);
+
+    // Get recent jobs from audit events (using as job history for now)
+    const [jobs, total] = await Promise.all([
+      prisma.auditEvent.findMany({
+        where: {
+          action: {
+            in: [
+              'SATELLITE_ANALYSIS_RUN',
+              'RISK_SIGNAL_GENERATED',
+              'RISK_RULE_TRIGGERED',
+              'SYSTEM_CONFIG_CHANGED',
+            ],
+          },
+        },
+        orderBy: { timestamp: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.auditEvent.count({
+        where: {
+          action: {
+            in: [
+              'SATELLITE_ANALYSIS_RUN',
+              'RISK_SIGNAL_GENERATED',
+              'RISK_RULE_TRIGGERED',
+              'SYSTEM_CONFIG_CHANGED',
+            ],
+          },
+        },
+      }),
+    ]);
+
+    success(res, {
+      jobs: jobs.map((j) => ({
+        id: j.id,
+        type: j.action,
+        status: 'COMPLETED',
+        actorId: j.actorId,
+        startedAt: j.timestamp,
+        completedAt: j.timestamp,
+        metadata: j.metadata,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/activity — recent activity summary ────────────────────────────
+
+router.get('/activity', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const days = Math.max(1, Math.min(parseInt(String(req.query.days ?? '7'), 10), 30));
     const since = new Date();

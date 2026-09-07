@@ -18,8 +18,8 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { NotFoundError, ForbiddenError } from '@vojas/domain';
-import { authenticate } from '../middleware/auth';
+import { NotFoundError } from '@vojas/domain';
+import { authenticate, requirePermission } from '../middleware/auth';
 import { success } from '../utils/apiResponse';
 import { buildTimeline, compareProgress } from '../services/satelliteEOAnalysis.js';
 import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
@@ -258,6 +258,7 @@ router.get(
 router.post(
   '/projects/:id/satellite/sync',
   authenticate,
+  requirePermission('risk.trigger'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -265,11 +266,6 @@ router.post(
         return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid project id' } });
       }
       const project = await getProjectOrThrow(projectId);
-      const user = (req as Request & { user?: { role?: string } }).user;
-      const role = user?.role ?? 'CITIZEN';
-      if (!['ADMIN', 'OFFICER', 'ANALYST'].includes(role)) {
-        throw new ForbiddenError('Insufficient role to trigger satellite sync');
-      }
 
       if (!project.latitude || !project.longitude) {
         return success(res, { status: 'NO_COORDINATES', message: 'Project has no coordinates' });

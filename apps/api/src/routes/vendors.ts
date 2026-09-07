@@ -4,7 +4,7 @@ import { prisma } from '@vojas/db';
 import { AuditService, NotFoundError, ValidationError, vendorListSchema, vendorCreateSchema } from '@vojas/domain';
 import { AuditAction, UserRole } from '@vojas/shared';
 import { authenticate } from '../middleware/auth';
-import { requireRole } from '../auth/rbac';
+import { requireRole } from '../middleware/auth';
 import { success, created } from '../utils/apiResponse';
 
 const router = Router();

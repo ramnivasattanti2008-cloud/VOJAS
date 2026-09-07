@@ -5,13 +5,13 @@ import {
   createGeoJSONPoint,
   validateGeoJSONPolygon,
   getBoundingBox,
-} from '../src/geospatial/geoUtils.js';
+} from '../src/geospatial/geoUtils';
 import {
   calculateAreaSquareMeters,
   calculateAreaHectares,
   calculateAreaAcres,
   estimateConstructionArea,
-} from '../src/geospatial/areaCalculations.js';
+} from '../src/geospatial/areaCalculations';
 
 describe('validateCoordinates', () => {
   it('accepts valid lat/lng', () => {

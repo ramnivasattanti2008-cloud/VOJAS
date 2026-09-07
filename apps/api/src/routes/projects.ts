@@ -1,22 +1,21 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { AuditService, ValidationError, NotFoundError } from '@vojas/domain';
-import { AuditAction } from '@vojas/shared';
+import { AuditService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
+import { AuditAction, PERMISSIONS, ROLE_PERMISSIONS, getPermissionsForRole, getProjectVisibilityFilter, canAccessProject, buildUserContext } from '@vojas/shared';
 import {
   createProjectSchema,
   projectFiltersSchema,
 } from '@vojas/domain';
 import { UserRole } from '@vojas/shared';
-import { authenticate } from '../middleware/auth';
-import { requireRole } from '../auth/rbac';
+import { authenticate, requireRole } from '../middleware/auth';
 import { success, created } from '../utils/apiResponse';
 
 const router = Router();
 const auditService = new AuditService(prisma);
 
 /**
- * GET /projects — authenticated
+ * GET /projects — authenticated with permission-based scoping
  */
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -33,6 +32,16 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 
     const p = filters.data;
     const where: Record<string, unknown> = {};
+
+    // Apply permission-based visibility filter
+    const user = req.user!;
+    const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+    const visibilityFilter = getProjectVisibilityFilter({
+      userId: user.userId,
+      role: user.role,
+      permissions: perms as any,
+    });
+
     if (p.state) where.state = p.state;
     if (p.district) where.district = p.district;
     if (p.constituency) where.constituency = p.constituency;
@@ -50,18 +59,21 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
       ];
     }
 
+    // Merge visibility filter with user filters
+    const finalWhere = { ...visibilityFilter, ...where };
+
     const orderBy = p.sortBy
       ? { [p.sortBy]: p.sortOrder as 'asc' | 'desc' }
       : { createdAt: 'desc' as const };
 
     const [data, total] = await prisma.$transaction([
       prisma.project.findMany({
-        where,
+        where: finalWhere,
         orderBy,
         skip: (p.page - 1) * p.limit,
         take: p.limit,
       }),
-      prisma.project.count({ where }),
+      prisma.project.count({ where: finalWhere }),
     ]);
 
     success(res, {
@@ -131,7 +143,7 @@ router.post(
 );
 
 /**
- * GET /projects/:id — authenticated
+ * GET /projects/:id — authenticated with role-based scoping
  */
 router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -140,6 +152,15 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
     if (!project) {
       throw new NotFoundError('Project');
     }
+
+    // Resource scoping: MP can only see constituency projects, contractors only their projects
+    const user = req.user!;
+    const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+    const userCtx = buildUserContext(user.role, user.userId, perms as any);
+    if (!canAccessProject(userCtx, project as any)) {
+      throw new ForbiddenError('You do not have access to this project');
+    }
+
     success(res, project);
   } catch (err) {
     next(err);

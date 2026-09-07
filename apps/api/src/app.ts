@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
-import { globalErrorHandler, notFoundHandler } from './middleware/errorHandler';
-import routes from './routes';
+import { globalErrorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import routes from './routes/index.js';
 
 const app = express();
 

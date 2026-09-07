@@ -1,26 +1,29 @@
 import { Router } from 'express';
-import authRoutes from './auth';
-import userRoutes from './users';
-import projectRoutes from './projects';
-import timelineRoutes from './timeline';
-import locationRoutes from './locations';
-import financialRoutes from './financial';
-import satelliteRoutes from './satellite';
-import changeAnalysisRoutes from './changeAnalysis';
-import auditRoutes from './audit';
-import anomalyRoutes from './anomalies';
-import reportRoutes from './reports';
-import citizenReportRoutes from './citizenReports';
-import reportSearchRoutes from './reportSearch';
-import publicProjectsRoutes from './publicProjects';
-import vendorRoutes from './vendors';
-import notificationRoutes from './notifications';
-import documentRoutes from './documents';
-import mpRoutes from './mps';
-import riskRoutes from './risk';
-import sectorsRoutes from './sectors';
-import adminRoutes from './admin';
-import exportRoutes from './export';
+import authRoutes from './auth.js';
+import userRoutes from './users.js';
+import projectRoutes from './projects.js';
+import timelineRoutes from './timeline.js';
+import locationRoutes from './locations.js';
+import financialRoutes from './financial.js';
+import satelliteRoutes from './satellite.js';
+import changeAnalysisRoutes from './changeAnalysis.js';
+import auditRoutes from './audit.js';
+import anomalyRoutes from './anomalies.js';
+import reportRoutes from './reports.js';
+import citizenReportRoutes from './citizenReports.js';
+import reportSearchRoutes from './reportSearch.js';
+import publicProjectsRoutes from './publicProjects.js';
+import vendorRoutes from './vendors.js';
+import notificationRoutes from './notifications.js';
+import documentRoutes from './documents.js';
+import mpRoutes from './mps.js';
+import riskRoutes from './risk.js';
+import sectorsRoutes from './sectors.js';
+import adminRoutes from './admin.js';
+import exportRoutes from './export.js';
+import searchRoutes from './search.js';
+import officerRoutes from './officer.js';
+import { authenticate, requirePermission } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -48,8 +51,8 @@ router.use('/', satelliteRoutes);
 // Change analysis routes
 router.use('/', changeAnalysisRoutes);
 
-// Audit routes
-router.use('/audit', auditRoutes);
+// Audit routes — requires audit.read permission
+router.use('/audit', authenticate, requirePermission('audit.read'), auditRoutes);
 
 // Anomaly routes
 router.use('/anomalies', anomalyRoutes);
@@ -84,10 +87,16 @@ router.use('/', riskRoutes);
 // M13: Sector framework routes
 router.use('/sectors', sectorsRoutes);
 
-// Admin: System stats, audit, alerts, users (requires ADMIN role)
-router.use('/admin', adminRoutes);
+// Admin routes — requires admin.manage permission
+router.use('/admin', authenticate, requirePermission('admin.manage'), adminRoutes);
 
-// M18: Export routes (CSV download)
-router.use('/export', exportRoutes);
+// Search routes — scoped by user permissions
+router.use('/search', authenticate, searchRoutes);
+
+// M18: Export routes (CSV download) — requires admin.manage
+router.use('/export', authenticate, requirePermission('admin.manage'), exportRoutes);
+
+// M14: Officer Command Center routes
+router.use('/officer', authenticate, officerRoutes);
 
 export default router;
