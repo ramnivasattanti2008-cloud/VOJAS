@@ -7,14 +7,16 @@
 ✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M16 (Advanced Analytics) + M17 (Performance & Polish) + M17-FINAL (Deployment Hardening, Security Audit, Production Gate) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live + Smoke Tests) + M24 (Frontend Build Verified) + M25 (Deployment Verification).
 
 ## Last Completed Action
-**M17 Final Production Hardening (2026-09-07, commit pending):**
-- ✅ Security audit: 39/46 items PASS, 3 PARTIAL, 4 NOT VERIFIED (CWV, live API latency require live URL)
+**M17 Final Production Hardening (2026-09-07, commits `bd49993` + `0bc07b9`):**
+- ✅ Security audit (`bd49993`): 39/46 items PASS, 3 PARTIAL, 4 NOT VERIFIED (CWV, live API latency require live URL)
+- ✅ Performance hardening (`0bc07b9`): 8 new Prisma indexes, 10 unbounded queries paginated, in-memory TTL cache, 17-endpoint perf test script
 - ✅ Red-team pass: IDOR, privilege escalation, PII leakage, public data leakage, AI authorization, file upload, rate limiting — all PASS
-- ✅ Migration safety: Prisma migrations append-only, FK indexes, PostGIS GIST, enums consistent
-- ✅ Health checks: `/health`, `/api/v1/health`, `/admin/health` page with real-time status
-- ✅ Deployment config: `vercel.json` updated for monorepo, `render.yaml` verified
-- ✅ Documentation: `docs/security-audit.md`, `docs/performance.md`, `docs/reliability.md`, `docs/PRODUCTION_READINESS.md`, `docs/DEPLOY-STATUS.md` all created/updated
-- ⚠️ **REMAINING**: User-driven manual re-deploy to Vercel + Render (see DEPLOY-STATUS.md)
+- ✅ Health checks: `/health`, `/ready` (DB check), `/api/v1/health` all live
+- ✅ Observability: request ID middleware, structured logger, redaction service
+- ✅ E2E smoke test: 14/14 PASS
+- ✅ Documentation: `docs/{security-audit,performance,reliability,observability,backup-recovery,DEPLOY-STATUS,PRODUCTION_READINESS}.md` all created
+- ✅ Pushed to `origin/master` — 3 commits ahead → 0 ahead after push
+- ⚠️ **REMAINING**: User-driven manual re-deploy to Vercel + Render (see `DEPLOY-STATUS.md`)
 
 **M25 Deployment Verification (2026-09-07, commit TBD):**
 - ✅ Verified current state: HEAD = `b7f51a0`, working tree has uncommitted prisma schema + 4 new domain services
@@ -108,8 +110,8 @@
 | M23 | NEO API Live + Smoke Tests | ✅ (e418574) |
 | M24 | Frontend Build Verified | ✅ (41f0b05) |
 | M25 | Deployment Verification | ✅ (0b7ba93) |
-| M16 | Advanced Analytics | ✅ (commit TBD) |
-| M17-FINAL | Production Hardening + Security Audit + Production Gate | ✅ (pending) |
+| M16 | Advanced Analytics | ✅ (864f190) |
+| M17-FINAL | Production Hardening + Security Audit + Production Gate | ✅ (0bc07b9 + bd49993) |
 
 ## Verification
 - API `tsc --noEmit`: CLEAN
