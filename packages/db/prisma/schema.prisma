@@ -526,6 +526,10 @@ model Project {
   @@index([sector, status])
   @@index([approvedAmount])
   @@index([latitude, longitude])
+  @@index([state])
+  @@index([district])
+  @@index([createdAt])
+  @@index([vendorId])
   @@map("projects")
 }
 
@@ -919,7 +923,9 @@ model RiskFinding {
   @@index([riskScore])
   @@index([confidence])
   @@index([algorithmVersion])
-  @@index([type, projectId]) // compound for dedup
+  @@index([type, projectId])
+  @@index([type, status, severity]) // compound for risk dashboard filtering
+  @@index([detectedAt])
   @@map("risk_findings")
 }
 
@@ -1215,6 +1221,8 @@ model RiskSignal {
   @@index([signalType])
   @@index([severity])
   @@index([confidence])
+  @@index([detectedAt])
+  @@index([projectId, signalType, detectedAt]) // compound for risk engine
   @@map("risk_signals")
 }
 
@@ -1659,4 +1667,346 @@ model ProjectRisk {
   @@index([riskScore])
   @@index([confidence])
   @@map("project_risks")
+}
+
+// ────────────────────────────────────────────────────────────
+// M16: ADVANCED ANALYTICS MODELS
+// ────────────────────────────────────────────────────────────
+
+// Periodic metric snapshots for trend tracking
+model AnalyticsSnapshot {
+  id           String   @id @default(cuid())
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  period       String   @default("DAILY")
+  snapshotDate DateTime @map("snapshot_date") @db.Timestamptz(6)
+  metrics      Json
+  dataQuality  String   @default("MEDIUM")
+  coverage     Json?
+  modelVersion String   @default("analytics-v1.0") @map("model_version")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([entityType, entityId, period, snapshotDate])
+  @@index([entityType, entityId, snapshotDate])
+  @@map("analytics_snapshots")
+}
+
+// Time-series metric series
+model MetricSeries {
+  id              String   @id @default(cuid())
+  entityType     String   @map("entity_type")
+  entityId       String   @map("entity_id")
+  metricType     String   @map("metric_type")
+  period         String   @default("DAILY")
+  periodStart    DateTime @map("period_start") @db.Timestamptz(6)
+  periodEnd     DateTime @map("period_end") @db.Timestamptz(6)
+  value          Float
+  numerator      Float?
+  denominator    Float?
+  change         Float?
+  changePct     Float?
+  rollingAvg7   Float?
+  rollingAvg30   Float?
+  confidence     String   @default("MEDIUM")
+  dataQuality    String   @default("MEDIUM")
+  observationCount Int   @default(0) @map("observation_count")
+  modelVersion   String   @default("analytics-v1.0") @map("model_version")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([entityType, entityId, metricType, period, periodStart])
+  @@index([entityType, entityId, metricType, periodStart])
+  @@map("metric_series")
+}
+
+// Forecast model versions
+model ModelVersion {
+  id                String    @id @default(cuid())
+  modelId           String    @map("model_id")
+  name              String
+  version           String
+  modelType         String    @map("model_type")
+  description       String?
+  parameters        Json?
+  features          Json?
+  trainingStart     DateTime? @map("training_start") @db.Timestamptz(6)
+  trainingEnd       DateTime? @map("training_end") @db.Timestamptz(6)
+  dataCount         Int       @default(0) @map("data_count")
+  evaluationMetrics Json?     @map("evaluation_metrics")
+  status            String    @default("ACTIVE")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy         String?   @map("created_by")
+
+  @@unique([modelId, version])
+  @@index([modelId, status])
+  @@map("model_versions")
+}
+
+// Forecasts with uncertainty
+model Forecast {
+  id               String    @id @default(cuid())
+  entityType       String    @map("entity_type")
+  entityId         String    @map("entity_id")
+  forecastType     String    @map("forecast_type")
+  value            Float
+  lowerBound       Float     @map("lower_bound")
+  upperBound       Float     @map("upper_bound")
+  confidence       String
+  probability      Float?
+  modelVersionId   String?   @map("model_version_id")
+  modelType        String     @default("BASELINE") @map("model_type")
+  predictionDate   DateTime  @map("prediction_date") @db.Timestamptz(6)
+  horizonDays      Int       @default(30) @map("horizon_days")
+  observationCount Int       @default(0) @map("observation_count")
+  evidence         Json?
+  explanation      String?
+  limitations      String?
+  dataQuality      String     @default("MEDIUM") @map("data_quality")
+  dataFreshness    String     @default("RECENT") @map("data_freshness")
+  validUntil       DateTime   @map("valid_until") @db.Timestamptz(6)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId, forecastType, predictionDate])
+  @@map("forecasts")
+}
+
+// Forecast accuracy tracking
+model ForecastObservation {
+  id             String    @id @default(cuid())
+  forecastId     String    @map("forecast_id")
+  actualValue    Float     @map("actual_value")
+  predictionDate DateTime  @map("prediction_date") @db.Timestamptz(6)
+  actualDate     DateTime  @map("actual_date") @db.Timestamptz(6)
+  error          Float
+  absoluteError  Float     @map("absolute_error")
+  withinInterval Boolean   @map("within_interval")
+  mape          Float?
+  modelVersionId String?   @map("model_version_id")
+  notes         String?
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([forecastId])
+  @@map("forecast_observations")
+}
+
+// Peer benchmarking groups
+model BenchmarkGroup {
+  id          String   @id @default(cuid())
+  name        String
+  groupType   String   @map("group_type")
+  criteria    Json
+  minProjects Int      @default(5) @map("min_projects")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  benchmarks BenchmarkResult[]
+
+  @@unique([name, groupType])
+  @@map("benchmark_groups")
+}
+
+// Benchmark results
+model BenchmarkResult {
+  id                String        @id @default(cuid())
+  benchmarkGroupId  String        @map("benchmark_group_id")
+  metricType       String        @map("metric_type")
+  periodStart      DateTime      @map("period_start") @db.Timestamptz(6)
+  periodEnd        DateTime      @map("period_end") @db.Timestamptz(6)
+  min              Float
+  p10              Float
+  p25              Float
+  median           Float
+  p75              Float
+  p90              Float
+  max              Float
+  mean             Float
+  stdDev           Float?
+  count             Int
+  belowPeerPct     Float?        @map("below_peer_pct")
+  withinPeerPct    Float?        @map("within_peer_pct")
+  abovePeerPct     Float?        @map("above_peer_pct")
+  modelVersion     String        @default("analytics-v1.0") @map("model_version")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  benchmarkGroup BenchmarkGroup @relation(fields: [benchmarkGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([benchmarkGroupId, metricType, periodStart])
+  @@index([metricType, periodStart])
+  @@map("benchmark_results")
+}
+
+// Explainable insights
+model AnalyticsInsight {
+  id                String    @id @default(cuid())
+  insightType      String    @map("insight_type")
+  severity         String    @default("INFO")
+  title            String
+  summary          String
+  description      String
+  metric           String?
+  direction        String?
+  timeWindow       String    @map("time_window")
+  affectedEntities Json      @map("affected_entities")
+  evidence         Json
+  recommendedAction String?  @map("recommended_action")
+  confidence       String    @default("MEDIUM")
+  dataQuality      String    @default("MEDIUM") @map("data_quality")
+  engineVersion    String    @default("analytics-v1.0") @map("engine_version")
+  validFrom       DateTime  @map("valid_from") @db.Timestamptz(6)
+  validUntil       DateTime? @map("valid_until") @db.Timestamptz(6)
+  resolvedAt       DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolved         Boolean   @default(false)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([insightType, validFrom])
+  @@index([severity, validFrom])
+  @@map("analytics_insights")
+}
+
+// Geographic hotspots
+model Hotspot {
+  id             String   @id @default(cuid())
+  locationType   String   @map("location_type")
+  locationId     String   @map("location_id")
+  locationName   String   @map("location_name")
+  stateCode      String?  @map("state_code")
+  metric         String
+  severity       String
+  intensity      Float
+  projectCount   Int      @map("project_count")
+  findingCount   Int      @default(0) @map("finding_count")
+  avgRiskScore   Float    @map("avg_risk_score")
+  timeWindow     String   @default("last_30_days") @map("time_window")
+  trend          String   @default("STABLE")
+  trendChange    Float?   @map("trend_change")
+  evidence       Json
+  confidence     String   @default("MEDIUM")
+  dataQuality    String   @default("MEDIUM") @map("data_quality")
+  latitude       Float?
+  longitude      Float?
+  modelVersion   String   @default("analytics-v1.0") @map("model_version")
+  periodStart    DateTime @map("period_start") @db.Timestamptz(6)
+  periodEnd      DateTime @map("period_end") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([locationType, locationId, metric, timeWindow, periodStart])
+  @@index([metric, severity, createdAt])
+  @@map("hotspots")
+}
+
+// Scenario analysis
+model ScenarioAnalysis {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  entityType      String   @map("entity_type")
+  entityId        String   @map("entity_id")
+  scenarioType    String   @map("scenario_type")
+  parameters      Json
+  baselineValue   Float    @map("baseline_value")
+  scenarioValue   Float    @map("scenario_value")
+  difference      Float
+  differencePct   Float?   @map("difference_pct")
+  confidence      String   @default("MEDIUM")
+  assumptions     Json
+  limitations     String?
+  modelVersion   String   @default("analytics-v1.0") @map("model_version")
+  createdById    String?  @map("created_by_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId, scenarioType])
+  @@map("scenario_analyses")
+}
+
+// Contractor performance metrics
+model ContractorMetrics {
+  id                    String   @id @default(cuid())
+  contractorId         String   @unique @map("contractor_id")
+  contractorName        String   @map("contractor_name")
+  totalProjects        Int      @default(0) @map("total_projects")
+  activeProjects       Int      @default(0) @map("active_projects")
+  completedProjects    Int      @default(0) @map("completed_projects")
+  avgDelayDays         Float    @default(0) @map("avg_delay_days")
+  avgUtilization       Float    @default(0) @map("avg_utilization")
+  avgRiskScore         Float    @default(0) @map("avg_risk_score")
+  anomalyCount         Int      @default(0) @map("anomaly_count")
+  riskDistribution     Json?    @map("risk_distribution")
+  delayTrend           String   @default("STABLE") @map("delay_trend")
+  riskTrend            String   @default("STABLE") @map("risk_trend")
+  documentConsistency  Float    @default(0) @map("document_consistency")
+  satelliteConsistency Float    @default(0) @map("satellite_consistency")
+  verificationRate     Float    @default(0) @map("verification_rate")
+  citizenReportCount  Int      @default(0) @map("citizen_report_count")
+  dataCoverage        Float    @default(0) @map("data_coverage")
+  lastUpdated         DateTime @default(now()) @map("last_updated") @db.Timestamptz(6)
+  modelVersion        String   @default("analytics-v1.0") @map("model_version")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([avgRiskScore])
+  @@index([avgDelayDays])
+  @@map("contractor_metrics")
+}
+
+// Constituency analytics
+model ConstituencyAnalytics {
+  id                     String   @id @default(cuid())
+  constituencyId         String   @unique @map("constituency_id")
+  constituencyName       String   @map("constituency_name")
+  districtName           String   @map("district_name")
+  stateCode              String   @map("state_code")
+  projectCount           Int      @default(0) @map("project_count")
+  activeProjectCount     Int      @default(0) @map("active_project_count")
+  completedProjectCount  Int      @default(0) @map("completed_project_count")
+  totalSanctioned       Float    @default(0) @map("total_sanctioned")
+  totalSpent             Float    @default(0) @map("total_spent")
+  avgUtilization         Float    @default(0) @map("avg_utilization")
+  avgRiskScore           Float    @default(0) @map("avg_risk_score")
+  highRiskCount          Int      @default(0) @map("high_risk_count")
+  criticalRiskCount      Int      @default(0) @map("critical_risk_count")
+  delayedProjectCount    Int      @default(0) @map("delayed_project_count")
+  avgDelayDays           Float    @default(0) @map("avg_delay_days")
+  openAnomalyCount      Int      @default(0) @map("open_anomaly_count")
+  citizenReportCount    Int      @default(0) @map("citizen_report_count")
+  riskTrend             String   @default("STABLE") @map("risk_trend")
+  delayTrend            String   @default("STABLE") @map("delay_trend")
+  utilizationTrend      String   @default("STABLE") @map("utilization_trend")
+  satelliteCoverage     Float    @default(0) @map("satellite_coverage")
+  lastUpdated           DateTime @default(now()) @map("last_updated") @db.Timestamptz(6)
+  modelVersion          String   @default("analytics-v1.0") @map("model_version")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([stateCode])
+  @@index([avgRiskScore])
+  @@map("constituency_analytics")
+}
+
+// State analytics
+model StateAnalytics {
+  id                     String   @id @default(cuid())
+  stateCode              String   @unique @map("state_code")
+  stateName              String   @map("state_name")
+  districtCount          Int      @default(0) @map("district_count")
+  constituencyCount      Int      @default(0) @map("constituency_count")
+  projectCount           Int      @default(0) @map("project_count")
+  activeProjectCount     Int      @default(0) @map("active_project_count")
+  completedProjectCount  Int      @default(0) @map("completed_project_count")
+  totalSanctioned       Float    @default(0) @map("total_sanctioned")
+  totalSpent             Float    @default(0) @map("total_spent")
+  avgUtilization         Float    @default(0) @map("avg_utilization")
+  avgRiskScore           Float    @default(0) @map("avg_risk_score")
+  highRiskCount          Int      @default(0) @map("high_risk_count")
+  criticalRiskCount      Int      @default(0) @map("critical_risk_count")
+  delayedProjectCount    Int      @default(0) @map("delayed_project_count")
+  avgDelayDays           Float    @default(0) @map("avg_delay_days")
+  openAnomalyCount       Int      @default(0) @map("open_anomaly_count")
+  citizenReportCount     Int      @default(0) @map("citizen_report_count")
+  riskTrend              String   @default("STABLE") @map("risk_trend")
+  delayTrend             String   @default("STABLE") @map("delay_trend")
+  utilizationTrend       String   @default("STABLE") @map("utilization_trend")
+  satelliteCoverage      Float    @default(0) @map("satellite_coverage")
+  lastUpdated            DateTime @default(now()) @map("last_updated") @db.Timestamptz(6)
+  modelVersion           String   @default("analytics-v1.0") @map("model_version")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([avgRiskScore])
+  @@map("state_analytics")
 }

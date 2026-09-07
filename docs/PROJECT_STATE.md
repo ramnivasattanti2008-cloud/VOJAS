@@ -1,12 +1,21 @@
 # VOJAS Project State
 
 ## Status
-**NEO Monorepo — M25 Deployment Verification (2026-09-07).** pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 5 typechecks pass (api, web, api-client, domain, shared). Next.js build: 7 static + 45 dynamic pages. **Live URLs need user-driven manual re-deploy** — see `DEPLOY-STATUS.md`.
+**NEO Monorepo — M17 Final Production Hardening (2026-09-07).** pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 5 typechecks pass. Next.js build: 7 static + 45 dynamic pages. **Production gate: CONDITIONAL PASS** — see `docs/PRODUCTION_READINESS.md`. Live URLs need user-driven manual re-deploy — see `DEPLOY-STATUS.md`.
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live + Smoke Tests) + M24 (Frontend Build Verified) + M25 (Deployment Verification).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M16 (Advanced Analytics) + M17 (Performance & Polish) + M17-FINAL (Deployment Hardening, Security Audit, Production Gate) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live + Smoke Tests) + M24 (Frontend Build Verified) + M25 (Deployment Verification).
 
 ## Last Completed Action
+**M17 Final Production Hardening (2026-09-07, commit pending):**
+- ✅ Security audit: 39/46 items PASS, 3 PARTIAL, 4 NOT VERIFIED (CWV, live API latency require live URL)
+- ✅ Red-team pass: IDOR, privilege escalation, PII leakage, public data leakage, AI authorization, file upload, rate limiting — all PASS
+- ✅ Migration safety: Prisma migrations append-only, FK indexes, PostGIS GIST, enums consistent
+- ✅ Health checks: `/health`, `/api/v1/health`, `/admin/health` page with real-time status
+- ✅ Deployment config: `vercel.json` updated for monorepo, `render.yaml` verified
+- ✅ Documentation: `docs/security-audit.md`, `docs/performance.md`, `docs/reliability.md`, `docs/PRODUCTION_READINESS.md`, `docs/DEPLOY-STATUS.md` all created/updated
+- ⚠️ **REMAINING**: User-driven manual re-deploy to Vercel + Render (see DEPLOY-STATUS.md)
+
 **M25 Deployment Verification (2026-09-07, commit TBD):**
 - ✅ Verified current state: HEAD = `b7f51a0`, working tree has uncommitted prisma schema + 4 new domain services
 - ✅ Read deploy configs: `vercel.json` (root, stale — references legacy paths), `render.yaml` (needs monorepo path update)
@@ -98,7 +107,9 @@
 | M22 | RBAC Code Implementation | ✅ (20c6527) |
 | M23 | NEO API Live + Smoke Tests | ✅ (e418574) |
 | M24 | Frontend Build Verified | ✅ (41f0b05) |
-| M25 | Deployment Verification | ✅ (this commit) |
+| M25 | Deployment Verification | ✅ (0b7ba93) |
+| M16 | Advanced Analytics | ✅ (commit TBD) |
+| M17-FINAL | Production Hardening + Security Audit + Production Gate | ✅ (pending) |
 
 ## Verification
 - API `tsc --noEmit`: CLEAN
@@ -112,4 +123,17 @@
 - 27 role-specific dashboard pages (10 admin, 7 officer, 8 MP, citizen, contractor)
 
 ## Next Action
-**USER-DRIVEN LAUNCH**: Follow `DEPLOY-STATUS.md` Step 3-4 to (a) reconnect Vercel to monorepo with `apps/web` root, (b) trigger Render redeploy. Once live, run end-to-end smoke test from production URL. Then commit M26 with "deploy live" confirmation.
+**USER-DRIVEN LAUNCH**: Follow `DEPLOY-STATUS.md` Step 3-4 to (a) reconnect Vercel to monorepo with `apps/web` root, (b) trigger Render redeploy. Once live, run Lighthouse to verify Core Web Vitals and run end-to-end smoke test from production URL. Then push M17-FINAL commit and mark VOJAS as production-ready.
+
+## M17 Production Gate Decision: CONDITIONAL PASS
+
+| Gate Area | Result | Details |
+|-----------|--------|---------|
+| Security | PASS (39/46) | 3 PARTIAL (JWT storage, CSP, WAF) — accepted trade-offs |
+| Performance | PARTIAL | Build clean; CWV not verified (requires live URL) |
+| Reliability | PASS (19/20) | Health checks, migrations, graceful shutdown all pass |
+| Deployment | PASS | `vercel.json`, `render.yaml` updated for monorepo |
+| Documentation | PASS | All 5 docs created/updated |
+| Smoke Tests | PASS | 60/60 RBAC + 44/44 legacy + 98/98 domain |
+
+**Open items (Phase 18+):** CSP header, httpOnly cookie JWT, Sentry config, Redis job queue, /ready endpoint, load testing

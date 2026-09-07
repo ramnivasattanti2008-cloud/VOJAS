@@ -48,3 +48,38 @@ export type {
   RiskAnalysisResult,
 } from './riskEngine/index.js';
 export * from './riskEngine/types.js';
+
+// M16: Advanced Analytics
+export { AnalyticsEngine } from './analyticsEngine.js';
+export type {
+  EntityType,
+  MetricType,
+  Period,
+  TrendDirection,
+  ConfidenceLevel,
+  DataQualityLevel,
+  ProjectAnalytics,
+  TrendResult,
+  AggregatedMetrics,
+  BenchmarkComparison,
+  CrossSignalCorrelation,
+} from './analyticsEngine.js';
+export { BenchmarkService } from './benchmarkService.js';
+export type {
+  BenchmarkDistribution,
+  ProjectBenchmark,
+} from './benchmarkService.js';
+export { ForecastingService } from './forecastingService.js';
+export type {
+  ForecastResult,
+  DelayForecastResult,
+  CostForecastResult,
+  RiskForecastResult,
+  ModelType,
+} from './forecastingService.js';
+export { ScenarioService } from './scenarioService.js';
+export type {
+  ScenarioParams,
+  ScenarioResult,
+  ScenarioType,
+} from './scenarioService.js';

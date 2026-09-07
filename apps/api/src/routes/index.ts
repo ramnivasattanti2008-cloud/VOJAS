@@ -23,6 +23,7 @@ import adminRoutes from './admin.js';
 import exportRoutes from './export.js';
 import searchRoutes from './search.js';
 import officerRoutes from './officer.js';
+import analyticsRoutes from './analytics.js';
 import { authenticate, requirePermission } from '../middleware/auth.js';
 
 const router = Router();
@@ -100,5 +101,8 @@ router.use('/export', authenticate, requirePermission('admin.manage'), exportRou
 
 // M14: Officer Command Center routes
 router.use('/officer', authenticate, officerRoutes);
+
+// M16: Advanced Analytics routes
+router.use('/analytics', authenticate, analyticsRoutes);
 
 export default router;

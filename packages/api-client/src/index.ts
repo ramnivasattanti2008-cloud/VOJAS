@@ -65,6 +65,7 @@ export {
   type CaseAction,
 } from './officer.js';
 export * from './citizen.js';
+export * from './analytics.js';
 
 // Selective export from ./mp (avoids createMpApi conflict with ./mps)
 export { createMpApi as createMPCommandApi, type MPApi as MPCommandApi, type MPConstituencySummary, type MPFinancialSummary, type MPDemandCluster, type MPCitizenSignal } from './mp.js';
