@@ -23,6 +23,7 @@ import { authenticate, requirePermission } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 import { buildTimeline, compareProgress } from '../services/satelliteEOAnalysis.js';
 import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
+import type { ReliabilityState } from '../services/satelliteJobQueue.js';
 import { cdseService } from '../services/cdseService.js';
 import { logger } from '../utils/logger.js';
 
@@ -114,7 +115,25 @@ router.get(
         Promise.resolve(satelliteJobQueue.getJobsForProject(projectId)),
       ]);
 
-      const runningJob = jobsForProject.find((j) => j.status === 'RUNNING' || j.status === 'PENDING');
+      const runningJob = jobsForProject.find((j) => j.status === 'RUNNING' || j.status === 'PENDING' || j.status === 'RETRYING');
+      const latestJob = jobsForProject[0];
+
+      // Determine reliability state
+      let reliabilityState: ReliabilityState = 'STALE';
+      if (runningJob) {
+        reliabilityState = 'PROCESSING';
+      } else if (latestJob) {
+        reliabilityState = latestJob.reliabilityState;
+      } else if (observationCount > 0) {
+        // Has observations but no recent job — check freshness
+        const daysSince = latest
+          ? Math.floor((Date.now() - latest.observationDate.getTime()) / (1000 * 60 * 60 * 24))
+          : 999;
+        reliabilityState = daysSince > 30 ? 'STALE' : 'AVAILABLE';
+      } else {
+        reliabilityState = 'NO_DATA';
+      }
+
       const window = latest
         ? { start: new Date(latest.observationDate.getTime() - 14 * 86400000).toISOString(), end: new Date(latest.observationDate.getTime() + 14 * 86400000).toISOString() }
         : null;
@@ -135,9 +154,11 @@ router.get(
         } : null,
         observationCount,
         window,
-        processingStatus: runningJob ? 'PROCESSING' : (observationCount > 0 ? 'IDLE' : 'PENDING'),
+        reliabilityState,
+        processingStatus: runningJob ? `PROCESSING:${runningJob.status}` : observationCount > 0 ? 'IDLE' : 'PENDING',
         jobId: runningJob?.jobId ?? null,
         providerStatus: 'CONFIGURED',
+        lastSyncAt: latestJob?.completedAt?.toISOString() ?? null,
       });
     } catch (err) {
       next(err);
@@ -297,9 +318,13 @@ router.get(
       }
       return success(res, {
         jobId: job.jobId,
+        projectId: job.projectId,
         status: job.status,
+        reliabilityState: job.reliabilityState,
         startedAt: job.startedAt?.toISOString() ?? null,
         completedAt: job.completedAt?.toISOString() ?? null,
+        retryCount: job.retryCount,
+        lastRetryAt: job.lastRetryAt?.toISOString() ?? null,
         result: job.result,
         error: job.error,
       });
@@ -363,13 +388,26 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
-      if (!isValidProjectId(id)) return success(res, []);
+      if (!isValidProjectId(id)) return success(res, { observations: [] });
       await getProjectOrThrow(id);
-      const observations = await prisma.satelliteObservation.findMany({
-        where: { projectId: id },
-        orderBy: { observationDate: 'desc' },
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
+      const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? '50'))));
+      const [observations, total] = await prisma.$transaction([
+        prisma.satelliteObservation.findMany({
+          where: { projectId: id },
+          orderBy: { observationDate: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.satelliteObservation.count({ where: { projectId: id } }),
+      ]);
+      return success(res, {
+        observations,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       });
-      return success(res, observations);
     } catch (err) {
       next(err);
     }
@@ -402,13 +440,26 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
-      if (!isValidProjectId(id)) return success(res, []);
+      if (!isValidProjectId(id)) return success(res, { observations: [] });
       await getProjectOrThrow(id);
-      const progress = await prisma.progressObservation.findMany({
-        where: { projectId: id },
-        orderBy: { reportDate: 'desc' },
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
+      const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '50'))));
+      const [progress, total] = await prisma.$transaction([
+        prisma.progressObservation.findMany({
+          where: { projectId: id },
+          orderBy: { reportDate: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.progressObservation.count({ where: { projectId: id } }),
+      ]);
+      return success(res, {
+        observations: progress,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       });
-      return success(res, progress);
     } catch (err) {
       next(err);
     }

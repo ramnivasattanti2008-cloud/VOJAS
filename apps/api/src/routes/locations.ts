@@ -24,9 +24,11 @@ router.get(
         throw new NotFoundError('Project');
       }
 
+      const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? '20'))));
       const locations = await prisma.projectLocation.findMany({
         where: { projectId: id },
         orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+        take: limit,
       });
 
       success(res, locations);

@@ -21,12 +21,26 @@ router.get(
         throw new NotFoundError('Project');
       }
 
-      const events = await prisma.projectEvent.findMany({
-        where: { projectId: id },
-        orderBy: { eventDate: 'desc' },
-      });
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
+      const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '50'))));
 
-      success(res, events);
+      const [events, total] = await prisma.$transaction([
+        prisma.projectEvent.findMany({
+          where: { projectId: id },
+          orderBy: { eventDate: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.projectEvent.count({ where: { projectId: id } }),
+      ]);
+
+      success(res, {
+        data: events,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
     } catch (err) {
       next(err);
     }

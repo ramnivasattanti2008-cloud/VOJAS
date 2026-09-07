@@ -32,6 +32,7 @@ export class SatelliteService {
     return this.prisma.satelliteObservation.findMany({
       where,
       orderBy: { observationDate: 'desc' },
+      take: 200,
     });
   }
 
@@ -70,6 +71,7 @@ export class SatelliteService {
     return this.prisma.analysisResult.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
+      take: 100,
     });
   }
 
@@ -77,6 +79,7 @@ export class SatelliteService {
     return this.prisma.progressObservation.findMany({
       where: { projectId },
       orderBy: { reportDate: 'desc' },
+      take: 100,
     });
   }
 }

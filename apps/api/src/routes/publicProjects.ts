@@ -15,6 +15,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { success } from '../utils/apiResponse.js';
+import { get, set, CACHE_TTL } from '../utils/cache.js';
 
 const router = Router();
 
@@ -23,6 +24,12 @@ const router = Router();
  */
 router.get('/summary', async (_req: Request, res: Response, next: NextFunction) => {
   try {
+    const cacheKey = 'public:summary';
+    const cached = get<unknown>(cacheKey);
+    if (cached) {
+      return success(res, cached);
+    }
+
     const [total, completed, inProgress, delayed, financial] = await Promise.all([
       prisma.project.count(),
       prisma.project.count({ where: { status: 'COMPLETED' } }),
@@ -38,7 +45,7 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
       }),
     ]);
 
-    success(res, {
+    const data = {
       totalProjects: total,
       completedProjects: completed,
       inProgressProjects: inProgress,
@@ -46,7 +53,10 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
       totalSanctioned: financial._sum.approvedAmount ?? 0,
       totalSpent: financial._sum.spentAmount ?? 0,
       lastUpdated: new Date().toISOString(),
-    });
+    };
+
+    set(cacheKey, data, CACHE_TTL.PROJECT_LIST);
+    success(res, data);
   } catch (err) {
     next(err);
   }
@@ -57,6 +67,12 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
  */
 router.get('/states', async (_req: Request, res: Response, next: NextFunction) => {
   try {
+    const cacheKey = 'public:states';
+    const cached = get<unknown>(cacheKey);
+    if (cached) {
+      return success(res, cached);
+    }
+
     const states = await prisma.project.groupBy({
       by: ['state'],
       _count: { id: true },
@@ -90,6 +106,7 @@ router.get('/states', async (_req: Request, res: Response, next: NextFunction) =
       totalSpent: s._sum.spentAmount ?? 0,
     }));
 
+    set(cacheKey, summaries, CACHE_TTL.STATE_ANALYTICS);
     success(res, summaries);
   } catch (err) {
     next(err);
@@ -104,6 +121,13 @@ router.get('/districts', async (req: Request, res: Response, next: NextFunction)
     const state = Array.isArray(req.query.state) ? req.query.state[0] : req.query.state;
     if (!state) {
       return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'state parameter is required' } });
+    }
+
+    const cacheKey = `public:districts:${state}`;
+    const cached = get<unknown>(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return success(res, cached);
     }
 
     const districts = await prisma.project.groupBy({
@@ -124,6 +148,7 @@ router.get('/districts', async (req: Request, res: Response, next: NextFunction)
       totalSpent: d._sum.spentAmount ?? 0,
     }));
 
+    set(cacheKey, stateDistricts, CACHE_TTL.STATE_ANALYTICS);
     success(res, stateDistricts);
   } catch (err) {
     next(err);

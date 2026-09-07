@@ -369,26 +369,40 @@ router.get(
       const projectId = req.params.id as string;
       if (!isValidId(projectId)) return success(res, { history: [] });
 
-      // Get all completed analyses with observation dates, ordered chronologically
-      const analyses = await prisma.changeAnalysis.findMany({
-        where: { projectId, processingStatus: 'COMPLETED' },
-        orderBy: { baselineDate: 'asc' },
-        select: {
-          id: true,
-          analysisDate: true,
-          baselineDate: true,
-          comparisonDate: true,
-          changeClassification: true,
-          changePercent: true,
-          confidence: true,
-          primarySignal: true,
-          provider: true,
-          ndviDelta: true,
-          ndbiDelta: true,
-        },
-      });
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
+      const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? '100'))));
 
-      return success(res, { history: analyses });
+      // Get all completed analyses with observation dates, ordered chronologically
+      const [analyses, total] = await prisma.$transaction([
+        prisma.changeAnalysis.findMany({
+          where: { projectId, processingStatus: 'COMPLETED' },
+          orderBy: { baselineDate: 'asc' },
+          select: {
+            id: true,
+            analysisDate: true,
+            baselineDate: true,
+            comparisonDate: true,
+            changeClassification: true,
+            changePercent: true,
+            confidence: true,
+            primarySignal: true,
+            provider: true,
+            ndviDelta: true,
+            ndbiDelta: true,
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.changeAnalysis.count({ where: { projectId, processingStatus: 'COMPLETED' } }),
+      ]);
+
+      return success(res, {
+        history: analyses,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
     } catch (err) {
       next(err);
     }

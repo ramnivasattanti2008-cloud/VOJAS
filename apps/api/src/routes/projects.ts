@@ -148,7 +148,37 @@ router.post(
 router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const project = await prisma.project.findUnique({ where: { id } });
+    const project = await prisma.project.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        status: true,
+        sector: true,
+        district: true,
+        state: true,
+        constituency: true,
+        approvedAmount: true,
+        spentAmount: true,
+        contractor: true,
+        startDate: true,
+        expectedEndDate: true,
+        completedAt: true,
+        latitude: true,
+        longitude: true,
+        createdById: true,
+        districtId: true,
+        stateId: true,
+        constituencyId: true,
+        mpId: true,
+        vendorId: true,
+        source: true,
+        sourceWorkId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
     if (!project) {
       throw new NotFoundError('Project');
     }

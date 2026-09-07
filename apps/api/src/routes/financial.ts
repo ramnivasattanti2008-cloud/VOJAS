@@ -43,11 +43,25 @@ router.get(
       const project = await prisma.project.findUnique({ where: { id } });
       if (!project) throw new NotFoundError('Project');
 
-      const observations = await prisma.financialObservation.findMany({
-        where: { projectId: id },
-        orderBy: { date: 'desc' },
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
+      const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '50'))));
+
+      const [observations, total] = await prisma.$transaction([
+        prisma.financialObservation.findMany({
+          where: { projectId: id },
+          orderBy: { date: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.financialObservation.count({ where: { projectId: id } }),
+      ]);
+      success(res, {
+        data: observations,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       });
-      success(res, observations);
     } catch (err) {
       next(err);
     }
