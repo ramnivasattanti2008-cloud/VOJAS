@@ -1,5 +1,14 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+
+// Force all dashboard pages to render dynamically (not statically).
+// These pages are authenticated and interactive — they should never
+// be statically prerendered.
+export const dynamic = 'force-dynamic';
+
+// Force all dashboard pages to render dynamically (not statically).
+// These pages are authenticated and interactive — they should never
+// be statically prerendered.
 import { Sidebar } from '@/components/layout/Sidebar';
 
 export const metadata: Metadata = {

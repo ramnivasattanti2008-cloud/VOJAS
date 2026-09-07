@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 import { ArrowLeft, MapPin, AlertCircle, FileText, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
@@ -16,19 +16,19 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatDate, formatDateTime, cn } from '@/lib/utils';
 
 // Lazy-load heavy tab components to reduce initial bundle size
-const SatelliteTab = dynamic(
+const SatelliteTab = nextDynamic(
   () => import('@/components/satellite/SatelliteTab').then((m) => m.SatelliteTab),
   { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
 );
-const ChangeAnalysisTab = dynamic(
+const ChangeAnalysisTab = nextDynamic(
   () => import('@/components/changeAnalysis/ChangeAnalysisTab').then((m) => m.ChangeAnalysisTab),
   { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
 );
-const ProjectDocumentsTab = dynamic(
+const ProjectDocumentsTab = nextDynamic(
   () => import('@/components/project/DocumentsTab').then((m) => m.ProjectDocumentsTab),
   { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
 );
-const FinancialTab = dynamic(
+const FinancialTab = nextDynamic(
   () => import('@/components/project/FinancialTab').then((m) => m.FinancialTab),
   { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
 );

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * useAdmin — M14 System Control Center hooks
  * All administrative operations for VOJAS platform

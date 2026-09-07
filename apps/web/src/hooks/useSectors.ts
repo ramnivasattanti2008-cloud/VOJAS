@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * useSectors — M13 16-Sector Intelligence Framework hooks
  */
