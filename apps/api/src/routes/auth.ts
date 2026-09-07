@@ -15,6 +15,15 @@ import type { JWTPayload } from '../auth/jwt.js';
 const router = Router();
 const auditService = new AuditService(prisma);
 
+/** Cookie options for the httpOnly JWT cookie. */
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: '/',
+};
+
 /**
  * POST /auth/register — public
  */
@@ -63,6 +72,9 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
       role: user.role as unknown as UserRole,
       sessionId: session.id,
     });
+
+    // Set httpOnly cookie (primary) + return token in body (legacy fallback)
+    res.cookie('vojas_token', accessToken, COOKIE_OPTIONS);
 
     // Audit log
     await auditService.logEvent({
@@ -160,6 +172,9 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       sessionId: session.id,
     });
 
+    // Set httpOnly cookie (primary) + return token in body (legacy fallback)
+    res.cookie('vojas_token', accessToken, COOKIE_OPTIONS);
+
     // Audit log
     await auditService.logEvent({
       actorId: user.id,
@@ -232,6 +247,9 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
       sessionId: session.id,
     });
 
+    // Keep httpOnly cookie in sync with new token
+    res.cookie('vojas_token', accessToken, COOKIE_OPTIONS);
+
     await auditService.logEvent({
       actorId: session.user.id,
       actorType: 'USER',
@@ -266,6 +284,9 @@ router.post('/logout', authenticate, async (req: Request, res: Response, next: N
     });
 
     await prisma.session.deleteMany({ where: { id: user.sessionId } });
+
+    // Clear the httpOnly cookie
+    res.clearCookie('vojas_token', { path: '/' });
 
     res.status(204).send();
   } catch (err) {

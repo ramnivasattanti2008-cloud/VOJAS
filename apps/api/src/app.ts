@@ -1,7 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
+import * as Sentry from '@sentry/node';
+import { expressIntegration, setupExpressErrorHandler } from '@sentry/node';
 import { globalErrorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestIdMiddleware, requestLogger } from './middleware/observability.js';
 import { prisma } from '@vojas/db';
@@ -10,20 +13,59 @@ import routes from './routes/index.js';
 
 const app = express();
 
+// ── Sentry (optional — graceful no-op if SENTRY_DSN not set) ─────────────────
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0,
+    // Auto-instrument Express (request handling, tracing, error capture).
+    integrations: [expressIntegration()],
+    beforeSend(event) {
+      // Strip auth tokens / cookies from all events before sending
+      if (event.request?.cookies) delete event.request.cookies;
+      if (event.request?.headers) {
+        delete (event.request.headers as Record<string, unknown>).authorization;
+        delete (event.request.headers as Record<string, unknown>).cookie;
+      }
+      if (event.spans) {
+        for (const span of event.spans) {
+          if (span.data?.authorization) delete span.data.authorization;
+          if (span.data?.cookie) delete span.data.cookie;
+        }
+      }
+      return event;
+    },
+  });
+}
+
 // Trust first proxy (for accurate req.ip behind Render/Vercel/Nginx)
 app.set('trust proxy', 1);
 
-// Security
-app.use(helmet());
+// ── Body parsing (MUST be before routes, after Sentry handlers) ───────────────
+app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
+
+// ── Security headers (applied before routes) ────────────────────────────────────
+app.use((_req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(self), camera=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// ── CORS — credentials required for httpOnly cookie auth ───────────────────────
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',');
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 // Observability — request ID must come BEFORE all routes and middleware
 app.use(requestIdMiddleware);
 app.use(requestLogger);
-
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
 
 // ── Health checks ────────────────────────────────────────────────────────────
 // Liveness — process is up. No DB call, no auth. Safe to use in k8s livenessProbe.
@@ -166,5 +208,10 @@ app.use('/api/v1', routes);
 
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
+
+// ── Sentry error handler (last in chain) ───────────────────────────────────────
+if (process.env.SENTRY_DSN) {
+  setupExpressErrorHandler(app);
+}
 
 export default app;

@@ -24,11 +24,14 @@ declare global {
 export const requireAuth = authenticate;
 
 export function authenticate(req: Request, _res: Response, next: NextFunction) {
+  // Prefer httpOnly cookie; fall back to Authorization header (legacy/Bearer).
+  const cookieToken = (req as unknown as { cookies?: Record<string, string> }).cookies?.vojas_token;
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+  const token = cookieToken || bearerToken;
+  if (!token) {
     return next(new UnauthorizedError('No authorization token provided'));
   }
-  const token = authHeader.slice(7);
   try {
     const payload = verifyAccessToken(token);
     req.user = payload;
@@ -41,9 +44,11 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
 }
 
 export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const cookieToken = (req as unknown as { cookies?: Record<string, string> }).cookies?.vojas_token;
   const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+  const token = cookieToken || bearerToken;
+  if (token) {
     try {
       const payload = verifyAccessToken(token);
       req.user = payload;
