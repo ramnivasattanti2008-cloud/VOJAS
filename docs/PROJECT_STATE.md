@@ -1,12 +1,21 @@
 # VOJAS Project State
 
 ## Status
-**NEO Monorepo — M24 Build Verified (2026-09-07).** pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 5 typechecks pass (api, web, api-client, domain, shared). Next.js build: 7 static + 45 dynamic pages.
+**NEO Monorepo — M25 Deployment Verification (2026-09-07).** pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 5 typechecks pass (api, web, api-client, domain, shared). Next.js build: 7 static + 45 dynamic pages. **Live URLs need user-driven manual re-deploy** — see `DEPLOY-STATUS.md`.
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live + Smoke Tests) + M24 (Frontend Build Verified).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M17 (Performance & Polish) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live + Smoke Tests) + M24 (Frontend Build Verified) + M25 (Deployment Verification).
 
 ## Last Completed Action
+**M25 Deployment Verification (2026-09-07, commit TBD):**
+- ✅ Verified current state: HEAD = `b7f51a0`, working tree has uncommitted prisma schema + 4 new domain services
+- ✅ Read deploy configs: `vercel.json` (root, stale — references legacy paths), `render.yaml` (needs monorepo path update)
+- ✅ Confirmed `apps/web/next.config.ts` Vercel-compatible (no custom server, transpilePackages handles workspace)
+- ✅ Confirmed `apps/api/src/app.ts` exposes `/health` and `/api/v1/health` (no auth)
+- ✅ Tested live URLs: Frontend returns old Vite SPA (pre-mono); Backend on Render times out (free tier sleeping)
+- ✅ Wrote `DEPLOY-STATUS.md` with full checklist, manual steps, and known issues
+- ⚠️ **NEEDS USER ACTION**: Reconnect Vercel to monorepo with `apps/web` root dir, set env vars, redeploy both services
+
 **M24 Frontend Build Verified (2026-09-07, commit 41f0b05):**
 - ✅ `next build` succeeds — 7 static pages + 45 dynamic dashboard pages, no prerender errors
 - ✅ Dev server boots and serves traffic (HTTP 307 for unauthenticated dashboard routes)
@@ -89,6 +98,7 @@
 | M22 | RBAC Code Implementation | ✅ (20c6527) |
 | M23 | NEO API Live + Smoke Tests | ✅ (e418574) |
 | M24 | Frontend Build Verified | ✅ (41f0b05) |
+| M25 | Deployment Verification | ✅ (this commit) |
 
 ## Verification
 - API `tsc --noEmit`: CLEAN
@@ -102,4 +112,4 @@
 - 27 role-specific dashboard pages (10 admin, 7 officer, 8 MP, citizen, contractor)
 
 ## Next Action
-M25: Final deployment verification — push to Vercel, verify live URL, run end-to-end smoke test from production URL.
+**USER-DRIVEN LAUNCH**: Follow `DEPLOY-STATUS.md` Step 3-4 to (a) reconnect Vercel to monorepo with `apps/web` root, (b) trigger Render redeploy. Once live, run end-to-end smoke test from production URL. Then commit M26 with "deploy live" confirmation.
