@@ -39,6 +39,9 @@ router.use('/users', userRoutes);
 // Project routes
 router.use('/projects', projectRoutes);
 
+// M12: Public projects (no auth required) — register BEFORE /:id catch-alls
+router.use('/projects', publicProjectsRoutes);
+
 // Timeline routes
 router.use('/', timelineRoutes);
 
@@ -60,17 +63,15 @@ router.use('/audit', authenticate, requirePermission('audit.read'), auditRoutes)
 // Anomaly routes
 router.use('/anomalies', anomalyRoutes);
 
-// Report routes
-router.use('/reports', reportRoutes);
-
-// M10: Citizen Reports (extended public + authenticated routes)
+// M10: Citizen Reports (extended public + authenticated routes) — register BEFORE
+// reportRoutes which has a `/:id` catch-all that would otherwise match /public, /nearby, /track, etc.
 router.use('/reports', citizenReportRoutes);
 
 // M10: Report search
 router.use('/reports', reportSearchRoutes);
 
-// M12: Public projects (no auth required)
-router.use('/projects', publicProjectsRoutes);
+// Report routes
+router.use('/reports', reportRoutes);
 
 // Vendor routes
 router.use('/vendors', vendorRoutes);

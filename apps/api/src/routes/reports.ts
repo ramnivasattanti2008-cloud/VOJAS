@@ -18,6 +18,8 @@ import { success, created } from '../utils/apiResponse.js';
 const router = Router();
 const auditService = new AuditService(prisma);
 
+const PRIVILEGED_ROLES = [UserRole.ADMIN, UserRole.OFFICER, UserRole.ANALYST];
+
 /**
  * GET /reports — list with filters
  */
@@ -55,6 +57,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 
 /**
  * GET /reports/:id
+ * IDOR: Only privileged roles or the reporter themselves can read a report's PII.
  */
 router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -67,6 +70,23 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
       },
     });
     if (!report) throw new NotFoundError('Report');
+
+    // IDOR protection: redact PII unless caller is privileged or the reporter.
+    const user = req.user!;
+    const isPrivileged = (PRIVILEGED_ROLES as string[]).includes(user.role);
+    const isReporter =
+      !report.isAnonymous &&
+      report.reporterEmail &&
+      report.reporterEmail.toLowerCase() === user.email.toLowerCase();
+
+    if (!isPrivileged && !isReporter) {
+      // Strip PII fields for non-privileged, non-reporter viewers
+      report.reporterName = null;
+      report.reporterEmail = null;
+      report.reporterPhone = null;
+      report.whistleblowerToken = null;
+    }
+
     success(res, report);
   } catch (err) {
     next(err);

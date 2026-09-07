@@ -2,6 +2,8 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
+import { UserRole } from '@vojas/shared';
 import { sendCsv } from '../services/exportService.js';
 
 const router = Router();
@@ -37,7 +39,7 @@ function escapeCsv(value: unknown): string {
 
 // ── GET /export/projects ────────────────────────────────────────────────────────
 
-router.get('/projects', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/projects', authenticate, requireRole(UserRole.ADMIN), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 1000, 5000);
     const offset = Number(req.query.offset) || 0;
@@ -100,7 +102,7 @@ router.get('/projects', authenticate, async (req: Request, res: Response, next: 
 
 // ── GET /export/reports ────────────────────────────────────────────────────────
 
-router.get('/reports', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/reports', authenticate, requireRole(UserRole.ADMIN), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 1000, 5000);
     const offset = Number(req.query.offset) || 0;
@@ -157,7 +159,7 @@ router.get('/reports', authenticate, async (req: Request, res: Response, next: N
 
 // ── GET /export/anomalies ─────────────────────────────────────────────────────
 
-router.get('/anomalies', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/anomalies', authenticate, requireRole(UserRole.ADMIN), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 1000, 5000);
     const offset = Number(req.query.offset) || 0;
@@ -204,7 +206,7 @@ router.get('/anomalies', authenticate, async (req: Request, res: Response, next:
 
 // ── GET /export/vendors ────────────────────────────────────────────────────────
 
-router.get('/vendors', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/vendors', authenticate, requireRole(UserRole.ADMIN), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 1000, 5000);
     const offset = Number(req.query.offset) || 0;
@@ -258,7 +260,7 @@ router.get('/vendors', authenticate, async (req: Request, res: Response, next: N
 
 // ── GET /export/notifications ─────────────────────────────────────────────────
 
-router.get('/notifications', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/notifications', authenticate, requireRole(UserRole.ADMIN), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 1000, 5000);
     const offset = Number(req.query.offset) || 0;
@@ -308,7 +310,7 @@ router.get('/notifications', authenticate, async (req: Request, res: Response, n
 
 // ── GET /export/mps ────────────────────────────────────────────────────────────
 
-router.get('/mps', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/mps', authenticate, requireRole(UserRole.ADMIN), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 1000, 5000);
     const offset = Number(req.query.offset) || 0;

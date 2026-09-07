@@ -1,37 +1,39 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "cd apps/web && pnpm install --frozen-lockfile && pnpm build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": "apps/web/.next",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "@vojas-next-public-api-url",
+    "NEXT_PUBLIC_MAP_TILER_KEY": "@vojas-map-tiler-key"
+  },
+  "headers": [
     {
-      "src": "backend/dist/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/dist/server.js"
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, must-revalidate" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
     },
     {
-      "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" }
+      ]
     }
   ],
-  "env": {
-    "NODE_ENV": "production",
-    "PORT": "3000",
-    "JWT_SECRET": "@vojas-jwt-secret",
-    "JWT_EXPIRES_IN": "7d",
-    "BCRYPT_ROUNDS": "10",
-    "CLIENT_BASE_URL": "@vojas-client-url",
-    "SEED_ON_BOOT": "false",
-    "DATABASE_URL": "@neon-connection-string"
-  },
   "regions": ["iad1"],
-  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/frontend/dist/index.html"
+      "source": "/api/v1/(.*)",
+      "destination": "https://vojas-backend.onrender.com/api/v1/$1"
     }
   ]
 }
