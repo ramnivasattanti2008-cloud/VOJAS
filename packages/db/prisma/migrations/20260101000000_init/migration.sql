@@ -202,8 +202,7 @@ CREATE TABLE "projects" (
   CONSTRAINT "projects_district_id_fkey" FOREIGN KEY ("district_id") REFERENCES "districts"("id") ON DELETE SET NULL,
   CONSTRAINT "projects_state_id_fkey" FOREIGN KEY ("state_id") REFERENCES "states"("id") ON DELETE SET NULL,
   CONSTRAINT "projects_constituency_id_fkey" FOREIGN KEY ("constituency_id") REFERENCES "constituencies"("id") ON DELETE SET NULL,
-  CONSTRAINT "projects_mp_id_fkey" FOREIGN KEY ("mp_id") REFERENCES "mps"("id") ON DELETE SET NULL,
-  CONSTRAINT "projects_source_data_source_id_fkey" FOREIGN KEY ("source_data_source_id") REFERENCES "data_sources"("id") ON DELETE SET NULL
+  CONSTRAINT "projects_mp_id_fkey" FOREIGN KEY ("mp_id") REFERENCES "mps"("id") ON DELETE SET NULL
 );
 
 -- Project Events
@@ -305,8 +304,7 @@ CREATE TABLE "analysis_results" (
   "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT NOW(),
   CONSTRAINT "analysis_results_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "analysis_results_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE,
-  CONSTRAINT "analysis_results_observation_id_fkey" FOREIGN KEY ("observation_id") REFERENCES "satellite_observations"("id") ON DELETE SET NULL,
-  CONSTRAINT "analysis_results_progress_id_fkey" FOREIGN KEY ("progress_id") REFERENCES "progress_observations"("id") ON DELETE SET NULL
+  CONSTRAINT "analysis_results_observation_id_fkey" FOREIGN KEY ("observation_id") REFERENCES "satellite_observations"("id") ON DELETE SET NULL
 );
 
 -- Progress Observations
@@ -334,6 +332,10 @@ CREATE TABLE "progress_observations" (
   CONSTRAINT "progress_observations_observation_id_fkey" FOREIGN KEY ("observation_id") REFERENCES "satellite_observations"("id") ON DELETE SET NULL
 );
 
+ALTER TABLE "analysis_results"
+  ADD CONSTRAINT "analysis_results_progress_id_fkey"
+  FOREIGN KEY ("progress_id") REFERENCES "progress_observations"("id") ON DELETE SET NULL;
+
 -- Financial Observations
 CREATE TABLE "financial_observations" (
   "id" TEXT NOT NULL,
@@ -353,8 +355,7 @@ CREATE TABLE "financial_observations" (
   "source_txn_id" TEXT,
   "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT NOW(),
   CONSTRAINT "financial_observations_pkey" PRIMARY KEY ("id"),
-  CONSTRAINT "financial_observations_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE,
-  CONSTRAINT "financial_observations_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "contractors"("id") ON DELETE SET NULL
+  CONSTRAINT "financial_observations_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "projects"("id") ON DELETE CASCADE
 );
 
 -- Risk Findings
@@ -470,6 +471,10 @@ CREATE TABLE "contractors" (
   CONSTRAINT "contractors_name_normalized_state_key" UNIQUE ("name_normalized", "state")
 );
 
+ALTER TABLE "financial_observations"
+  ADD CONSTRAINT "financial_observations_vendor_id_fkey"
+  FOREIGN KEY ("vendor_id") REFERENCES "contractors"("id") ON DELETE SET NULL;
+
 -- Contractor Updates
 CREATE TABLE "contractor_updates" (
   "id" TEXT NOT NULL,
@@ -515,6 +520,10 @@ CREATE TABLE "data_sources" (
   CONSTRAINT "data_sources_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "data_sources_source_name_dataset_name_key" UNIQUE ("source_name", "dataset_name")
 );
+
+ALTER TABLE "projects"
+  ADD CONSTRAINT "projects_source_data_source_id_fkey"
+  FOREIGN KEY ("source_data_source_id") REFERENCES "data_sources"("id") ON DELETE SET NULL;
 
 -- Data Source Records
 CREATE TABLE "data_source_records" (
@@ -641,12 +650,12 @@ CREATE INDEX "audit_events_timestamp_idx" ON "audit_events" ("timestamp");
 
 -- Spatial index on Project centroid (geography GIST — PostGIS)
 CREATE INDEX "projects_location_geography_idx" ON "projects" USING GIST (
-  ST_SetSRID(ST_MakePoint("longitude", "latitude"), 4326)::geography
+  (ST_SetSRID(ST_MakePoint("longitude", "latitude"), 4326)::geography)
 ) WHERE "latitude" IS NOT NULL AND "longitude" IS NOT NULL;
 
 -- Spatial index on ProjectLocation (geography GIST — PostGIS)
 CREATE INDEX "project_locations_location_geography_idx" ON "project_locations" USING GIST (
-  ST_SetSRID(ST_MakePoint("longitude", "latitude"), 4326)::geography
+  (ST_SetSRID(ST_MakePoint("longitude", "latitude"), 4326)::geography)
 );
 
 -- Composite indexes for common filter patterns

@@ -17,11 +17,11 @@
  * catches the error and falls back to the in-process queue.
  */
 
-import { Queue, Worker, type Job as BullMQJob, type JobsOptions } from 'bullmq';
 import { prisma } from '@vojas/db';
-import { syncProjectSatellite, type SyncResult } from './satelliteEOAnalysis.js';
-import { logger } from '../utils/logger.js';
+import { Queue, Worker, type Job as BullMQJob, type JobsOptions } from 'bullmq';
 import { getRedis } from '../config/redis.js';
+import { logger } from '../utils/logger.js';
+import { syncProjectSatellite, type SyncResult } from './satelliteEOAnalysis.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────────
 
@@ -340,7 +340,9 @@ function startWorker(): void {
 }
 
 // Kick off initialization eagerly (non-blocking).
-void initialize();
+if (process.env.REDIS_URL) {
+  void initialize();
+}
 
 // ── Public API (SYNCHRONOUS — matches in-process queue contract) ───────────────
 

@@ -8,7 +8,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  output   = "../../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -371,7 +371,7 @@ model District {
   id        String   @id @default(cuid())
   name      String
   stateId   String   @map("state_id")
-  lgdCode   String   @unique
+  lgdCode   String   @unique(map: "districts_lgd_code_key") @map("lgd_code")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   state          State          @relation(fields: [stateId], references: [id], onDelete: Cascade)

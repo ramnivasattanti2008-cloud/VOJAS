@@ -1,30 +1,30 @@
 import { Router } from 'express';
-import authRoutes from './auth.js';
-import userRoutes from './users.js';
-import projectRoutes from './projects.js';
-import timelineRoutes from './timeline.js';
-import locationRoutes from './locations.js';
-import financialRoutes from './financial.js';
-import satelliteRoutes from './satellite.js';
-import changeAnalysisRoutes from './changeAnalysis.js';
-import auditRoutes from './audit.js';
-import anomalyRoutes from './anomalies.js';
-import reportRoutes from './reports.js';
-import citizenReportRoutes from './citizenReports.js';
-import reportSearchRoutes from './reportSearch.js';
-import publicProjectsRoutes from './publicProjects.js';
-import vendorRoutes from './vendors.js';
-import notificationRoutes from './notifications.js';
-import documentRoutes from './documents.js';
-import mpRoutes from './mps.js';
-import riskRoutes from './risk.js';
-import sectorsRoutes from './sectors.js';
-import adminRoutes from './admin.js';
-import exportRoutes from './export.js';
-import searchRoutes from './search.js';
-import officerRoutes from './officer.js';
-import analyticsRoutes from './analytics.js';
 import { authenticate, requirePermission } from '../middleware/auth.js';
+import adminRoutes from './admin.js';
+import analyticsRoutes from './analytics.js';
+import anomalyRoutes from './anomalies.js';
+import auditRoutes from './audit.js';
+import authRoutes from './auth.js';
+import changeAnalysisRoutes from './changeAnalysis.js';
+import citizenReportRoutes from './citizenReports.js';
+import documentRoutes from './documents.js';
+import exportRoutes from './export.js';
+import financialRoutes from './financial.js';
+import locationRoutes from './locations.js';
+import mpRoutes from './mps.js';
+import notificationRoutes from './notifications.js';
+import officerRoutes from './officer.js';
+import projectRoutes from './projects.js';
+import publicProjectsRoutes from './publicProjects.js';
+import reportRoutes from './reports.js';
+import reportSearchRoutes from './reportSearch.js';
+import riskRoutes from './risk.js';
+import satelliteRoutes from './satellite.js';
+import searchRoutes from './search.js';
+import sectorsRoutes from './sectors.js';
+import timelineRoutes from './timeline.js';
+import userRoutes from './users.js';
+import vendorRoutes from './vendors.js';
 
 const router = Router();
 
@@ -36,11 +36,11 @@ router.get('/health', (_req, res) => { res.json({ status: 'ok', timestamp: new D
 // User routes
 router.use('/users', userRoutes);
 
+// M12: Public projects (no auth required) — register BEFORE /:id catch-alls
+router.use('/projects/public', publicProjectsRoutes);
+
 // Project routes
 router.use('/projects', projectRoutes);
-
-// M12: Public projects (no auth required) — register BEFORE /:id catch-alls
-router.use('/projects', publicProjectsRoutes);
 
 // Timeline routes
 router.use('/', timelineRoutes);

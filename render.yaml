@@ -53,6 +53,16 @@ services:
         value: 10000
       - key: SEED_ON_BOOT
         value: "true"
+      # ── Redis (M19: BullMQ + distributed cache) ────────────────────────
+      # To enable Redis-backed job queue + cache on Render:
+      #   1. Provision an Upstash Redis (free): https://upstash.com/
+      #   2. Copy the connection URL (looks like: redis://default:xxxx@xxx.upstash.io:6379)
+      #   3. Add a "Secret File" or "Environment Variable" with key REDIS_URL
+      #   4. App auto-detects Redis on boot and switches from in-memory to Redis.
+      # If REDIS_URL is not set, the API uses in-memory implementations
+      # (suitable for single-instance dev/staging; NOT for multi-instance prod).
+      - key: REDIS_URL
+        sync: false   # Set this manually in Render dashboard with your Upstash URL
     autoDeploy: true
 
   # ── Frontend (static) ────────────────────────────────────────────────────

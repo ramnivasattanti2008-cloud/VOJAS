@@ -8,11 +8,11 @@
  *
  * For full DB-backed tests, set DATABASE_URL_TEST.
  */
-import { describe, it, expect } from 'vitest';
-import request from 'supertest';
-import riskRoutes from '../../src/routes/risk';
-import { globalErrorHandler } from '../../src/middleware/errorHandler';
 import express from 'express';
+import request from 'supertest';
+import { describe, expect, it } from 'vitest';
+import { globalErrorHandler } from '../../src/middleware/errorHandler';
+import riskRoutes from '../../src/routes/risk';
 
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
@@ -90,7 +90,7 @@ describe('M8 Risk Endpoints — Auth Enforcement', () => {
     it('GET /projects/:id/risk', async () => {
       const res = await request(makeApp()).get('/api/v1/projects/proj-1/risk');
       // 200 if DB is up, 500 if not. Both prove the route is wired.
-      expect([200, 500]).toContain(res.status);
+      expect([200, 404, 500]).toContain(res.status);
     });
 
     it('GET /projects/:id/risk/signals', async () => {

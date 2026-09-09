@@ -5,13 +5,12 @@
  * for all 16 VOJAS sectors.
  */
 
-import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { success } from '../utils/apiResponse.js';
-import { SECTOR_CONFIGS, SECTOR_CODES } from '@vojas/domain';
+import { SECTOR_CODES, SECTOR_CONFIGS, type SectorConfig } from '@vojas/domain';
 import type { ProjectSector } from '@vojas/shared';
-import type { SectorConfig } from '@vojas/api-client';
+import type { NextFunction, Request, Response } from 'express';
+import { Router } from 'express';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 

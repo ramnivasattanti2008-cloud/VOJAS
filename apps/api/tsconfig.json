@@ -8,19 +8,31 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "outDir": "./dist",
+    "rootDir": "./src",
     "declaration": false,
     "noEmitOnError": false,
-    "lib": ["ES2022"],
-    "types": ["node"],
+    "lib": [
+      "ES2022"
+    ],
+    "types": [
+      "node"
+    ],
     "paths": {
-      "@vojas/db": ["../../packages/db/dist"],
-      "@vojas/domain": ["../../packages/domain/dist"],
-      "@vojas/shared": ["../../packages/shared/dist"]
+      "@vojas/db": [
+        "../../packages/db/dist"
+      ],
+      "@vojas/domain": [
+        "../../packages/domain/dist"
+      ],
+      "@vojas/shared": [
+        "../../packages/shared/dist"
+      ]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",

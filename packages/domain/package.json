@@ -1,54 +1,54 @@
 {
-  "name": "@vojas/domain",
-  "version": "2.0.0",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./errors": {
-      "import": "./dist/errors/index.js",
-      "types": "./dist/errors/index.d.ts"
-    },
-    "./validation": {
-      "import": "./dist/validation/index.js",
-      "types": "./dist/validation/index.d.ts"
-    },
-    "./geospatial": {
-      "import": "./dist/geospatial/index.js",
-      "types": "./dist/geospatial/index.d.ts"
-    },
-    "./providers": {
-      "import": "./dist/providers/index.js",
-      "types": "./dist/providers/index.d.ts"
-    },
-    "./services": {
-      "import": "./dist/services/index.js",
-      "types": "./dist/services/index.d.ts"
-    },
-    "./sectors": {
-      "import": "./dist/sectors/index.js",
-      "types": "./dist/sectors/index.d.ts"
-    }
-  },
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@turf/turf": "^7.1.0",
-    "@vojas/db": "*",
-    "@vojas/shared": "*",
-    "zod": "^3.24.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.0",
-    "typescript": "~5.6.2",
-    "vitest": "^2.1.9"
-  }
+    "name":  "@vojas/domain",
+    "version":  "2.0.0",
+    "private":  true,
+    "type":  "module",
+    "main":  "./dist/index.js",
+    "types":  "./dist/index.d.ts",
+    "exports":  {
+                    ".":  {
+                              "import":  "./dist/index.js",
+                              "types":  "./dist/index.d.ts"
+                          },
+                    "./errors":  {
+                                     "import":  "./dist/errors/index.js",
+                                     "types":  "./dist/errors/index.d.ts"
+                                 },
+                    "./validation":  {
+                                         "import":  "./dist/validation/index.js",
+                                         "types":  "./dist/validation/index.d.ts"
+                                     },
+                    "./geospatial":  {
+                                         "import":  "./dist/geospatial/index.js",
+                                         "types":  "./dist/geospatial/index.d.ts"
+                                     },
+                    "./providers":  {
+                                        "import":  "./dist/providers/index.js",
+                                        "types":  "./dist/providers/index.d.ts"
+                                    },
+                    "./services":  {
+                                       "import":  "./dist/services/index.js",
+                                       "types":  "./dist/services/index.d.ts"
+                                   },
+                    "./sectors":  {
+                                      "import":  "./dist/sectors/index.js",
+                                      "types":  "./dist/sectors/index.d.ts"
+                                  }
+                },
+    "scripts":  {
+                    "build":  "tsc",
+                    "typecheck":  "tsc --noEmit",
+                    "test":  "vitest run"
+                },
+    "dependencies":  {
+                         "@turf/turf":  "^7.1.0",
+                         "@vojas/db":  "workspace:*",
+                         "@vojas/shared":  "workspace:*",
+                         "zod":  "^3.24.0"
+                     },
+    "devDependencies":  {
+                            "@types/node":  "^22.10.0",
+                            "typescript":  "~5.6.2",
+                            "vitest":  "^2.1.9"
+                        }
 }

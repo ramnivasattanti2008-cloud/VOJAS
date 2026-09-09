@@ -8,8 +8,8 @@
  * Without a database, auth tests that create users will be skipped.
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import app from '../../src/app';
 
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
@@ -672,7 +672,7 @@ describe('Public Endpoints (no auth required)', () => {
     const res = await request(app)
       .get('/api/v1/reports/track/NONEXISTENT-REF-0000');
     // Should return 404 (not found) but NOT 401
-    expect([401, 404]).not.toContain(res.status);
+    expect(res.status).not.toBe(401);
     expect([200, 400, 404]).toContain(res.status);
   });
 });
