@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useSubmitReport } from '@/hooks/useCitizenReports';
+import { usePublicProject } from '@/hooks/usePublicProjects';
 import {
   PRIVACY_LABELS,
   REPORT_CATEGORY_LABELS,
@@ -14,16 +15,13 @@ import {
 } from '@vojas/api-client';
 
 const CATEGORIES = [
-  { value: 'PROJECT_NOT_STARTED', label: 'Project Not Started', icon: '🏗️' },
-  { value: 'PROJECT_DELAY', label: 'Project Delay', icon: '⏰' },
-  { value: 'WORK_QUALITY', label: 'Work Quality Issue', icon: '🔧' },
-  { value: 'PROJECT_INCOMPLETE', label: 'Project Incomplete', icon: '📋' },
-  { value: 'PUBLIC_SAFETY', label: 'Public Safety Concern', icon: '⚠️' },
-  { value: 'ENVIRONMENTAL_CONCERN', label: 'Environmental Concern', icon: '🌿' },
-  { value: 'FINANCIAL_CONCERN', label: 'Financial Concern', icon: '💰' },
-  { value: 'DOCUMENT_CONCERN', label: 'Document Concern', icon: '📄' },
-  { value: 'CONTRACTOR_CONCERN', label: 'Contractor Concern', icon: '👷' },
-  { value: 'OTHER', label: 'Other', icon: '❓' },
+  { value: 'ABANDONED_WORK', label: 'Project does not exist / Abandoned', icon: '❌' },
+  { value: 'LOCATION_MISMATCH', label: 'Wrong location / Geo discrepancy', icon: '📍' },
+  { value: 'PROGRESS_MISMATCH', label: 'Marked completed but incomplete', icon: '⏳' },
+  { value: 'CONSTRUCTION_QUALITY', label: 'Infrastructure discrepancy / Defect', icon: '🏗️' },
+  { value: 'FINANCIAL_IRREGULARITY', label: 'Financial discrepancy / Misallocation', icon: '💰' },
+  { value: 'FAKE_DOCUMENTS', label: 'Duplicate or suspicious record', icon: '📄' },
+  { value: 'OTHER', label: 'Other discrepancy', icon: '❓' },
 ];
 
 const PRIVACY_OPTIONS: ReportPrivacyLevel[] = ['PUBLIC', 'RESTRICTED', 'CONFIDENTIAL', 'ANONYMOUS'];
@@ -93,6 +91,7 @@ export function ReportForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const submitReport = useSubmitReport();
+  const { data: linkedProject } = usePublicProject(urlProjectId);
 
   const handleChange = (field: keyof FormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -179,6 +178,28 @@ export function ReportForm() {
             <p className="text-sm text-slate-500 mb-6">
               Save this reference number to track your report status.
             </p>
+            {/* Verification and Reward lifecycle */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 text-left space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <Shield className="h-4 w-4 text-blue-600" />
+                Report Lifecycle &amp; Reward Policy
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 gap-1 overflow-x-auto py-1">
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 shrink-0">1. SUBMITTED</span>
+                <span className="text-slate-400">→</span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">2. SCREENING</span>
+                <span className="text-slate-400">→</span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">3. UNDER REVIEW</span>
+                <span className="text-slate-400">→</span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">4. VERIFIED</span>
+                <span className="text-slate-400">→</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">5. REWARD ELIGIBLE</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Reward eligibility is determined only after your report is independently verified by field officers or satellite evidence. Submitting a report does not guarantee a reward.
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button onClick={() => window.print()} variant="secondary">
                 Print Reference
@@ -211,6 +232,27 @@ export function ReportForm() {
           Help us ensure public projects are built correctly and on time.
         </p>
       </div>
+
+      {linkedProject && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 flex items-start gap-3.5 shadow-xs">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-xs">
+            📍
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider bg-blue-100 px-2 py-0.5 rounded">
+                Verified Project
+              </span>
+              <span className="text-xs text-slate-500 font-mono font-medium">ID: {linkedProject.id}</span>
+            </div>
+            <p className="text-xs text-blue-600 font-semibold mt-1">You are reporting on:</p>
+            <h3 className="text-base font-bold text-slate-900 leading-snug">{linkedProject.name}</h3>
+            <p className="text-xs text-slate-600 mt-0.5">
+              {[linkedProject.district, linkedProject.state].filter(Boolean).join(', ')} · Sector: {linkedProject.sector.replace(/_/g, ' ')}
+            </p>
+          </div>
+        </div>
+      )}
 
       <Card className="border-blue-200 bg-blue-50">
         <CardBody className="flex gap-3">

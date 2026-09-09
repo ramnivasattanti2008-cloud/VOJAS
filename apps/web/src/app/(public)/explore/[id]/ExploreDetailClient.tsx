@@ -20,6 +20,8 @@ import { Button } from '@/components/ui/Button';
 import { InformationClassificationBanner } from '@/components/transparency/InformationClassificationBanner';
 import { SourcePanel } from '@/components/transparency/SourcePanel';
 import { PublicMoneyView } from '@/components/transparency/PublicMoneyView';
+import { SectorAccountabilityCard } from '@/components/transparency/SectorAccountabilityCard';
+import { SatelliteTab as SatelliteTabComponent } from '@/components/satellite/SatelliteTab';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import type { PublicProjectDetail } from '@vojas/api-client';
 
@@ -169,7 +171,34 @@ export function ExploreDetailClient() {
       {activeTab === 'financial' && <FinancialTab project={project} />}
       {activeTab === 'timeline' && <TimelineTab projectId={id} />}
       {activeTab === 'risk' && <RiskTab projectId={id} active={activeTab === 'risk'} />}
-      {activeTab === 'satellite' && <SatelliteTab projectId={id} />}
+      {activeTab === 'satellite' && (
+        project.latitude != null && project.longitude != null ? (
+          <SatelliteTabComponent
+            projectId={project.id}
+            lat={project.latitude}
+            lng={project.longitude}
+            projectName={project.name}
+          />
+        ) : (
+          <Card>
+            <CardBody className="py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                <MapPin className="h-6 w-6 text-slate-400" />
+              </div>
+              <p className="text-base font-semibold text-slate-800">No verified coordinates available</p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
+                Satellite observation and Sentinel-2 multispectral analysis require exact verified latitude and longitude.
+                Coordinates for this project are not recorded in official source registries.
+              </p>
+              <div className="mt-4">
+                <Link href={`/report?projectId=${project.id}`}>
+                  <Button variant="secondary" size="sm">Report Missing Location</Button>
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+        )
+      )}
 
       <SourcePanel lastUpdated={project.updatedAt} className="mt-8" />
     </div>
@@ -217,6 +246,8 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
           </CardBody>
         </Card>
       )}
+
+      <SectorAccountabilityCard sector={project.sector} />
 
       <Card>
         <CardHeader>
@@ -354,28 +385,3 @@ function RiskTab({ projectId, active }: { projectId: string; active: boolean }) 
   );
 }
 
-function SatelliteTab({ projectId }: { projectId: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-800">Satellite Observations</h2>
-          <span className="text-xs text-slate-400 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">AI-INTERPRETED</span>
-        </div>
-      </CardHeader>
-      <CardBody>
-        <div className="text-center py-10">
-          <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
-            <Satellite className="h-6 w-6 text-slate-300" />
-          </div>
-          <p className="text-sm font-medium text-slate-700 mb-1">Satellite source unavailable</p>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            VOJAS uses Copernicus Sentinel-2 imagery via CDSE for satellite change analysis. This
-            source is not currently configured, so no satellite comparison is shown for this
-            project. This is stated explicitly rather than estimated.
-          </p>
-        </div>
-      </CardBody>
-    </Card>
-  );
-}

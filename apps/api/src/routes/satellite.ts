@@ -19,7 +19,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { NotFoundError } from '@vojas/domain';
-import { authenticate, requirePermission } from '../middleware/auth.js';
+import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 import { buildTimeline, compareProgress } from '../services/satelliteEOAnalysis.js';
 import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
@@ -64,7 +64,7 @@ async function getProjectOrThrow(projectId: string) {
 
 router.get(
   '/projects/:id/satellite',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -170,7 +170,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/timeline',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -190,7 +190,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/observations',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -213,7 +213,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/baseline',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -256,7 +256,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/change',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -307,7 +307,7 @@ router.post(
 
 router.get(
   '/projects/:id/satellite/jobs/:jobId',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const jobId = req.params.jobId as string;
@@ -338,7 +338,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/comparison',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -384,7 +384,7 @@ router.get(
 
 router.get(
   '/projects/:id/observations',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;

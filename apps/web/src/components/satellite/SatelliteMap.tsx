@@ -4,20 +4,14 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { SatelliteObservation } from '@vojas/api-client';
 import { cn } from '@/lib/utils';
 
+import 'maplibre-gl/dist/maplibre-gl.css';
+
 // MapLibre is loaded dynamically to avoid SSR issues
 let MapLibre: typeof import('maplibre-gl') | null = null;
-let cssLoaded = false;
 
 async function loadMapLibre() {
   if (MapLibre) return MapLibre;
   const ml = await import('maplibre-gl');
-  if (!cssLoaded && typeof document !== 'undefined') {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/maplibre-gl@4.10.0/dist/maplibre-gl.css';
-    document.head.appendChild(link);
-    cssLoaded = true;
-  }
   MapLibre = ml;
   return ml;
 }

@@ -14,7 +14,21 @@ import {
   Building2,
 } from 'lucide-react';
 
-export default function HomePage() {
+async function getSummaryData() {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const res = await fetch(`${apiUrl}/api/v1/projects/public/summary`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data as { totalProjects: number; totalSanctioned: number; totalSpent: number };
+  } catch {
+    return null;
+  }
+}
+
+export default async function HomePage() {
+  const summary = await getSummaryData();
+
   return (
     <div className="space-y-16">
       {/* Hero Banner Section */}
@@ -28,25 +42,28 @@ export default function HomePage() {
             Public Infrastructure Intelligence
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white">
-            Track, Analyze &amp; Audit India&apos;s MPLAD Projects with Real Evidence
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+            Every Rupee Accounted For. <br className="hidden sm:inline" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-300">
+              Verified from Orbit to Ground.
+            </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-normal">
-            VOJAS is an anti-corruption public accountability platform for India&apos;s Members of Parliament Local Area Development (MPLADS) scheme. Inspect government project records, track spending, view Sentinel-2 satellite observations, and report ground-level discrepancies.
+          <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl font-normal">
+            VOJAS connects official Parliamentary MPLADS sanction registries with Sentinel-2 Earth observation satellites, automated audit algorithms, and citizen field reports.
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3 pt-2 flex-wrap">
             <Link
               href="/explore"
-              className="inline-flex items-center gap-2 px-6 py-3.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-500 transition-all shadow-md hover:shadow-blue-600/30"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all hover:-translate-y-0.5"
             >
               <Search className="h-4 w-4" />
-              Explore Projects
+              Explore Real Projects
             </Link>
             <Link
               href="/explore/map"
-              className="inline-flex items-center gap-2 px-6 py-3.5 text-sm font-semibold text-slate-100 bg-slate-800/80 border border-slate-700/80 rounded-xl hover:bg-slate-800 hover:border-slate-600 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700 transition-all"
             >
               <MapPin className="h-4 w-4 text-blue-400" />
               Open Project Map
@@ -57,20 +74,26 @@ export default function HomePage() {
         {/* Real Data Highlights Bar */}
         <div className="mt-12 pt-8 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-6 text-slate-300 text-xs">
           <div>
-            <div className="text-2xl font-bold text-white tracking-tight">60,000+</div>
+            <div className="text-2xl font-bold text-white tracking-tight">
+              {summary ? summary.totalProjects.toLocaleString('en-IN') : 'Live Registry'}
+            </div>
             <div className="text-slate-400 font-medium mt-0.5">MPLADS Works Monitored</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-white tracking-tight">16 Sectors</div>
-            <div className="text-slate-400 font-medium mt-0.5">Transport, Water, Health &amp; Edu</div>
+            <div className="text-2xl font-bold text-white tracking-tight">
+              {summary ? `₹${(summary.totalSanctioned / 10000000).toFixed(1)} Cr` : 'Official Records'}
+            </div>
+            <div className="text-slate-400 font-medium mt-0.5">Sanctioned Public Funds</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-white tracking-tight">
+              {summary ? `₹${(summary.totalSpent / 10000000).toFixed(1)} Cr` : 'Tracked Spend'}
+            </div>
+            <div className="text-slate-400 font-medium mt-0.5">Reported Fund Utilization</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-white tracking-tight">Sentinel-2</div>
-            <div className="text-slate-400 font-medium mt-0.5">Satellite Change Analysis</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-white tracking-tight">100% Honest</div>
-            <div className="text-slate-400 font-medium mt-0.5">Zero Fabricated Civic Figures</div>
+            <div className="text-slate-400 font-medium mt-0.5">10m Multispectral Verification</div>
           </div>
         </div>
       </section>
