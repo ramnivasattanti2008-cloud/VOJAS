@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { ExploreClient } from './ExploreClient';
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function ExplorePage() {
-  return <ExploreClient />;
+  return (
+    <Suspense>
+      <ExploreClient />
+    </Suspense>
+  );
 }

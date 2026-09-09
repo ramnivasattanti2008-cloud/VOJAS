@@ -28,6 +28,12 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
             <Link href="/explore/map" className="text-sm font-medium text-slate-600 hover:text-slate-900">
               Map
             </Link>
+            <Link href="/budget" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              Budget
+            </Link>
+            <Link href="/insights" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              Analytics
+            </Link>
             <Link
               href="/report"
               className="px-4 py-2 text-sm font-medium text-white bg-vojas-600 rounded-lg hover:bg-vojas-700 transition-colors"

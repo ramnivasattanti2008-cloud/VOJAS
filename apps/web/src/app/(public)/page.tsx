@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Search, Map, ShieldCheck, Satellite, FileWarning, ArrowRight } from 'lucide-react';
+import { Search, Map, ShieldCheck, Satellite, FileWarning, ArrowRight, Wallet, BarChart3 } from 'lucide-react';
 import { Card, CardBody } from '@/components/ui/Card';
 
 export default function HomePage() {
@@ -103,6 +103,34 @@ export default function HomePage() {
               <h3 className="font-semibold text-slate-800 text-sm">Search &amp; browse projects</h3>
               <p className="text-sm text-slate-500 mt-1">
                 Filter by state, district, sector, and status to find projects near you.
+              </p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-vojas-600 shrink-0 ml-3" aria-hidden="true" />
+          </Link>
+          <Link
+            href="/budget"
+            className="group flex items-center justify-between p-5 bg-white border border-slate-200 rounded-xl hover:border-vojas-300 hover:shadow-sm transition-all"
+          >
+            <div>
+              <h3 className="font-semibold text-slate-800 text-sm flex items-center gap-1.5">
+                <Wallet className="h-4 w-4 text-vojas-600" aria-hidden="true" /> Track the budget
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                See sanctioned and spent amounts by state, sector, and project.
+              </p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-vojas-600 shrink-0 ml-3" aria-hidden="true" />
+          </Link>
+          <Link
+            href="/insights"
+            className="group flex items-center justify-between p-5 bg-white border border-slate-200 rounded-xl hover:border-vojas-300 hover:shadow-sm transition-all"
+          >
+            <div>
+              <h3 className="font-semibold text-slate-800 text-sm flex items-center gap-1.5">
+                <BarChart3 className="h-4 w-4 text-vojas-600" aria-hidden="true" /> Browse analytics
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Project counts and status broken down across all 16 MPLAD sectors.
               </p>
             </div>
             <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-vojas-600 shrink-0 ml-3" aria-hidden="true" />

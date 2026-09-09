@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, X, Loader2, AlertTriangle } from 'lucide-react';
 import { ProjectSector, ProjectStatus } from '@vojas/shared';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
@@ -23,10 +24,15 @@ function useDebounced<T>(value: T, delayMs: number): T {
 }
 
 export function ExploreClient() {
-  const [searchInput, setSearchInput] = useState('');
-  const [state, setState] = useState('');
-  const [sector, setSector] = useState('');
-  const [status, setStatus] = useState('');
+  // Pre-fill from links elsewhere in the app (Budget Tracker, Analytics,
+  // Map) — e.g. /explore?sector=HEALTH&state=Kerala. Read once on mount;
+  // the filter UI below is the source of truth after that.
+  const initialParams = useSearchParams();
+
+  const [searchInput, setSearchInput] = useState(() => initialParams.get('search') ?? '');
+  const [state, setState] = useState(() => initialParams.get('state') ?? '');
+  const [sector, setSector] = useState(() => initialParams.get('sector') ?? '');
+  const [status, setStatus] = useState(() => initialParams.get('status') ?? '');
   const [page, setPage] = useState(1);
 
   const search = useDebounced(searchInput, 400);

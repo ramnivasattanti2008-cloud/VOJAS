@@ -5,7 +5,7 @@ const PUBLIC_PATHS = ['/login', '/register'];
 // Mirrors the app/(public) route group: the landing page, anonymous citizen
 // reporting, and the public project transparency/discovery surface. This is
 // the primary citizen journey and must never require a login.
-const ALWAYS_PUBLIC_PATHS = ['/', '/report', '/explore', '/about', '/privacy', '/contact'];
+const ALWAYS_PUBLIC_PATHS = ['/', '/report', '/explore', '/budget', '/insights', '/about', '/privacy', '/contact'];
 const AUTH_COOKIE_NAMES = ['access_token', 'vojas_token', 'sb-access-token'];
 
 function isAuthenticated(req: NextRequest): boolean {

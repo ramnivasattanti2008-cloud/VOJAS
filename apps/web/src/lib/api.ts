@@ -13,7 +13,7 @@ export function setAccessTokenGetter(fn: () => string | null) {
 // anonymous visitor, or a visitor with a stale/expired session cookie who
 // is on a public page on purpose. Force-navigating them to /login there
 // would defeat the whole point of the public citizen journey.
-const NEVER_REDIRECT_ON_401_PATHS = ['/', '/report', '/explore', '/about', '/privacy', '/contact', '/login', '/register'];
+const NEVER_REDIRECT_ON_401_PATHS = ['/', '/report', '/explore', '/budget', '/insights', '/about', '/privacy', '/contact', '/login', '/register'];
 
 /** True when the current path is public and must never be hard-redirected away from on auth failure. */
 export function isOnPublicPath(): boolean {
