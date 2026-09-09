@@ -69,22 +69,45 @@ const initialFormData: FormData = {
 export function ReportForm() {
   const searchParams = useSearchParams();
   const urlProjectId = searchParams.get('projectId');
+  const urlCategory = searchParams.get('category');
+  const urlTitle = searchParams.get('title');
+  const urlDescription = searchParams.get('description');
+  const urlSource = searchParams.get('source');
+  const urlObsDate = searchParams.get('obsDate');
 
-  const [formData, setFormData] = useState<FormData>(() => ({
-    ...initialFormData,
-    projectId: urlProjectId ?? '',
-    unknownProject: !urlProjectId,
-  }));
+  const [formData, setFormData] = useState<FormData>(() => {
+    const isSat = urlSource === 'satellite';
+    const category = urlCategory && CATEGORIES.some((c) => c.value === urlCategory)
+      ? urlCategory
+      : isSat ? 'PROGRESS_MISMATCH' : '';
+    const title = urlTitle ?? (isSat ? 'Physical ground status discrepancy vs Sentinel-2 satellite observation' : '');
+    const description = urlDescription ?? (isSat
+      ? `Based on VOJAS Sentinel-2 satellite observation${urlObsDate ? ` from ${urlObsDate}` : ''}, I am providing ground verification of this project's physical progress.\n\nGround observation details: `
+      : '');
+
+    return {
+      ...initialFormData,
+      projectId: urlProjectId ?? '',
+      unknownProject: !urlProjectId,
+      category,
+      title,
+      description,
+    };
+  });
 
   useEffect(() => {
     if (urlProjectId) {
+      const isSat = urlSource === 'satellite';
       setFormData((prev) => ({
         ...prev,
         projectId: urlProjectId,
         unknownProject: false,
+        category: prev.category || (urlCategory && CATEGORIES.some((c) => c.value === urlCategory) ? urlCategory : isSat ? 'PROGRESS_MISMATCH' : ''),
+        title: prev.title || urlTitle || (isSat ? 'Physical ground status discrepancy vs Sentinel-2 satellite observation' : ''),
+        description: prev.description || urlDescription || (isSat ? `Based on VOJAS Sentinel-2 satellite observation${urlObsDate ? ` from ${urlObsDate}` : ''}, I am providing ground verification of this project's physical progress.\n\nGround observation details: ` : ''),
       }));
     }
-  }, [urlProjectId]);
+  }, [urlProjectId, urlCategory, urlTitle, urlDescription, urlSource, urlObsDate]);
 
   const [submitted, setSubmitted] = useState(false);
   const [reportReference, setReportReference] = useState('');
@@ -92,6 +115,17 @@ export function ReportForm() {
 
   const submitReport = useSubmitReport();
   const { data: linkedProject } = usePublicProject(urlProjectId);
+
+  useEffect(() => {
+    if (linkedProject) {
+      setFormData((prev) => ({
+        ...prev,
+        latitude: prev.latitude || (linkedProject.latitude ? linkedProject.latitude.toString() : ''),
+        longitude: prev.longitude || (linkedProject.longitude ? linkedProject.longitude.toString() : ''),
+        locationDesc: prev.locationDesc || [linkedProject.district, linkedProject.state].filter(Boolean).join(', '),
+      }));
+    }
+  }, [linkedProject]);
 
   const handleChange = (field: keyof FormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -249,6 +283,27 @@ export function ReportForm() {
             <h3 className="text-base font-bold text-slate-900 leading-snug">{linkedProject.name}</h3>
             <p className="text-xs text-slate-600 mt-0.5">
               {[linkedProject.district, linkedProject.state].filter(Boolean).join(', ')} · Sector: {linkedProject.sector.replace(/_/g, ' ')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {urlSource === 'satellite' && (
+        <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 flex items-start gap-3 shadow-xs">
+          <div className="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-xs">
+            🛰️
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider bg-purple-100 px-2 py-0.5 rounded">
+                Satellite Discrepancy Corroboration
+              </span>
+              {urlObsDate && (
+                <span className="text-xs text-purple-700 font-medium">Observation: {urlObsDate}</span>
+              )}
+            </div>
+            <p className="text-xs text-purple-950 mt-1 leading-relaxed">
+              Your field observations will corroborate or dispute the automated Sentinel-2 earth observation analysis for this project. Please describe what is physically visible at the ground site.
             </p>
           </div>
         </div>

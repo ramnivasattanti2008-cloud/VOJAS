@@ -19,6 +19,8 @@ import {
   Gauge,
   Info,
   Clock,
+  UserCheck,
+  Flag,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -592,6 +594,37 @@ export function SatelliteEvidenceSection({
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* 7. Citizen Ground Verification Action */}
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md border border-indigo-800/40">
+        <div className="space-y-1.5 max-w-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+              <UserCheck className="h-4 w-4 text-purple-400" />
+              Citizen Ground Verification
+            </span>
+            <span className="text-[10px] font-semibold bg-purple-500/20 text-purple-200 border border-purple-400/30 px-2 py-0.5 rounded-full">
+              Corroborate Satellite Data
+            </span>
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Do you have on-ground visibility of this project site? If actual physical progress contradicts government spending ({reportedProgressPct}%) or satellite change evidence, submit a verified citizen report citing this satellite analysis.
+          </p>
+        </div>
+        <Link
+          href={`/report?${new URLSearchParams({
+            projectId,
+            source: 'satellite',
+            category: 'PROGRESS_MISMATCH',
+            ...(selectedObs?.observationDate ? { obsDate: formatObsDate(selectedObs.observationDate) } : {}),
+          }).toString()}`}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition-all hover:shadow-emerald-900/40 hover:-translate-y-0.5 shrink-0"
+        >
+          <Flag className="h-3.5 w-3.5" />
+          Flag Discrepancy on Ground
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
     </div>
   );
