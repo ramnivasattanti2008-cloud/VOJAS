@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --vojas-color-bg: 255 255 255;
+  --vojas-color-bg: 248 250 252;
   --vojas-color-fg: 15 23 42;
   --vojas-color-muted: 100 116 139;
   --vojas-color-border: 226 232 240;
-  --vojas-color-surface: 248 250 252;
+  --vojas-color-surface: 255 255 255;
   --vojas-color-primary: 37 99 235;
   --vojas-color-primary-hover: 29 78 216;
-  --vojas-color-success: 22 163 74;
-  --vojas-color-warning: 217 119 6;
-  --vojas-color-danger: 220 38 38;
+  --vojas-color-success: 16 185 129;
+  --vojas-color-warning: 245 158 11;
+  --vojas-color-danger: 225 29 72;
 }
 
 html,
@@ -20,7 +20,7 @@ body {
   height: 100%;
   background-color: rgb(var(--vojas-color-bg));
   color: rgb(var(--vojas-color-fg));
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -32,6 +32,16 @@ body {
 :focus-visible {
   outline: 2px solid rgb(var(--vojas-color-primary));
   outline-offset: 2px;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.gradient-civic-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2942 100%);
 }
 
 .sr-only {
