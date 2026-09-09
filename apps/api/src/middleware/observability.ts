@@ -57,7 +57,7 @@ declare global {
 export function requestIdMiddleware(req: Request, res: Response, next: NextFunction) {
   // Honor an incoming X-Request-Id (for distributed tracing) if present and safe
   const incoming = req.headers['x-request-id'];
-  if (typeof incoming === 'string' && /^[A-Za-z0-9_\-]{1,64}$/.test(incoming)) {
+  if (typeof incoming === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(incoming)) {
     req.requestId = incoming;
   } else {
     req.requestId = crypto.randomUUID();

@@ -186,7 +186,7 @@ export function parseIndianDate(s: string | null | undefined): Date | null {
     return isNaN(d.getTime()) ? null : d;
   }
   // DD/MM/YYYY or DD-MM-YYYY
-  const m = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  const m = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (m) {
     const day = parseInt(m[1], 10);
     const month = parseInt(m[2], 10);

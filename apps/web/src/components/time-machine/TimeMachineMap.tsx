@@ -230,7 +230,9 @@ export function TimeMachineMap({
                   source: 'footprint',
                   paint: { 'fill-color': '#fbbf24', 'fill-opacity': 0.05 },
                 });
-              } catch {}
+              } catch {
+                // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+              }
             }
           }
 
@@ -277,7 +279,9 @@ export function TimeMachineMap({
                   'line-width': 1.5,
                 },
               });
-            } catch {}
+            } catch {
+              // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+            }
           }
         });
 
@@ -315,7 +319,9 @@ export function TimeMachineMap({
           source: 'obs-after',
           paint: { 'raster-opacity': mode === 'opacity' ? opacity / 100 : 1.0, 'raster-fade-duration': 1000 },
         });
-      } catch {}
+      } catch {
+        // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+      }
     }
 
     // Update before layer
@@ -345,7 +351,9 @@ export function TimeMachineMap({
             paint: { 'raster-opacity': mode === 'opacity' ? (1 - opacity / 100) : 0, 'raster-fade-duration': 1000 },
           });
         }
-      } catch {}
+      } catch {
+        // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+      }
     }
   }, [afterWmsUrl, beforeWmsUrl, mode, opacity, selectedObservation, beforeObservation, swipePosition]);
 
@@ -366,7 +374,9 @@ export function TimeMachineMap({
           map.addSource('change-vis', { type: 'geojson', data: makeChangeFeature(beforeObservation, selectedObservation) });
           map.addLayer({ id: 'change-vis-layer', type: 'fill', source: 'change-vis', paint: { 'fill-color': '#22c55e', 'fill-opacity': 0.35 } });
           map.addLayer({ id: 'change-vis-line', type: 'line', source: 'change-vis', paint: { 'line-color': '#15803d', 'line-width': 1.5 } });
-        } catch {}
+        } catch {
+          // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+        }
       }
     } else {
       map.setLayoutProperty('change-vis-layer', 'visibility', changeVisibility ? 'visible' : 'none');
@@ -390,7 +400,9 @@ export function TimeMachineMap({
             id: 'obs-after-layer', type: 'raster', source: 'obs-after',
             paint: { 'raster-opacity': mode === 'opacity' ? opacity / 100 : 1.0, 'raster-fade-duration': 1000 },
           });
-        } catch {}
+        } catch {
+          // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+        }
       }
       if (beforeWmsUrl) {
         try {
@@ -404,7 +416,9 @@ export function TimeMachineMap({
               paint: { 'raster-opacity': mode === 'opacity' ? (1 - opacity / 100) : 0 },
             });
           }
-        } catch {}
+        } catch {
+          // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+        }
       }
     });
   }, [afterWmsUrl, beforeWmsUrl, mode, opacity, swipePosition]);
@@ -573,7 +587,9 @@ function SideBySideMap({
           try {
             map.addSource('obs', { type: 'raster', tiles: [wmsUrl], tileSize: 256, bounds: wmsBoundsFromObs(observation ?? null) });
             map.addLayer({ id: 'obs', type: 'raster', source: 'obs', paint: { 'raster-opacity': 0.95, 'raster-fade-duration': 1000 } });
-          } catch {}
+          } catch {
+            // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+          }
         }
       });
       mapRef.current = map;
@@ -689,7 +705,9 @@ function applySwipeClip(
           'fill-opacity': 0.999,
         },
       });
-    } catch {}
+    } catch {
+      // MapLibre throws if the source/layer already exists from a prior effect run; safe to ignore
+    }
   }
   if (visible && map.getSource('swipe-mask-src')) {
     (map.getSource('swipe-mask-src') as import('maplibre-gl').GeoJSONSource).setData(

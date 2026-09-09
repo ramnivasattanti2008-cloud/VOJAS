@@ -268,7 +268,7 @@ export abstract class BaseRuleHandler implements RuleHandler {
     // Simple mustache-like template replacement
     let result = template;
     for (const [key, value] of Object.entries(context)) {
-      result = result.replace(new RegExp(`\{\{${key}\}\}`, 'g'), String(value));
+      result = result.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
     }
     return result;
   }
