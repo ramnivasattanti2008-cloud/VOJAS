@@ -82,6 +82,15 @@ export interface PublicProjectListItem {
   sourceWorkId?: string | null;
   createdAt: string;
   updatedAt: string;
+  mpId?: string | null;
+  mp?: {
+    id: string;
+    name: string;
+    house: string;
+    party?: string | null;
+    constituency: string;
+    state: string;
+  } | null;
 }
 
 export interface PublicProjectDetail extends PublicProjectListItem {

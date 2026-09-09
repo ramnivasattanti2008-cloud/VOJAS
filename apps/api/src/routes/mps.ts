@@ -2,15 +2,15 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { NotFoundError, ValidationError } from '@vojas/domain';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 
 /**
- * GET /mps — list MPs
+ * GET /mps — list MPs (public-safe with optional auth)
  */
-router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = Number(req.query.page ?? 1);
     const limit = Number(req.query.limit ?? 20);
@@ -50,7 +50,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 /**
  * GET /mps/:id
  */
-router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const mp = await prisma.mP.findUnique({
@@ -81,7 +81,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
 /**
  * GET /mps/:id/projects — paginated project list for an MP
  */
-router.get('/:id/projects', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/projects', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const page = Number(req.query.page ?? 1);

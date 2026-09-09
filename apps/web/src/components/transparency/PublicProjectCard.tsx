@@ -39,6 +39,11 @@ export function PublicProjectCard({ project }: { project: PublicProjectListItem 
 
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         <Badge variant="neutral">{project.sector.replace(/_/g, ' ')}</Badge>
+        {project.mp && (
+          <span className="text-[11px] text-slate-600 font-medium bg-slate-100 px-2 py-0.5 rounded">
+            MP {project.mp.name}
+          </span>
+        )}
         {!hasLocation && (
           <span className="text-[11px] text-slate-400">No mapped location</span>
         )}

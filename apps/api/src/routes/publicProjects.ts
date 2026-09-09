@@ -44,6 +44,17 @@ const PUBLIC_PROJECT_SELECT = {
   sourceWorkId: true,
   createdAt: true,
   updatedAt: true,
+  mpId: true,
+  mp: {
+    select: {
+      id: true,
+      name: true,
+      house: true,
+      party: true,
+      constituency: true,
+      state: true,
+    },
+  },
 } as const;
 
 /**

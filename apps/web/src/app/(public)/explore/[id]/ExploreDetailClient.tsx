@@ -133,6 +133,13 @@ export function ExploreDetailClient() {
                 {project.status.replace(/_/g, ' ')}
               </Badge>
               <Badge variant="neutral">{project.sector.replace(/_/g, ' ')}</Badge>
+              {(project as any).mp?.name && (
+                <Link href={`/mps/${(project as any).mp.id}`}>
+                  <Badge variant="primary" className="cursor-pointer hover:bg-vojas-100 transition-colors">
+                    🏛️ MP: {(project as any).mp.name}
+                  </Badge>
+                </Link>
+              )}
               <span className="text-sm text-slate-500 flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5 text-slate-400" />
                 {[project.district, project.state].filter(Boolean).join(', ') || 'Location not available'}
@@ -240,7 +247,7 @@ export function ExploreDetailClient() {
                     3. Project Timeline
                   </span>
                   <span className="text-[10px] bg-blue-100 px-2 py-0.5 rounded-full">
-                    {projectEvents.length + 3} Events
+                    {projectEvents.length + (project.startDate ? 1 : 0) + (project.completedAt ? 1 : 0) + observations.length} Events
                   </span>
                 </div>
                 <div className="text-sm font-bold text-slate-900">
@@ -294,6 +301,16 @@ export function ExploreDetailClient() {
                 <DetailField label="State" value={project.state || 'Not available'} />
                 <DetailField label="District" value={project.district || 'Not available'} />
                 <DetailField label="Constituency" value={project.constituency || 'Not available'} />
+                <DetailField
+                  label="Recommending MP"
+                  value={
+                    (project as any).mp
+                      ? `${(project as any).mp.name} (${(project as any).mp.house === 'LOK_SABHA' ? 'Lok Sabha' : 'Rajya Sabha'}${
+                          (project as any).mp.party ? ' - ' + (project as any).mp.party : ''
+                        })`
+                      : 'Not recorded in source record'
+                  }
+                />
                 <DetailField label="Contractor" value={project.contractor || 'Not available in source record'} />
                 <DetailField label="Source Registry" value={project.source.replace(/_/g, ' ')} />
                 <DetailField
