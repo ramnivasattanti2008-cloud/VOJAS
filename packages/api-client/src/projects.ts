@@ -56,6 +56,87 @@ export interface PublicProject {
   lastUpdated?: string;
 }
 
+// ── Public project discovery (no auth) — matches GET /projects/public and
+// GET /projects/public/:id in apps/api/src/routes/publicProjects.ts. This is
+// a deliberately narrower shape than `Project` below: only fields real
+// enough and safe enough to show an anonymous citizen. Never widen this to
+// include internal attribution (createdById, assignedToId, etc.).
+export interface PublicProjectListItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: ProjectStatus;
+  sector: ProjectSector;
+  state: string;
+  district: string;
+  constituency?: string | null;
+  approvedAmount: number;
+  spentAmount: number;
+  contractor?: string | null;
+  startDate?: string | null;
+  expectedEndDate?: string | null;
+  completedAt?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  source: string;
+  sourceWorkId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicProjectDetail extends PublicProjectListItem {
+  reportCount: number;
+}
+
+export interface PublicProjectFilters {
+  state?: string;
+  district?: string;
+  constituency?: string;
+  sector?: ProjectSector;
+  status?: ProjectStatus;
+  minAmount?: number;
+  maxAmount?: number;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'name' | 'approvedAmount' | 'spentAmount' | 'createdAt' | 'status';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PublicProjectEvent {
+  id: string;
+  eventType: string;
+  eventDate: string;
+  source: string;
+  sourceUrl?: string | null;
+  dataset?: string | null;
+  description: string;
+  evidenceUrls?: unknown;
+  confidence?: string | null;
+}
+
+export interface PublicRiskFinding {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  confidence: string;
+  status: string;
+  recommendedAction?: string | null;
+  limitations?: string | null;
+  detectedAt: string;
+  lastObservedAt?: string | null;
+}
+
+export interface PublicRiskSummary {
+  projectId: string;
+  totalFindings: number;
+  bySeverity: Record<string, number>;
+  findings: PublicRiskFinding[];
+  disclaimer: string;
+}
+
 export interface ProjectCluster {
   id: string;
   type: 'state' | 'district' | 'constituency' | 'project';
@@ -209,6 +290,18 @@ export function createProjectsApi(client: ApiClient) {
       },
       getProjectCluster(projectId: string) {
         return client.get<ProjectCluster>(`/projects/public/cluster/${projectId}`);
+      },
+      list(filters?: PublicProjectFilters) {
+        return client.get<PaginatedResponse<PublicProjectListItem>>('/projects/public', filters as Record<string, any>);
+      },
+      getById(id: string) {
+        return client.get<PublicProjectDetail>(`/projects/public/${id}`);
+      },
+      getTimeline(id: string, params?: { page?: number; limit?: number }) {
+        return client.get<PaginatedResponse<PublicProjectEvent>>(`/projects/public/${id}/timeline`, params);
+      },
+      getRiskSummary(id: string) {
+        return client.get<PublicRiskSummary>(`/projects/public/${id}/risk`);
       },
     },
   };

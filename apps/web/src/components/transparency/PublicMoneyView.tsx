@@ -55,13 +55,17 @@ export function PublicMoneyView({
 }: PublicMoneyViewProps) {
   const values = useMemo(() => {
     const approved = approvedAmount ?? sanctionedAmount ?? 0;
+    // `releasedAmount` is a distinct data point from `spentAmount` — not
+    // every source tracks it. Treat "not provided" as NOT_AVAILABLE, never
+    // as a reported zero.
+    const releaseTracked = releasedAmount != null;
     const released = releasedAmount ?? 0;
     const spent = spentAmount ?? 0;
     const remaining = approved - spent;
     const releasePct = approved > 0 ? (released / approved) * 100 : 0;
     const spendPct = approved > 0 ? (spent / approved) * 100 : 0;
 
-    return { approved, released, spent, remaining, releasePct, spendPct };
+    return { approved, released, spent, remaining, releasePct, spendPct, releaseTracked };
   }, [approvedAmount, releasedAmount, spentAmount, sanctionedAmount]);
 
   const hasAnyData = values.approved > 0;
@@ -91,7 +95,9 @@ export function PublicMoneyView({
               </div>
               <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
                 <p className="text-xs text-slate-500 mb-1">Released</p>
-                <p className="text-sm font-bold text-blue-600 tabular-nums">{formatINR(values.released)}</p>
+                <p className={`text-sm font-bold tabular-nums ${values.releaseTracked ? 'text-blue-600' : 'text-slate-400'}`}>
+                  {values.releaseTracked ? formatINR(values.released) : 'Not tracked'}
+                </p>
               </div>
               <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
                 <p className="text-xs text-slate-500 mb-1">Expended</p>
@@ -113,12 +119,19 @@ export function PublicMoneyView({
                 color="bg-slate-400"
                 label="APPROVED"
               />
-              <ProgressBar
-                value={values.released}
-                max={values.approved}
-                color="bg-blue-400"
-                label={`RELEASED (${values.releasePct.toFixed(0)}%)`}
-              />
+              {values.releaseTracked ? (
+                <ProgressBar
+                  value={values.released}
+                  max={values.approved}
+                  color="bg-blue-400"
+                  label={`RELEASED (${values.releasePct.toFixed(0)}%)`}
+                />
+              ) : (
+                <div className="flex justify-between text-xs text-slate-400">
+                  <span className="font-medium">RELEASED</span>
+                  <span>Not tracked for this project</span>
+                </div>
+              )}
               <ProgressBar
                 value={values.spent}
                 max={values.approved}

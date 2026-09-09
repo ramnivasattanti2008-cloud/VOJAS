@@ -11,18 +11,111 @@
  * - Clearly attribute all data to sources
  */
 
-import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
+import type { NextFunction, Request, Response } from 'express';
+import { Router } from 'express';
+import { projectFiltersSchema } from '@vojas/domain';
 import { success } from '../utils/apiResponse.js';
-import { get, set, CACHE_TTL } from '../utils/cache.js';
+import { CACHE_TTL, get, set } from '../utils/cache.js';
 
 const router = Router();
+
+// Fields safe to expose to anonymous citizens. Excludes internal attribution
+// (createdById, districtId/stateId/etc., sourceDataSourceId) and boundary/
+// provenance internals that are not meaningful to a public reader.
+const PUBLIC_PROJECT_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  status: true,
+  sector: true,
+  state: true,
+  district: true,
+  constituency: true,
+  approvedAmount: true,
+  spentAmount: true,
+  contractor: true,
+  startDate: true,
+  expectedEndDate: true,
+  completedAt: true,
+  latitude: true,
+  longitude: true,
+  source: true,
+  sourceWorkId: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+/**
+ * GET /projects/public — public-safe paginated project list with
+ * search/filter/sort. Mirrors the authenticated GET /projects filters
+ * (packages/domain/src/validation/projectSchemas.ts) but applies no
+ * role-based visibility filter and selects only public-safe fields.
+ */
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filters = projectFiltersSchema.safeParse({
+      ...req.query,
+      page: req.query.page ? Number(req.query.page) : undefined,
+      limit: req.query.limit ? Number(req.query.limit) : undefined,
+      minAmount: req.query.minAmount ? Number(req.query.minAmount) : undefined,
+      maxAmount: req.query.maxAmount ? Number(req.query.maxAmount) : undefined,
+    });
+    if (!filters.success) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid query parameters', details: filters.error.errors },
+      });
+    }
+
+    const p = filters.data;
+    const where: Record<string, unknown> = {};
+    if (p.state) where.state = p.state;
+    if (p.district) where.district = p.district;
+    if (p.constituency) where.constituency = p.constituency;
+    if (p.sector) where.sector = p.sector;
+    if (p.status) where.status = p.status;
+    if (p.minAmount !== undefined || p.maxAmount !== undefined) {
+      where.approvedAmount = {};
+      if (p.minAmount !== undefined) (where.approvedAmount as Record<string, number>).gte = p.minAmount;
+      if (p.maxAmount !== undefined) (where.approvedAmount as Record<string, number>).lte = p.maxAmount;
+    }
+    if (p.search) {
+      where.OR = [
+        { name: { contains: p.search, mode: 'insensitive' } },
+        { description: { contains: p.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const orderBy = p.sortBy ? { [p.sortBy]: p.sortOrder } : { createdAt: 'desc' as const };
+
+    const [data, total] = await prisma.$transaction([
+      prisma.project.findMany({
+        where,
+        orderBy,
+        skip: (p.page - 1) * p.limit,
+        take: p.limit,
+        select: PUBLIC_PROJECT_SELECT,
+      }),
+      prisma.project.count({ where }),
+    ]);
+
+    success(res, {
+      data,
+      total,
+      page: p.page,
+      limit: p.limit,
+      totalPages: Math.ceil(total / p.limit),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 /**
  * GET /projects/public/summary — national-level project aggregates
  */
-router.get('/summary', async (_req: Request, res: Response, next: NextFunction) => {
+router.get(['/summary', '/stats'], async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const cacheKey = 'public:summary';
     const cached = get<unknown>(cacheKey);
@@ -194,6 +287,124 @@ router.get('/cluster/:projectId', async (req: Request, res: Response, next: Next
       satelliteObservations: satelliteCount,
       citizenReports: reportCount,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id/timeline — public-safe project event history.
+ * ProjectEvent rows are already source-attributed (source, sourceUrl,
+ * evidenceUrls) and contain no internal reviewer notes.
+ */
+router.get('/:id/timeline', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.id as string;
+    const exists = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+    if (!exists) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '50'), 10) || 50));
+
+    const [data, total] = await prisma.$transaction([
+      prisma.projectEvent.findMany({
+        where: { projectId },
+        orderBy: { eventDate: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          eventType: true,
+          eventDate: true,
+          source: true,
+          sourceUrl: true,
+          dataset: true,
+          description: true,
+          evidenceUrls: true,
+          confidence: true,
+        },
+      }),
+      prisma.projectEvent.count({ where: { projectId } }),
+    ]);
+
+    success(res, { data, total, page, limit, totalPages: Math.ceil(total / limit) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id/risk — public-safe risk findings summary.
+ * AI-derived findings are signals for human review, never proof of
+ * wrongdoing. Excludes internal reviewer fields (assignedToId,
+ * acknowledgedById, resolvedById, resolution, lawAuthority, signalIds).
+ */
+router.get('/:id/risk', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.id as string;
+    const exists = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+    if (!exists) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    const findings = await prisma.riskFinding.findMany({
+      where: { projectId, status: { not: 'DISMISSED' } },
+      orderBy: { detectedAt: 'desc' },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        description: true,
+        severity: true,
+        confidence: true,
+        status: true,
+        recommendedAction: true,
+        limitations: true,
+        detectedAt: true,
+        lastObservedAt: true,
+      },
+      take: 50,
+    });
+
+    const bySeverity: Record<string, number> = {};
+    for (const f of findings) {
+      bySeverity[f.severity] = (bySeverity[f.severity] ?? 0) + 1;
+    }
+
+    success(res, {
+      projectId,
+      totalFindings: findings.length,
+      bySeverity,
+      findings,
+      disclaimer:
+        'These findings are AI-assisted signals requiring human review. They are not proof of wrongdoing.',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id — public-safe single project detail.
+ * Registered LAST: as a single-segment catch-all it must not shadow the
+ * literal routes above (/summary, /stats, /states, /districts).
+ */
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const project = await prisma.project.findUnique({
+      where: { id },
+      select: PUBLIC_PROJECT_SELECT,
+    });
+    if (!project) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    const reportCount = await prisma.report.count({ where: { projectId: id } });
+
+    success(res, { ...project, reportCount });
   } catch (err) {
     next(err);
   }

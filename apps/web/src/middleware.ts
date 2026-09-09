@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/register'];
 // Always reachable, regardless of auth state — no redirect either way.
-// Mirrors the app/(public) route group: anonymous citizen reporting.
-const ALWAYS_PUBLIC_PATHS = ['/report'];
+// Mirrors the app/(public) route group: the landing page, anonymous citizen
+// reporting, and the public project transparency/discovery surface. This is
+// the primary citizen journey and must never require a login.
+const ALWAYS_PUBLIC_PATHS = ['/', '/report', '/explore', '/about', '/privacy', '/contact'];
 const AUTH_COOKIE_NAMES = ['access_token', 'vojas_token', 'sb-access-token'];
 
 function isAuthenticated(req: NextRequest): boolean {

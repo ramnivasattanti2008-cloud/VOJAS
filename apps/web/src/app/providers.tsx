@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { useCallback, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/lib/auth-context';
-import { apiClient, setAccessTokenGetter } from '@/lib/api';
+import { apiClient, setAccessTokenGetter, isOnPublicPath } from '@/lib/api';
 import { queryClient } from '@/lib/query-client';
 import { GlobalErrorBoundary } from '@/components/ui/ErrorBoundary';
 import type { ReactNode } from 'react';
@@ -25,7 +25,11 @@ export function Providers({ children }: ProvidersProps) {
 
   const handleAuthError = useCallback(() => {
     tokenRef.current = null;
-    if (typeof window !== 'undefined') {
+    // On a public page (the landing page, /explore, /report, ...), a failed
+    // session-restore just means "not logged in" — that's a normal, expected
+    // state for an anonymous citizen and must not force-navigate them away.
+    // Protected routes remain guarded by AuthGate's own redirect.
+    if (typeof window !== 'undefined' && !isOnPublicPath()) {
       window.location.href = '/login';
     }
   }, []);

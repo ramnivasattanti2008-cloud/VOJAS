@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import type { ProjectSector, ProjectStatus } from '@vojas/shared';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {
   COMPLETED: { label: 'Completed', variant: 'success' },
@@ -219,8 +220,8 @@ export default function CitizenProjectsPage() {
 
   const filters = useMemo(() => ({
     state: stateFilter || undefined,
-    sector: sectorFilter || undefined,
-    status: statusFilter || undefined,
+    sector: (sectorFilter || undefined) as ProjectSector | undefined,
+    status: (statusFilter || undefined) as ProjectStatus | undefined,
     search: search || undefined,
     limit: 50,
   }), [stateFilter, sectorFilter, statusFilter, search]);
