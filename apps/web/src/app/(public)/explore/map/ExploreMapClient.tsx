@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { Search, Loader2, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
@@ -20,6 +21,11 @@ const PublicProjectsMap = dynamic(
 const MAP_PAGE_SIZE = 100;
 
 export function ExploreMapClient() {
+  // Set when arriving from a project detail page's "View on Map" link
+  // (/explore/map?focus=<projectId>) — centers and opens that project's
+  // marker once it's loaded.
+  const focusProjectId = useSearchParams().get('focus') ?? undefined;
+
   const [search, setSearch] = useState('');
   const [state, setState] = useState('');
 
@@ -90,7 +96,7 @@ export function ExploreMapClient() {
         </div>
       ) : (
         <Card className="overflow-hidden">
-          <PublicProjectsMap projects={projects} className="w-full" />
+          <PublicProjectsMap projects={projects} className="w-full" focusProjectId={focusProjectId} />
         </Card>
       )}
 

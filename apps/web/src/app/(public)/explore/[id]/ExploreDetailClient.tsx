@@ -110,6 +110,14 @@ export function ExploreDetailClient() {
                 <MapPin className="h-3.5 w-3.5" />
                 {[project.district, project.state].filter(Boolean).join(', ') || 'Location not available'}
               </span>
+              {project.latitude != null && project.longitude != null && (
+                <Link
+                  href={`/explore/map?focus=${project.id}`}
+                  className="text-sm font-medium text-vojas-600 hover:underline"
+                >
+                  View on Map →
+                </Link>
+              )}
             </div>
           </div>
         </div>

@@ -32,6 +32,8 @@ const STATUS_COLOR: Record<string, string> = {
 interface PublicProjectsMapProps {
   projects: PublicProjectListItem[];
   className?: string;
+  /** Project id to center on and open the popup for, once its marker exists. */
+  focusProjectId?: string;
 }
 
 /**
@@ -39,10 +41,11 @@ interface PublicProjectsMapProps {
  * basemap. Projects without coordinates are never guessed at — see the
  * caller for the "N without a mapped location" count.
  */
-export function PublicProjectsMap({ projects, className }: PublicProjectsMapProps) {
+export function PublicProjectsMap({ projects, className, focusProjectId }: PublicProjectsMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
-  const markersRef = useRef<import('maplibre-gl').Marker[]>([]);
+  const markersRef = useRef<Map<string, import('maplibre-gl').Marker>>(new Map());
+  const focusedRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Drives the marker-sync effect below. Without this, that effect (keyed
   // only on `projects`) can run once before the map's own async load
@@ -109,7 +112,7 @@ export function PublicProjectsMap({ projects, className }: PublicProjectsMapProp
     if (!map || !mapReady || !MapLibre) return;
 
     markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    markersRef.current.clear();
 
     const withCoords = projects.filter((p) => p.latitude != null && p.longitude != null);
     for (const p of withCoords) {
@@ -134,9 +137,23 @@ export function PublicProjectsMap({ projects, className }: PublicProjectsMapProp
         .setLngLat([p.longitude as number, p.latitude as number])
         .setPopup(popup)
         .addTo(map);
-      markersRef.current.push(marker);
+      markersRef.current.set(p.id, marker);
     }
   }, [projects, mapReady]);
+
+  // Center on and open the popup for a project passed in via ?focus=<id>
+  // (e.g. from a project detail page's "View on Map" link), once and only
+  // once per focusProjectId.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !focusProjectId || focusedRef.current === focusProjectId) return;
+    const marker = markersRef.current.get(focusProjectId);
+    if (!marker) return;
+
+    focusedRef.current = focusProjectId;
+    map.flyTo({ center: marker.getLngLat(), zoom: 10 });
+    marker.togglePopup();
+  }, [focusProjectId, mapReady, projects]);
 
   if (error) {
     return (
