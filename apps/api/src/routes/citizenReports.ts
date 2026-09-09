@@ -93,7 +93,7 @@ const reportSubmitSchema = z.object({
   longitude: z.number().min(-180).max(180).optional(),
   locationAccuracyM: z.number().positive().optional(),
   incidentDate: z.string().datetime().optional(),
-  projectId: z.string().uuid().optional(),
+  projectId: z.string().min(1).optional(),
   reporterName: z.string().max(200).optional(),
   reporterEmail: z.string().email().max(200).optional().or(z.literal('')),
   reporterPhone: z.string().max(20).optional(),

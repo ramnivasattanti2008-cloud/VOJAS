@@ -76,6 +76,22 @@ export function globalErrorHandler(
     return;
   }
 
+  // express.json() throws a SyntaxError with status 400 for malformed request
+  // bodies — this is bad client input, not a server fault.
+  if (err instanceof SyntaxError && (err as { status?: number }).status === 400 && 'body' in err) {
+    logger.warn('Malformed request body', {
+      requestId,
+      method: req.method,
+      path: req.path,
+    });
+    res.status(400).json({
+      success: false,
+      requestId,
+      error: { code: 'VALIDATION_ERROR', message: 'Malformed JSON in request body' },
+    });
+    return;
+  }
+
   // Prisma known errors — log as warn (data not available, conflict, etc.)
   const errCode = (err as { code?: string }).code;
   if (typeof errCode === 'string' && errCode.startsWith('P')) {

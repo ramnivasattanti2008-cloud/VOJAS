@@ -39,7 +39,7 @@ const searchSchema = z.object({
 });
 
 const uploadSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().min(1),
   type: z.string().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
@@ -121,7 +121,7 @@ router.post(
   requireRole(UserRole.ADMIN, UserRole.OFFICER),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.userId;
       if (!userId) throw new ValidationError('Authentication required');
 
       const parsed = uploadSchema.safeParse(req.body);
@@ -316,7 +316,7 @@ router.patch(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
-      const userId = (req as any).user?.id;
+      const userId = req.user?.userId;
       const { status, verificationNote } = req.body as { status: string; verificationNote?: string };
 
       if (!['VERIFIED', 'REJECTED', 'REQUIRES_INFO'].includes(status)) {

@@ -93,8 +93,20 @@ router.get('/stats', authenticate, async (_req: Request, res: Response, next: Ne
 router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const anomaly = await prisma.anomaly.findUnique({
-      where: { id },
+    const user = req.user!;
+    const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+
+    // Same clearance-based visibility rule as the list endpoint — a
+    // RESTRICTED anomaly must not be reachable by ID for a user who
+    // couldn't see it in the list.
+    const visibilityFilter = getFindingVisibilityFilter({
+      userId: user.userId,
+      role: user.role,
+      permissions: perms as any,
+    });
+
+    const anomaly = await prisma.anomaly.findFirst({
+      where: { id, ...visibilityFilter },
       include: {
         project: { select: { id: true, name: true, state: true, district: true } },
       },

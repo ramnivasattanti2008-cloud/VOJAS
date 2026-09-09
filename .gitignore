@@ -66,6 +66,7 @@ Thumbs.db
 
 # User-uploaded attachments (served at runtime from /uploads)
 backend/uploads/
+apps/api/uploads/
 !**/uploads/.gitkeep
 
 # Large data files (ingest sources — not needed in repo)

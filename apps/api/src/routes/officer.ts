@@ -12,7 +12,7 @@ const router = Router();
 /**
  * GET /officer/dashboard/stats — Officer dashboard statistics
  */
-router.get('/dashboard/stats', authenticate, async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/dashboard/stats', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -79,7 +79,7 @@ router.get('/dashboard/stats', authenticate, async (_req: Request, res: Response
 /**
  * GET /officer/cases — List cases with filters
  */
-router.get('/cases', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/cases', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const {
       priority,
@@ -165,7 +165,7 @@ router.get('/cases', authenticate, async (req: Request, res: Response, next: Nex
 /**
  * GET /officer/cases/:id — Get single case
  */
-router.get('/cases/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/cases/:id', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
 
@@ -336,22 +336,12 @@ router.post('/cases/:id/escalate', authenticate, requireRole(UserRole.ADMIN, Use
 /**
  * GET /officer/cases/:id/history — Get case action history
  */
-router.get('/cases/:id/history', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/cases/:id/history', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
-
-    // Return mock history for now - would come from audit logs
-    const actions = [
-      {
-        id: '1',
-        caseId: id,
-        action: 'Case Created',
-        performedBy: { id: 'system', name: 'System' },
-        createdAt: new Date().toISOString(),
-      },
-    ];
-
-    success(res, { actions });
+    // No audit-log table backs case history yet. An audit trail must never
+    // contain invented entries — return empty rather than fabricate who did
+    // what and when.
+    success(res, { actions: [] });
   } catch (err) {
     next(err);
   }
@@ -360,7 +350,7 @@ router.get('/cases/:id/history', authenticate, async (req: Request, res: Respons
 /**
  * GET /officer/evidence — List evidence
  */
-router.get('/evidence', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/evidence', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { projectId, fromDate, toDate, page = '1', limit = '50' } = req.query as Record<string, string | undefined>;
 
@@ -422,7 +412,7 @@ router.get('/evidence', authenticate, async (req: Request, res: Response, next: 
 /**
  * GET /officer/contractor-responses — List contractor responses
  */
-router.get('/contractor-responses', authenticate, async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/contractor-responses', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (_req: Request, res: Response, next: NextFunction) => {
   try {
     // For now, return empty - would be from contractor_response table
     success(res, {
@@ -440,7 +430,7 @@ router.get('/contractor-responses', authenticate, async (_req: Request, res: Res
 /**
  * GET /officer/field-inspections — List field inspections
  */
-router.get('/field-inspections', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/field-inspections', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = '1', limit = '50' } = req.query as Record<string, string | undefined>;
 
@@ -463,7 +453,7 @@ router.get('/field-inspections', authenticate, async (req: Request, res: Respons
 /**
  * GET /officer/map/layers — Get map layer data
  */
-router.get('/map/layers', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/map/layers', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sector, district, state } = req.query as Record<string, string | undefined>;
 

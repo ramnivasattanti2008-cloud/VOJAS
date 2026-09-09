@@ -430,43 +430,25 @@ class CDSEDPixelProvider {
     ]);
 
     // Fallback: if bands aren't available, use simplified sampling
-    const hasRealBandsBefore = beforeB08 && beforeB04;
-    const hasRealBandsAfter = afterB08 && afterB04;
+    const hasRealBandsBefore = beforeB02 && beforeB04 && beforeB08 && beforeB11;
+    const hasRealBandsAfter = afterB02 && afterB04 && afterB08 && afterB11;
     const hasRealBands = hasRealBandsBefore && hasRealBandsAfter;
 
     if (!hasRealBands) {
-      notes.push('Real band data not available — using simplified sampling for spectral indices');
+      return {
+        ok: false,
+        reason: 'INSUFFICIENT_IMAGE_QUALITY',
+        message: 'One or more required Sentinel-2 bands (B02/B04/B08/B11) could not be fetched for this scene pair. Real pixel data is required for change analysis — no index values were synthesized.',
+      } satisfies ProviderError;
     }
 
-    // 3. Compute indices for both dates
-    let beforeNDVI: Float32Array, afterNDVI: Float32Array;
-    let beforeNDBI: Float32Array, afterNDBI: Float32Array;
-    let beforeBSI: Float32Array, afterBSI: Float32Array;
-
-    if (hasRealBands && beforeB08 && beforeB04 && afterB08 && afterB04) {
-      beforeNDVI = computeNDVI(beforeB08.data, beforeB04.data);
-      afterNDVI = computeNDVI(afterB08.data, afterB04.data);
-      beforeNDBI = computeNDBI(beforeB11!.data, beforeB08.data);
-      afterNDBI = computeNDBI(afterB11!.data, afterB08.data);
-      beforeBSI = computeBSI(beforeB11!.data, beforeB04.data, beforeB08.data, beforeB02!.data);
-      afterBSI = computeBSI(afterB11!.data, afterB04.data, afterB08.data, afterB02!.data);
-    } else {
-      // Simplified: build synthetic bands
-      const sampleNdviBefore = 0.35 + Math.random() * 0.3;
-      const sampleNdviAfter = sampleNdviBefore * (0.8 + Math.random() * 0.4);
-      const sampleNdbiBefore = 0.1 + Math.random() * 0.2;
-      const sampleNdbiAfter = sampleNdbiBefore * (1.1 + Math.random() * 0.6);
-      const sampleBsiBefore = 0.05 + Math.random() * 0.1;
-      const sampleBsiAfter = sampleBsiBefore * (1.2 + Math.random() * 0.5);
-
-      beforeNDVI = new Float32Array(gridSize * gridSize).fill(sampleNdviBefore);
-      afterNDVI = new Float32Array(gridSize * gridSize).fill(sampleNdviAfter);
-      beforeNDBI = new Float32Array(gridSize * gridSize).fill(sampleNdbiBefore);
-      afterNDBI = new Float32Array(gridSize * gridSize).fill(sampleNdbiAfter);
-      beforeBSI = new Float32Array(gridSize * gridSize).fill(sampleBsiBefore);
-      afterBSI = new Float32Array(gridSize * gridSize).fill(sampleBsiAfter);
-      notes.push('CDSE pixel provider: synthetic index values (real band data unavailable)');
-    }
+    // 3. Compute indices for both dates — real bands only, never synthesized.
+    const beforeNDVI: Float32Array = computeNDVI(beforeB08!.data, beforeB04!.data);
+    const afterNDVI: Float32Array = computeNDVI(afterB08!.data, afterB04!.data);
+    const beforeNDBI: Float32Array = computeNDBI(beforeB11!.data, beforeB08!.data);
+    const afterNDBI: Float32Array = computeNDBI(afterB11!.data, afterB08!.data);
+    const beforeBSI: Float32Array = computeBSI(beforeB11!.data, beforeB04!.data, beforeB08!.data, beforeB02!.data);
+    const afterBSI: Float32Array = computeBSI(afterB11!.data, afterB04!.data, afterB08!.data, afterB02!.data);
 
     // 4. Compute deltas
     const deltaNDVI = new Float32Array(beforeNDVI.length);

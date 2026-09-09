@@ -238,14 +238,15 @@ export class DocumentIntelligenceService {
       // Step 3: Cross-check against other documents and financial data
       const crossCheck = await this.crossCheck(document, extraction);
 
-      // Update document with results
+      // Persist extraction/classification results. Status is NEVER set to
+      // VERIFIED here — that is exclusively a human decision made through
+      // PATCH /documents/:id/verify (verifiedById/verifiedAt).
       await this.prisma.document.update({
         where: { id: documentId },
         data: {
-          extractedText: extraction.extractedText,
+          extractedText: extraction.extractedText || null,
           suggestedType: classification.suggestedType,
           aiConfidence: extraction.confidenceScore,
-          status: 'VERIFIED', // Mark as processed
         },
       });
 
@@ -261,67 +262,29 @@ export class DocumentIntelligenceService {
   }
 
   /**
-   * Simulate text extraction. In production, replace with:
+   * No OCR/text-extraction provider is integrated. Real extraction requires:
    *   - PDF: pdf-parse + tesseract.js for scanned PDFs
    *   - Images: tesseract.js OCR
    *   - DOCX: mammoth.js
+   * Until one is wired in, this must return an explicit unavailable result —
+   * never fabricate extracted text, confidence, or field values (amounts,
+   * dates, contractor names, GSTIN, etc. are civic data; see CLAUDE.md).
    */
   private async extractText(document: Document): Promise<DocumentExtraction> {
     const startTime = Date.now();
-
-    // Simulate extraction based on document type
-    const isImage = document.mimeType.startsWith('image/');
-    const isPDF = document.mimeType === 'application/pdf';
-    const isSpreadsheet = document.mimeType.includes('excel') || document.mimeType.includes('spreadsheet');
-
-    let extractedText = '';
-    let confidenceScore = 0;
-    const fields: ExtractedFields = {};
-    const pageEvidence: Array<{ page: number; snippet: string; bbox?: number[] }> = [];
-
-    // Simulate document-specific extraction
-    if (document.type === 'INVOICE' || document.type === 'BILL' || document.type === 'PAYMENT_VOUCHER') {
-      extractedText = this.simulateInvoiceText();
-      confidenceScore = 85;
-      fields.amount = Math.round(Math.random() * 5000000 + 50000);
-      fields.date = new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      fields.invoiceNo = `INV/${new Date().getFullYear()}/${Math.floor(Math.random() * 900000 + 100000)}`;
-    } else if (document.type === 'COMPLETION_CERTIFICATE') {
-      extractedText = this.simulateCompletionCertText();
-      confidenceScore = 90;
-      fields.contractor = 'Sample Contractor Pvt. Ltd.';
-    } else if (document.type === 'TENDER' || document.type === 'CONTRACT') {
-      extractedText = this.simulateTenderText();
-      confidenceScore = 75;
-      fields.amount = Math.round(Math.random() * 10000000 + 100000);
-    } else if (isImage) {
-      extractedText = isImage ? '[Image content — OCR pending integration]' : extractedText;
-      confidenceScore = 60;
-    } else if (isPDF) {
-      extractedText = '[PDF content — text extraction pending integration]';
-      confidenceScore = 70;
-    } else if (isSpreadsheet) {
-      extractedText = '[Spreadsheet content — data extraction pending integration]';
-      confidenceScore = 80;
-    } else {
-      extractedText = '[Document content — extraction pending integration]';
-      confidenceScore = 50;
-    }
-
-    pageEvidence.push({ page: 1, snippet: extractedText.slice(0, 500) });
-
     const processingTimeMs = Date.now() - startTime;
 
     return {
       id: `extraction-${document.id}`,
       documentId: document.id,
-      extractedText,
-      confidence: confidenceScore >= 80 ? 'HIGH' : confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
-      confidenceScore,
-      fields,
-      pageEvidence,
-      processingStatus: 'COMPLETED',
+      extractedText: '',
+      confidence: 'LOW',
+      confidenceScore: 0,
+      fields: {},
+      pageEvidence: [],
+      processingStatus: 'FAILED',
       processingTimeMs,
+      processingError: 'No OCR/text-extraction provider is configured.',
     };
   }
 
@@ -364,6 +327,16 @@ export class DocumentIntelligenceService {
           bestType = clf.type;
         }
       }
+    }
+
+    if (bestScore === 0) {
+      return {
+        suggestedType: document.type || 'OTHER',
+        confidence: 'LOW',
+        confidenceScore: 0,
+        reasoning: 'No extracted text or filename keywords matched a known document type.',
+        alternativeTypes: [],
+      };
     }
 
     const confidenceScore = Math.min(100, bestScore + 20);
@@ -594,71 +567,4 @@ export class DocumentIntelligenceService {
     return results.sort((a, b) => b.score - a.score);
   }
 
-  // ─── Simulated extraction templates ──────────────────────────────────────
-
-  private simulateInvoiceText(): string {
-    const invoiceNo = `INV/${new Date().getFullYear()}/${Math.floor(Math.random() * 900000 + 100000)}`;
-    const amount = (Math.random() * 5000000 + 50000).toFixed(2);
-    const date = new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const contractor = 'ABC Construction Pvt. Ltd.';
-    const gstin = `27AABCR${Math.floor(Math.random() * 900000000 + 100000000)}1Z4`;
-
-    return `
-TAX INVOICE
-Invoice No: ${invoiceNo}
-Date: ${date}
-
-Bill To: Government of India, MPLADS Division
-From: ${contractor}
-GSTIN: ${gstin}
-
-Description of Work: Supply and installation of infrastructure materials
-Amount: ₹${amount}
-CGST @ 9%: ₹${(Number(amount) * 0.09).toFixed(2)}
-SGST @ 9%: ₹${(Number(amount) * 0.09).toFixed(2)}
-Total: ₹${(Number(amount) * 1.18).toFixed(2)}
-
-Payment Due: ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-    `.trim();
-  }
-
-  private simulateCompletionCertText(): string {
-    return `
-COMPLETION CERTIFICATE
-
-This is to certify that the work described below has been satisfactorily completed
-as per the specifications and terms of the contract.
-
-Project: MPLADS Infrastructure Development Work
-Location: District, State
-Contractor: ABC Construction Pvt. Ltd.
-Work Order No: WO/2024-25/XXXXX
-Completion Date: ${new Date().toISOString().split('T')[0]}
-
-Scope of Work: Construction of community hall and related infrastructure
-Contract Value: ₹${(Math.random() * 10000000 + 500000).toFixed(2)}
-Final Bill Amount: ₹${(Math.random() * 10000000 + 500000).toFixed(2)}
-
-Certified that the work has been inspected and found complete in all respects.
-    `.trim();
-  }
-
-  private simulateTenderText(): string {
-    return `
-NOTICE INVITING TENDER (NIT)
-
-Tender Reference No: NIT/MPLADS/${new Date().getFullYear()}/XXXX
-Date: ${new Date().toISOString().split('T')[0]}
-
-Project: MPLADS Infrastructure Project
-Location: District, State
-Estimated Cost: ₹${(Math.random() * 10000000 + 1000000).toFixed(2)}
-Earnest Money Deposit: ₹${(Math.random() * 200000 + 20000).toFixed(2)}
-Completion Period: ${Math.floor(Math.random() * 12 + 6)} months
-
-Eligibility: Registered contractors with valid GST, PAN, and prior experience.
-
-Last Date of Submission: ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-    `.trim();
-  }
 }

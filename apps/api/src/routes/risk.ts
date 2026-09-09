@@ -662,8 +662,8 @@ router.get(
   requirePermission('risk.read'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { minScore = '50', limit = '20' } = req.query;
-      const minScoreNum = parseInt(String(minScore));
+      const { minRiskScore = '50', limit = '20' } = req.query;
+      const minScoreNum = parseInt(String(minRiskScore));
       const limitNum = Math.min(50, parseInt(String(limit)));
 
       const hotspots = await prisma.$queryRaw<
@@ -672,9 +672,9 @@ router.get(
           district: string;
           latitude: number;
           longitude: number;
-          projectCount: bigint;
-          findingsCount: number;
-          avgRiskScore: number;
+          project_count: bigint;
+          findings_count: number;
+          avg_risk_score: number;
         }>
       >`
         SELECT
@@ -701,9 +701,9 @@ router.get(
           district: h.district,
           latitude: h.latitude,
           longitude: h.longitude,
-          projectCount: Number(h.projectCount),
-          findingsCount: h.findingsCount,
-          avgRiskScore: Math.round(h.avgRiskScore),
+          projectCount: Number(h.project_count),
+          findingsCount: h.findings_count,
+          avgRiskScore: Math.round(h.avg_risk_score),
         })),
         threshold: minScoreNum,
       });

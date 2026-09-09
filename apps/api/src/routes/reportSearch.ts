@@ -37,7 +37,7 @@ router.get('/search', authenticate, async (req: Request, res: Response, next: Ne
   try {
     const schema = z.object({
       q: z.string().optional(),
-      projectId: z.string().uuid().optional(),
+      projectId: z.string().min(1).optional(),
       category: z.string().optional(),
       district: z.string().optional(),
       state: z.string().optional(),

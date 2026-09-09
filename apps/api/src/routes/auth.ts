@@ -34,9 +34,13 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
       throw new ValidationError('Invalid registration data', parsed.error.errors);
     }
 
-    const { email, password, name, role } = parsed.data;
+    const { email, password, name } = parsed.data;
 
-    // Check if user exists
+    // Public self-registration must never grant a privileged role. Any role
+    // in the request body is ignored — every self-registered account starts
+    // as CITIZEN. Privileged accounts (ADMIN, OFFICER, ANALYST, REVIEWER,
+    // FIELD_OFFICER) can only be created via POST /admin/users, which
+    // requires admin.manage permission.
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new ConflictError('User with this email already exists');
@@ -45,7 +49,7 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
     const passwordHash = await hashPassword(password);
 
     const user = await prisma.user.create({
-      data: { email, passwordHash, name, role: (role ?? UserRole.VIEWER) as any },
+      data: { email, passwordHash, name, role: UserRole.CITIZEN },
       select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true },
     });
 

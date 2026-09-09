@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/register'];
+// Always reachable, regardless of auth state — no redirect either way.
+// Mirrors the app/(public) route group: anonymous citizen reporting.
+const ALWAYS_PUBLIC_PATHS = ['/report'];
 const AUTH_COOKIE_NAMES = ['access_token', 'vojas_token', 'sb-access-token'];
 
 function isAuthenticated(req: NextRequest): boolean {
@@ -23,6 +26,11 @@ export function middleware(req: NextRequest) {
     pathname.startsWith('/api/') ||
     pathname.includes('.')
   ) {
+    return NextResponse.next();
+  }
+
+  // Always-public routes (e.g. anonymous citizen reporting): never gate on auth.
+  if (ALWAYS_PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.next();
   }
 
