@@ -7,7 +7,7 @@
 
 import { prisma } from '@vojas/db';
 import { SECTOR_CODES, SECTOR_CONFIGS, type SectorConfig } from '@vojas/domain';
-import type { ProjectSector } from '@vojas/shared';
+import { ReportPrivacyLevel, ReportStatus, type ProjectSector } from '@vojas/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { success } from '../utils/apiResponse.js';
@@ -199,11 +199,26 @@ router.get('/alerts', async (req: Request, res: Response, next: NextFunction) =>
       return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid sector code' } });
     }
 
+    // Public-safe projection only: excludes law-enforcement escalation
+    // fields, acknowledgedById/resolvedById (internal user references), and
+    // resolution notes. These are signals for human review, not proof of
+    // wrongdoing, and must never carry internal investigation detail to an
+    // anonymous reader.
     const alerts = await prisma.anomaly.findMany({
       where: {
         project: { sector: sectorCode },
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        category: true,
+        severity: true,
+        riskScore: true,
+        status: true,
+        aiExplanation: true,
+        aiConfidence: true,
+        createdAt: true,
         project: {
           select: { id: true, name: true, sector: true, state: true, district: true },
         },
@@ -228,14 +243,25 @@ router.get('/reports', async (req: Request, res: Response, next: NextFunction) =
     }
 
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 100);
-    const status = req.query.status as string | undefined;
 
-    const where: { project: { sector: ProjectSector }; status?: string } = { project: { sector: sectorCode } };
-    if (status) where.status = status;
-
+    // Public-safe projection only, mirroring GET /reports/public: only
+    // reports the reporter marked PUBLIC and that have cleared moderation
+    // (VERIFIED/RESOLVED). No reporter name/email/phone, no restricted or
+    // confidential reports — this route has no auth, so anything broader
+    // would leak whistleblower identity or unmoderated content.
     const reports = await prisma.report.findMany({
-      where: where as any,
-      include: {
+      where: {
+        project: { sector: sectorCode },
+        privacyLevel: ReportPrivacyLevel.PUBLIC,
+        status: { in: [ReportStatus.VERIFIED, ReportStatus.RESOLVED] },
+      },
+      select: {
+        id: true,
+        reportReference: true,
+        title: true,
+        category: true,
+        status: true,
+        createdAt: true,
         project: { select: { id: true, name: true, state: true, district: true } },
       },
       orderBy: { createdAt: 'desc' },

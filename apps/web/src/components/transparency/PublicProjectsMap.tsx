@@ -44,6 +44,11 @@ export function PublicProjectsMap({ projects, className }: PublicProjectsMapProp
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
   const markersRef = useRef<import('maplibre-gl').Marker[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Drives the marker-sync effect below. Without this, that effect (keyed
+  // only on `projects`) can run once before the map's own async load
+  // resolves, see the map as not-ready, and never run again since
+  // `projects` doesn't change afterward — leaving zero markers rendered.
+  const [mapReady, setMapReady] = useState(false);
 
   // Initialize map once.
   useEffect(() => {
@@ -60,10 +65,18 @@ export function PublicProjectsMap({ projects, className }: PublicProjectsMapProp
             sources: {
               osm: {
                 type: 'raster',
-                tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png'],
+                // Standard OpenStreetMap tile servers — no API key required,
+                // unlike CARTO's basemap CDN which now gates its raster
+                // endpoints behind a key and watermarks unauthenticated
+                // requests. Three subdomains for basic load spreading, per
+                // OSM's tile usage guidance.
+                tiles: [
+                  'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                ],
                 tileSize: 256,
-                attribution:
-                  '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
               },
             },
             layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
@@ -72,6 +85,12 @@ export function PublicProjectsMap({ projects, className }: PublicProjectsMapProp
           zoom: 4,
         });
         map.addControl(new ml.NavigationControl(), 'top-right');
+        map.on('error', (e) => {
+          // A tile/style load failure after init — surface it honestly
+          // rather than leaving a silently blank map.
+          setError(e.error?.message ?? 'Map failed to load.');
+        });
+        map.once('load', () => setMapReady(true));
         mapRef.current = map;
       })
       .catch(() => setError('Map could not be loaded.'));
@@ -83,48 +102,41 @@ export function PublicProjectsMap({ projects, className }: PublicProjectsMapProp
     };
   }, []);
 
-  // Sync markers whenever the project list changes.
+  // Sync markers whenever the project list changes, or once the map
+  // finishes its own async load (whichever happens later).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !MapLibre) return;
+    if (!map || !mapReady || !MapLibre) return;
 
-    const syncMarkers = () => {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
-      const withCoords = projects.filter((p) => p.latitude != null && p.longitude != null);
-      for (const p of withCoords) {
-        const el = document.createElement('div');
-        el.style.width = '12px';
-        el.style.height = '12px';
-        el.style.borderRadius = '50%';
-        el.style.border = '2px solid white';
-        el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.4)';
-        el.style.backgroundColor = STATUS_COLOR[p.status] ?? '#6366f1';
-        el.style.cursor = 'pointer';
+    const withCoords = projects.filter((p) => p.latitude != null && p.longitude != null);
+    for (const p of withCoords) {
+      const el = document.createElement('div');
+      el.style.width = '12px';
+      el.style.height = '12px';
+      el.style.borderRadius = '50%';
+      el.style.border = '2px solid white';
+      el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.4)';
+      el.style.backgroundColor = STATUS_COLOR[p.status] ?? '#6366f1';
+      el.style.cursor = 'pointer';
 
-        const popup = new MapLibre!.Popup({ offset: 12, closeButton: false }).setHTML(
-          `<div style="font-size:12px;max-width:200px">
-            <strong>${escapeHtml(p.name)}</strong><br/>
-            ${escapeHtml([p.district, p.state].filter(Boolean).join(', '))}<br/>
-            <a href="/explore/${p.id}" style="color:#4f46e5">View project →</a>
-          </div>`
-        );
+      const popup = new MapLibre.Popup({ offset: 12, closeButton: false }).setHTML(
+        `<div style="font-size:12px;max-width:200px">
+          <strong>${escapeHtml(p.name)}</strong><br/>
+          ${escapeHtml([p.district, p.state].filter(Boolean).join(', '))}<br/>
+          <a href="/explore/${p.id}" style="color:#4f46e5">View project →</a>
+        </div>`
+      );
 
-        const marker = new MapLibre!.Marker({ element: el })
-          .setLngLat([p.longitude as number, p.latitude as number])
-          .setPopup(popup)
-          .addTo(map);
-        markersRef.current.push(marker);
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      syncMarkers();
-    } else {
-      map.once('load', syncMarkers);
+      const marker = new MapLibre.Marker({ element: el })
+        .setLngLat([p.longitude as number, p.latitude as number])
+        .setPopup(popup)
+        .addTo(map);
+      markersRef.current.push(marker);
     }
-  }, [projects]);
+  }, [projects, mapReady]);
 
   if (error) {
     return (
