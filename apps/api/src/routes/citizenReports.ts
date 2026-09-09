@@ -297,6 +297,10 @@ router.get('/public', async (req: Request, res: Response, next: NextFunction) =>
       status: { in: [ReportStatus.VERIFIED, ReportStatus.RESOLVED] },
     };
     if (category) where.category = category;
+    if (req.query.projectId) {
+      where.projectId = String(req.query.projectId);
+      where.status = { notIn: [ReportStatus.DISMISSED] };
+    }
 
     const [data, total] = await prisma.$transaction([
       prisma.report.findMany({

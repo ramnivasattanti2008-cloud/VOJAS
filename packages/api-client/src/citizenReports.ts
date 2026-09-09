@@ -110,7 +110,7 @@ export function createCitizenReportsApi(client: ApiClient) {
     },
 
     // Public: List public reports with optional filters
-    listPublic(params?: { lat?: number; lng?: number; radiusKm?: number; limit?: number }) {
+    listPublic(params?: { lat?: number; lng?: number; radiusKm?: number; limit?: number; projectId?: string }) {
       return client.get<CitizenReport[]>('/reports/public', params as Record<string, string | number | undefined>);
     },
 

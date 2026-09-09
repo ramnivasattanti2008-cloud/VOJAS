@@ -39,7 +39,7 @@ export function useTrackReportStatus(reportReference: string | null) {
   });
 }
 
-export function usePublicReports(params?: { lat?: number; lng?: number; radiusKm?: number; limit?: number }) {
+export function usePublicReports(params?: { lat?: number; lng?: number; radiusKm?: number; limit?: number; projectId?: string }) {
   return useQuery({
     queryKey: ['citizen-reports', 'public', params],
     queryFn: () => reportsApi.listPublic(params),
