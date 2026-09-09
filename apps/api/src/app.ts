@@ -1,17 +1,20 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
-import { rateLimit } from 'express-rate-limit';
 import * as Sentry from '@sentry/node';
 import { expressIntegration, setupExpressErrorHandler } from '@sentry/node';
+import { prisma } from '@vojas/db';
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express from 'express';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
+import helmet from 'helmet';
 import { globalErrorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestIdMiddleware, requestLogger } from './middleware/observability.js';
-import { prisma } from '@vojas/db';
-import { logger } from './utils/logger.js';
 import routes from './routes/index.js';
+import { logger } from './utils/logger.js';
 
 const app = express();
+
+app.disable('x-powered-by');
+app.use(helmet());
 
 // ── Sentry (optional — graceful no-op if SENTRY_DSN not set) ─────────────────
 if (process.env.SENTRY_DSN) {
@@ -42,6 +45,11 @@ if (process.env.SENTRY_DSN) {
 // Trust first proxy (for accurate req.ip behind Render/Vercel/Nginx)
 app.set('trust proxy', 1);
 
+// Observability — request ID must come BEFORE all routes and middleware,
+// including body parsing, so even a malformed-body request is traceable.
+app.use(requestIdMiddleware);
+app.use(requestLogger);
+
 // ── Body parsing (MUST be before routes, after Sentry handlers) ───────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
@@ -62,10 +70,6 @@ app.use((_req, res, next) => {
 // ── CORS — credentials required for httpOnly cookie auth ───────────────────────
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',');
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-
-// Observability — request ID must come BEFORE all routes and middleware
-app.use(requestIdMiddleware);
-app.use(requestLogger);
 
 // ── Health checks ────────────────────────────────────────────────────────────
 // Liveness — process is up. No DB call, no auth. Safe to use in k8s livenessProbe.
@@ -169,7 +173,7 @@ const aiLimiter = rateLimit({
   limit: 20,                       // 20 calls / min / user
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => (req.user?.userId ?? req.ip ?? 'unknown'),
+  keyGenerator: (req) => req.user?.userId ?? ipKeyGenerator(req.ip ?? 'unknown'),
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'AI/analysis rate limit reached. Slow down.' } },
 });
 
@@ -179,7 +183,7 @@ const searchLimiter = rateLimit({
   limit: 60,                       // 60 searches / min / user
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => (req.user?.userId ?? req.ip ?? 'unknown'),
+  keyGenerator: (req) => req.user?.userId ?? ipKeyGenerator(req.ip ?? 'unknown'),
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Search rate limit reached.' } },
 });
 
