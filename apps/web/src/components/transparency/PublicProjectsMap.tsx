@@ -126,10 +126,24 @@ export function PublicProjectsMap({ projects, className, focusProjectId }: Publi
       el.style.cursor = 'pointer';
 
       const popup = new MapLibre.Popup({ offset: 12, closeButton: false }).setHTML(
-        `<div style="font-size:12px;max-width:200px">
-          <strong>${escapeHtml(p.name)}</strong><br/>
-          ${escapeHtml([p.district, p.state].filter(Boolean).join(', '))}<br/>
-          <a href="/explore/${p.id}" style="color:#4f46e5">View project →</a>
+        `<div style="font-family:system-ui,-apple-system,sans-serif;padding:6px;min-width:200px;max-width:260px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px">
+            <span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;background-color:${STATUS_COLOR[p.status] ?? '#6366f1'}22;color:${STATUS_COLOR[p.status] ?? '#6366f1'}">
+              ${escapeHtml(p.status.replace(/_/g, ' '))}
+            </span>
+            <span style="font-size:11px;color:#64748b;font-weight:700">
+              ₹${((p.approvedAmount || 0) / 100000).toFixed(1)}L
+            </span>
+          </div>
+          <h4 style="font-size:13px;font-weight:700;line-height:1.35;margin:0 0 4px 0;color:#0f172a">
+            ${escapeHtml(p.name)}
+          </h4>
+          <p style="font-size:11px;color:#64748b;margin:0 0 8px 0;line-height:1.3">
+            📍 ${escapeHtml([p.district, p.state].filter(Boolean).join(', '))}
+          </p>
+          <a href="/explore/${p.id}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#2563eb;text-decoration:none">
+            View Project Details →
+          </a>
         </div>`
       );
 

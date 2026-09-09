@@ -110,15 +110,35 @@ export function ExploreDetailClient() {
                 <MapPin className="h-3.5 w-3.5" />
                 {[project.district, project.state].filter(Boolean).join(', ') || 'Location not available'}
               </span>
-              {project.latitude != null && project.longitude != null && (
-                <Link
-                  href={`/explore/map?focus=${project.id}`}
-                  className="text-sm font-medium text-vojas-600 hover:underline"
-                >
-                  View on Map →
-                </Link>
-              )}
             </div>
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {project.latitude != null && project.longitude != null && (
+              <Link
+                href={`/explore/map?focus=${project.id}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all shadow-xs"
+              >
+                <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                View on Map
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('satellite')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all shadow-xs"
+            >
+              <Satellite className="h-3.5 w-3.5 text-purple-600" />
+              Satellite Evidence
+            </button>
+            <Link
+              href={`/report?projectId=${project.id}`}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-xs"
+            >
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Report Discrepancy
+            </Link>
           </div>
         </div>
       </div>

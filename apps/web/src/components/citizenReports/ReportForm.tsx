@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { MapPin, Camera, Calendar, AlertCircle, CheckCircle, Shield, Info } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -68,7 +69,25 @@ const initialFormData: FormData = {
 };
 
 export function ReportForm() {
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const searchParams = useSearchParams();
+  const urlProjectId = searchParams.get('projectId');
+
+  const [formData, setFormData] = useState<FormData>(() => ({
+    ...initialFormData,
+    projectId: urlProjectId ?? '',
+    unknownProject: !urlProjectId,
+  }));
+
+  useEffect(() => {
+    if (urlProjectId) {
+      setFormData((prev) => ({
+        ...prev,
+        projectId: urlProjectId,
+        unknownProject: false,
+      }));
+    }
+  }, [urlProjectId]);
+
   const [submitted, setSubmitted] = useState(false);
   const [reportReference, setReportReference] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);

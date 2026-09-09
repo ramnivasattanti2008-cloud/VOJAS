@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { ReportForm } from '@/components/citizenReports/ReportForm';
 
 export const metadata: Metadata = {
@@ -14,5 +15,9 @@ export const metadata: Metadata = {
 };
 
 export default function ReportPage() {
-  return <ReportForm />;
+  return (
+    <Suspense fallback={<div className="py-12 text-center text-slate-400">Loading report form…</div>}>
+      <ReportForm />
+    </Suspense>
+  );
 }
