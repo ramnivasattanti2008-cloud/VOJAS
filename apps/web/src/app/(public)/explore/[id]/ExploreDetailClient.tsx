@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { usePublicProject, usePublicProjectTimeline } from '@/hooks/usePublicProjects';
 import { usePublicReports } from '@/hooks/useCitizenReports';
-import { useSatelliteStatus, useSatelliteObservations, useSatelliteChange } from '@/hooks/useSatellite';
+import { useSatelliteStatus, useSatelliteObservations, useSatelliteChange, useProgressComparison } from '@/hooks/useSatellite';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -74,6 +74,7 @@ export function ExploreDetailClient() {
   const { data: satStatus } = useSatelliteStatus(id);
   const { data: satObsData } = useSatelliteObservations(id);
   const { data: satChangeData } = useSatelliteChange(id);
+  const { data: satComparison } = useProgressComparison(id);
   const { data: publicReportsData } = usePublicReports(id ? { projectId: id } : undefined);
 
   const projectEvents = timelineData?.data ?? [];
@@ -370,6 +371,12 @@ export function ExploreDetailClient() {
           status={satStatus ?? null}
           observations={observations}
           analyses={analyses}
+          comparison={satComparison ?? null}
+          approvedAmount={project.approvedAmount}
+          spentAmount={project.spentAmount}
+          projectStatus={project.status}
+          startDate={project.startDate}
+          expectedEndDate={project.expectedEndDate}
         />
       )}
 
