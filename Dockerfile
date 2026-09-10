@@ -23,7 +23,10 @@ COPY packages ./packages
 COPY apps ./apps
 
 # Install only @vojas/api and the workspace packages it depends on.
-RUN pnpm install --frozen-lockfile --filter @vojas/api...
+# --prod=false is explicit: pnpm drops devDependencies whenever NODE_ENV is
+# "production", and the TypeScript compiler and @types/* live there, so a
+# platform that presets NODE_ENV would otherwise fail the build with TS7016.
+RUN pnpm install --frozen-lockfile --prod=false --filter @vojas/api...
 
 # Prisma client must exist before the TypeScript builds that import it.
 RUN pnpm --filter @vojas/db exec prisma generate
