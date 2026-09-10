@@ -7,7 +7,11 @@ import {
   findProjectsNear,
 } from '../src';
 
-describe('Database connection', () => {
+// These are integration tests: they need a live PostgreSQL + PostGIS instance.
+// Without DATABASE_URL the Prisma client cannot even initialise, so the suite
+// reports honestly as skipped instead of failing the whole run (CI has no
+// database). With DATABASE_URL set, every test below runs unchanged.
+describe.skipIf(!process.env.DATABASE_URL)('Database connection', () => {
   beforeAll(async () => {
     await connectDb();
   });

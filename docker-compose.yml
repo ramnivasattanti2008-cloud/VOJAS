@@ -7,13 +7,10 @@ version: "3.9"
 #   docker compose down -v          # Stop and remove volumes (resets DB)
 #   docker compose logs -f backend   # Tail backend logs
 #
-# On first start, the backend container runs:
-#   1. prisma generate
-#   2. prisma db push (applies schema to PostgreSQL)
-#   3. seed (loads demo data) — only if SEED_ON_BOOT=true and DB is empty
-# Then it starts the API server.
-#
-# The frontend is served as static files via nginx.
+# The backend image builds the workspace and starts the compiled API
+# (node apps/api/dist/server.js). It does not migrate or seed on startup.
+# Apply the schema once, separately:
+#   docker compose run --rm backend pnpm --filter @vojas/db exec prisma migrate deploy
 
 services:
   # ── PostgreSQL + PostGIS ───────────────────────────────────────────────────
@@ -40,7 +37,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: Dockerfile
     container_name: vojas-backend
     restart: unless-stopped
     depends_on:
@@ -54,7 +51,9 @@ services:
       JWT_EXPIRES_IN: 7d
       BCRYPT_ROUNDS: 10
       CLIENT_BASE_URL: http://localhost:3000
-      SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
+      # apps/api reads ALLOWED_ORIGINS for CORS — without it the frontend
+      # origin is rejected and every browser request fails.
+      ALLOWED_ORIGINS: http://localhost:3000
     ports:
       - "5000:5000"
     healthcheck:

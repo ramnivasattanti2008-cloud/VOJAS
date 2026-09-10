@@ -1,0 +1,42 @@
+# Keep the build context small — the API image only needs the pnpm workspace
+# sources for @vojas/api and the packages it depends on.
+
+# Dependencies and build output (reinstalled/rebuilt inside the image)
+node_modules
+**/node_modules
+dist
+**/dist
+.next
+**/.next
+**/*.tsbuildinfo
+
+# VCS and CI
+.git
+.github
+.gitignore
+.gitattributes
+
+# Superseded v1 application — not built or deployed (see CLAUDE.md)
+legacy
+frontend
+backend
+app
+
+# Secrets must never enter the image
+.env
+.env.*
+!.env.example
+
+# Docs, scripts and local tooling not needed at runtime
+docs
+*.md
+!README.md
+smoke.py
+*.log
+coverage
+**/coverage
+
+# NOTE: apps/web sources stay in the context so the pnpm workspace still
+# matches every importer in pnpm-lock.yaml (required by --frozen-lockfile).
+# Its dependencies are never installed — the install is filtered to
+# @vojas/api and the packages it depends on. The web app deploys on Vercel.

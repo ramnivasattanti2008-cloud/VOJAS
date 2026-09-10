@@ -76,7 +76,8 @@ backend/mps_list.csv
 backend/data/
 
 # Docker
-.dockerignore
+# .dockerignore is intentionally tracked — without it the production image
+# build ships the whole 250MB working tree as build context.
 docker-compose.*.override.yml
 
 # Misc

@@ -10,9 +10,9 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  # ── Monorepo Build & Typecheck ────────────────────────────────────────────
-  build-and-verify:
-    name: Build & Verify Monorepo
+  # ── Install, verify and build the pnpm workspace ──────────────────────────
+  verify:
+    name: Typecheck, lint, test & build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 9.12.0
 
       - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
@@ -31,36 +31,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
-        run: pnpm --filter @vojas/db exec prisma generate
+      - name: Generate Prisma client
+        run: pnpm db:generate
 
-      - name: Build Shared Packages
-        run: |
-          pnpm --filter @vojas/shared build
-          pnpm --filter @vojas/domain build
-          pnpm --filter @vojas/api-client build
+      - name: Build workspace packages
+        run: pnpm run build:packages
 
-      - name: Typecheck Backend API
-        run: pnpm --dir apps/api exec tsc --noEmit
+      - name: Typecheck
+        run: pnpm -r --no-bail typecheck
 
-      - name: Typecheck Next.js Web
-        run: pnpm --dir apps/web exec tsc --noEmit
+      - name: Lint
+        run: pnpm lint
 
-      - name: Build Next.js Web
-        run: pnpm --filter @vojas/web build
+      - name: Test
+        run: pnpm test
 
-  # ── Docker Build Verification ─────────────────────────────────────────────
+      - name: Build API
+        run: pnpm run build:api
+
+      - name: Build web
+        run: pnpm run build:web
+
+  # ── Verify the production API image actually builds ───────────────────────
   docker:
-    name: Docker Build
+    name: Docker build (API image)
     runs-on: ubuntu-latest
-    needs: build-and-verify
+    needs: verify
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Root API Image
+      - name: Build production API image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -69,20 +72,3 @@ jobs:
           tags: vojas-api:ci-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  # ── Final status check ───────────────────────────────────────────────────
-  ci-pass:
-    name: All checks passed
-    runs-on: ubuntu-latest
-    needs: [build-and-verify, docker]
-    if: success()
-    steps:
-      - name: Status banner
-        run: |
-          echo "## ✅ VOJAS CI Pipeline Passed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Monorepo dependencies resolved" >> $GITHUB_STEP_SUMMARY
-          echo "- Shared packages built" >> $GITHUB_STEP_SUMMARY
-          echo "- API and Web TypeScript verification clean" >> $GITHUB_STEP_SUMMARY
-          echo "- Next.js production build succeeded" >> $GITHUB_STEP_SUMMARY
-          echo "- Docker production image verified" >> $GITHUB_STEP_SUMMARY

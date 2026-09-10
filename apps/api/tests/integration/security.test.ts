@@ -594,7 +594,10 @@ describe('Security Headers', () => {
 
 // ── Public Endpoint Tests ───────────────────────────────────────────────────────
 
-describe('Public Endpoints (no auth required)', () => {
+// Every endpoint below queries the database — "no auth required" is about
+// authentication, not about running without a DB. Gated like the rest of the
+// file so a no-database run skips instead of asserting 200 against nothing.
+runIfDb('Public Endpoints (no auth required)', () => {
   it('GET /health requires no auth', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
