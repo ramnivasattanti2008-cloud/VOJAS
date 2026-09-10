@@ -300,10 +300,13 @@ export class Progress {
   constructor(private label: string) {}
   tick(current: number, total: number): void {
     if (total === 0) return;
-    const pct = Math.floor((current / total) * 100);
+    // Clamp: a caller that overshoots total made "░".repeat(negative) throw
+    // RangeError and killed the job it was only supposed to be reporting on.
+    const pct = Math.max(0, Math.min(100, Math.floor((current / total) * 100)));
     if (pct === this.last && current !== total) return;
     this.last = pct;
-    const bar = "█".repeat(Math.floor(pct / 2)) + "░".repeat(50 - Math.floor(pct / 2));
+    const filled = Math.floor(pct / 2);
+    const bar = "█".repeat(filled) + "░".repeat(50 - filled);
     process.stdout.write(`\r${this.label} [${bar}] ${pct}% (${current.toLocaleString()}/${total.toLocaleString()})`);
     if (current === total) process.stdout.write("\n");
   }

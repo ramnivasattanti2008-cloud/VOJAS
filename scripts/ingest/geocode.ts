@@ -59,9 +59,13 @@ async function main() {
   const prisma = await getPrisma();
   const index = buildIndex();
 
-  const where = FORCE ? {} : { latitude: null };
-  const total = await prisma.project.count({ where });
-  console.log(`   projects to consider: ${total.toLocaleString()}`);
+  // Paginate over every project by id and skip the ones already placed, rather
+  // than filtering on latitude: null. Districts with no geocode stay null by
+  // design, so a latitude-filtered query keeps returning them and the scan
+  // never terminates.
+  const total = await prisma.project.count();
+  const alreadyPlaced = await prisma.project.count({ where: { NOT: { latitude: null } } });
+  console.log(`   projects: ${total.toLocaleString()}  (already placed: ${alreadyPlaced.toLocaleString()})`);
 
   if (total === 0) {
     console.log(`\n✅ Nothing to do — every project already has coordinates.`);
@@ -72,20 +76,23 @@ async function main() {
   let processed = 0;
   let matched = 0;
   let unmatched = 0;
+  let skipped = 0;
   const unmatchedKeys = new Map<string, number>();
 
   let cursor: string | undefined;
 
   for (;;) {
-    const batch = await prisma.project.findMany({
-      where,
-      select: { id: true, district: true, state: true },
+    const page = await prisma.project.findMany({
+      select: { id: true, district: true, state: true, latitude: true },
       orderBy: { id: "asc" },
       take: BATCH_SIZE,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });
-    if (batch.length === 0) break;
-    cursor = batch[batch.length - 1].id;
+    if (page.length === 0) break;
+    cursor = page[page.length - 1].id;
+
+    const batch = page.filter((p) => FORCE || p.latitude === null);
+    skipped += page.length - batch.length;
 
     // Group by resolved coordinate so each distinct district is one UPDATE
     // covering every project in it, rather than one UPDATE per project.
@@ -115,22 +122,17 @@ async function main() {
       }
     }
 
-    processed += batch.length;
-    progress.tick(processed, total);
-
-    // With --force the where-clause still matches updated rows, so the cursor
-    // is what advances. Without it, updated rows drop out of the filter and
-    // the cursor would skip ahead past unprocessed rows, so re-query from the
-    // start instead.
-    if (!FORCE && !DRY_RUN) cursor = undefined;
+    processed += page.length;
+    progress.tick(Math.min(processed, total), total);
   }
 
-  progress.tick(processed, total);
+  progress.tick(total, total);
 
   console.log(`\n✅ Done.`);
-  console.log(`   considered:  ${processed.toLocaleString()}`);
+  console.log(`   scanned:     ${processed.toLocaleString()}`);
   console.log(`   geocoded:    ${matched.toLocaleString()}`);
   console.log(`   unmatched:   ${unmatched.toLocaleString()} (left null on purpose)`);
+  console.log(`   skipped:     ${skipped.toLocaleString()} (already had coordinates)`);
 
   if (unmatchedKeys.size > 0) {
     const top = [...unmatchedKeys.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15);
