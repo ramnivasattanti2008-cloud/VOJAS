@@ -154,23 +154,23 @@ async function ingestTerm(
     if (!expBuffer.length) return;
     // Bulk lookup existing txnIds
     const ids = expBuffer.map((e) => e.sourceTxnId);
-    const existing = await prisma.expenditure.findMany({
+    const existing = await prisma.financialObservation.findMany({
       where: { source: "OPENCITY", sourceTxnId: { in: ids } },
       select: { sourceTxnId: true, id: true },
     });
-    const existingIds = new Map(existing.map((e) => [e.sourceTxnId, e.id]));
+    const existingIds = new Map(existing.map((e: any) => [e.sourceTxnId, e.id]));
     const toCreate = expBuffer.filter((e) => !existingIds.has(e.sourceTxnId));
     const toUpdate = expBuffer.filter((e) => existingIds.has(e.sourceTxnId));
 
     if (toCreate.length > 0) {
       try {
-        await prisma.expenditure.createMany({ data: toCreate });
+        await prisma.financialObservation.createMany({ data: toCreate, skipDuplicates: true });
         expendituresCreated += toCreate.length;
       } catch (err: any) {
         // Partial dup fail — per-row fallback
         for (const e of toCreate) {
           try {
-            await prisma.expenditure.create({ data: e });
+            await prisma.financialObservation.create({ data: e });
             expendituresCreated++;
           } catch (e2: any) {
             skipped++;
@@ -181,7 +181,7 @@ async function ingestTerm(
 
     for (const e of toUpdate) {
       try {
-        await prisma.expenditure.update({
+        await prisma.financialObservation.update({
           where: { id: existingIds.get(e.sourceTxnId)! },
           data: e,
         });

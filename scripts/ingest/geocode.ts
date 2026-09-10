@@ -38,6 +38,66 @@ function key(s: string): string {
 }
 
 /**
+ * Historic and alternate district spellings, mapped to the name used in
+ * districtGeocodes.ts. These are official renamings and long-standing
+ * transliteration variants — the MPLADS source still files works under the
+ * old names, so without this the district is real but simply unfindable.
+ *
+ * Keyed by normalised name, so "South Twenty Four Parganas" and
+ * "SOUTH TWENTY FOUR PARGANAS" both resolve.
+ */
+const DISTRICT_ALIASES: Record<string, string> = {
+  // Karnataka renamings (2014)
+  BANGALOREURBAN: "Bengaluru Urban",
+  BANGALORERURAL: "Bengaluru Rural",
+  BANGALORE: "Bengaluru Urban",
+  GULBARGA: "Kalaburagi",
+  BIJAPUR: "Vijayapura",
+  BELGAUM: "Belagavi",
+  MYSORE: "Mysuru",
+  SHIMOGA: "Shivamogga",
+  TUMKUR: "Tumakuru",
+  BELLARY: "Ballari",
+  CHIKMAGALUR: "Chikkamagaluru",
+  HOSPET: "Vijayanagara",
+  MANGALORE: "Dakshina Kannada",
+  // West Bengal
+  SOUTHTWENTYFOURPARGANAS: "South 24 Parganas",
+  NORTHTWENTYFOURPARGANAS: "North 24 Parganas",
+  SOUTH24PARGANAS: "South 24 Parganas",
+  NORTH24PARGANAS: "North 24 Parganas",
+  DINAJPURDAKSHIN: "Dakshin Dinajpur",
+  DINAJPURUTTAR: "Uttar Dinajpur",
+  // Odisha
+  BOLANGIR: "Balangir",
+  // Uttar Pradesh
+  ALLAHABAD: "Prayagraj",
+  FAIZABAD: "Ayodhya",
+  // Haryana
+  HISSAR: "Hisar",
+  GURGAON: "Gurugram",
+  MEWAT: "Nuh",
+  // Assam
+  NOWGONG: "Nagaon",
+  // Tamil Nadu
+  VILLUPURAM: "Viluppuram",
+  TUTICORIN: "Thoothukudi",
+  // Jharkhand
+  GIRIDH: "Giridih",
+  // Bihar
+  MOTHIHARIEASTCHAMPARAN: "East Champaran",
+  MOTIHARI: "East Champaran",
+  BETTIAH: "West Champaran",
+  // Puducherry
+  PONDICHERRY: "Puducherry",
+};
+
+/** Resolve a district name through the alias table, if it has an entry. */
+function aliasFor(district: string): string | undefined {
+  return DISTRICT_ALIASES[key(district)];
+}
+
+/**
  * Districts are matched within their state, because district names repeat
  * across states (Aurangabad exists in both Bihar and Maharashtra, Bilaspur in
  * both Chhattisgarh and Himachal Pradesh). A state-blind match would place
@@ -99,7 +159,11 @@ async function main() {
     const groups = new Map<string, { lat: number; lng: number; ids: string[] }>();
 
     for (const p of batch) {
-      const hit = index.get(`${key(p.state)}::${key(p.district)}`);
+      const st = key(p.state);
+      const alias = aliasFor(p.district);
+      const hit =
+        index.get(`${st}::${key(p.district)}`) ??
+        (alias ? index.get(`${st}::${key(alias)}`) : undefined);
       if (!hit) {
         unmatched++;
         const k = `${p.state} / ${p.district}`;

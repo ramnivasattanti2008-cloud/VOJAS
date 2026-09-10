@@ -11,10 +11,13 @@
     "noEmit": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": false,
-    "baseUrl": "../..",
-    "paths": {
-      "@prisma/client": ["backend/node_modules/@prisma/client"]
-    }
+    "baseUrl": "../.."
+    // No "@prisma/client" path override. It used to point at
+    // backend/node_modules/@prisma/client - the superseded v1 client - so
+    // these scripts typechecked against a schema the database no longer has.
+    // That hid real errors (Project.source, Project.latitude and the whole
+    // v2 model set all reported as non-existent) and reported errors that
+    // were not real. It now resolves the workspace client like everything else.
   },
   "include": ["./*.ts"],
   "exclude": ["data", "node_modules"]

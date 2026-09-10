@@ -155,6 +155,69 @@ export function inferSector(workText: string): string {
 }
 
 /**
+ * Strip the implementing-agency title off an IDA string to leave the district.
+ *
+ * The Vonter IDA column names the officer, not the place:
+ *   "DISTRICT COLLECTOR KHORDHA_IDA"      -> "KHORDHA"
+ *   "DISTRICT MAGISTRAE SHAHJAHANAPUR_IDA" -> "SHAHJAHANAPUR"
+ *   "DISTRICT COLLECTORJHARSUGUDA_IDA"     -> "JHARSUGUDA"
+ *
+ * The source spells these titles inconsistently — MAGISTRAE for MAGISTRATE,
+ * COMMISSIOENR / COMMISIONER / COMMSIONER for COMMISSIONER — and sometimes
+ * omits the space before the district. A title left in place becomes the
+ * district name, which then matches no geocode and no LGD record, so 2,799
+ * "DISTRICT MAGISTRAE ..." rows alone were unplaceable on the map.
+ */
+export function cleanDistrictName(ida: string): string {
+  let s = ida.trim().replace(/_IDA$/i, "").trim();
+
+  // Officer titles, longest first, tolerating the misspellings above and an
+  // optional missing space before the district name.
+  const TITLES = [
+    /^DISTRICT\s+PLANNING\s+(?:AND\s+DEVELOPMENT\s+)?OFFICER\s*/i,
+    /^DISTRICT\s+PLANNING\s*/i,
+    /^DISTRICT\s+MAGISTRA[TC]?E?\s*/i,
+    /^DISTRICT\s+COLLECTOR\s*/i,
+    /^DISTRICT\s+COMMISSIONE?R\s*/i,
+    /^DEPUTY\s+COMM?[IS]*S?IO?E?N?E?R\s*/i,
+    /^DEP\s+COMM\s*/i,
+    /^ADDITIONAL\s+COLLECTOR\s*/i,
+    /^MUNICIPAL\s+COMMISSIONER\s*/i,
+    /^COMMISSIONER\s+MUNCIPAL\s*/i,
+    /^COMMISSIONER\s*/i,
+    /^COLLECTOR\s*/i,
+    /^MAGISTRA[TC]?E?\s*/i,
+    /^DM\s+/i,
+    /^DISTRICT\s+/i,
+  ];
+
+  // Titles compound in the source: "DISTRICT MAGISTRATE and COLLECTOR
+  // SIPAHIJALA", "ADMINISTRATOR CUM DEV COMMISSIONER LAKSHADWEEP". Strip a
+  // title, then any joining word, then allow one more title — but only while
+  // something is actually being removed, and never more than three rounds.
+  for (let round = 0; round < 3; round++) {
+    const before = s;
+
+    for (const re of TITLES) {
+      const next = s.replace(re, "");
+      if (next !== s) {
+        // One title per round — "DISTRICT COLLECTOR X" must not also lose a
+        // leading word of X to the bare /^DISTRICT\s+/ rule.
+        s = next.trim();
+        break;
+      }
+    }
+
+    // Joining words between two titles, plus the "DEV/DEVELOPMENT" qualifier.
+    s = s.replace(/^(?:AND|CUM|&)\s+/i, "").replace(/^DEV(?:ELOPMENT)?\s+/i, "").trim();
+
+    if (s === before) break;
+  }
+
+  return s.trim();
+}
+
+/**
  * Map a work category string to a ProjectSector. (Vonter CATEGORY is high-level.)
  */
 export function categoryToSector(category: string): string {

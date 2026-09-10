@@ -20,6 +20,7 @@
 import {
   DATA_DIR,
   categoryToSector,
+  cleanDistrictName,
   inferSector,
   fileExists,
   inferHouseFromValue,
@@ -270,12 +271,7 @@ async function main() {
       sector: sector as any,
       district: (() => {
         if (!ida) return (block || village || "—").trim();
-        const cleaned = ida
-          .replace(/_IDA$/, "")
-          .replace(/^(DISTRICT COLLECTOR|DISTRICT MAGISTRATE|DEPUTY COMMISSIONER|DEP COMM|DISTRICT PLANNING OFFICER|COLLECTOR)\s+/i, "")
-          .replace(/^District\s+/i, "")
-          .trim();
-        return cleaned || state;
+        return cleanDistrictName(ida ?? "") || state;
       })(),
       constituency: (constituency || "").trim() || null,
       state: normalizeStateName(state),
