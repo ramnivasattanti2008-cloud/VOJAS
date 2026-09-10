@@ -93,8 +93,9 @@ router.use('/notifications', notificationRoutes);
 // Document routes
 router.use('/documents', documentRoutes);
 
-// MP routes
+// MP routes (public MPs catalog and MP Command Center)
 router.use('/mps', mpRoutes);
+router.use('/mp', mpRoutes);
 
 // Risk routes (project-scoped: /projects/:id/risk; global: /summary, /findings, etc.)
 router.use('/', riskRoutes);
