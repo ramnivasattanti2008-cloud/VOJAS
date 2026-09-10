@@ -42,6 +42,7 @@ export function MapViewClient() {
   const { data, isLoading } = useProjects({
     search: search || undefined,
     state: state || undefined,
+    hasCoordinates: true,
     limit: 500,
   });
 

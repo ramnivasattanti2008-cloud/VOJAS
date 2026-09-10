@@ -149,8 +149,8 @@ describe('project schemas', () => {
     }
   });
 
-  it('projectFiltersSchema limits page size to 100', () => {
-    const result = projectFiltersSchema.safeParse({ limit: 200 });
+  it('projectFiltersSchema limits page size to 1000', () => {
+    const result = projectFiltersSchema.safeParse({ limit: 2000 });
     expect(result.success).toBe(false);
   });
 

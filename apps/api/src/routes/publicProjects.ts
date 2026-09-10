@@ -66,10 +66,16 @@ const PUBLIC_PROJECT_SELECT = {
  */
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const rawLimit = req.query.limit ? Number(req.query.limit) : undefined;
+    const clampedLimit = rawLimit !== undefined ? Math.min(1000, Math.max(1, rawLimit)) : undefined;
+    const rawPage = req.query.page ? Number(req.query.page) : undefined;
+    const clampedPage = rawPage !== undefined ? Math.max(1, rawPage) : undefined;
+
     const filters = projectFiltersSchema.safeParse({
       ...req.query,
-      page: req.query.page ? Number(req.query.page) : undefined,
-      limit: req.query.limit ? Number(req.query.limit) : undefined,
+      page: clampedPage,
+      limit: clampedLimit,
+      hasCoordinates: req.query.hasCoordinates !== undefined ? (req.query.hasCoordinates === 'true' || req.query.hasCoordinates === true) : undefined,
       minAmount: req.query.minAmount ? Number(req.query.minAmount) : undefined,
       maxAmount: req.query.maxAmount ? Number(req.query.maxAmount) : undefined,
     });
@@ -82,9 +88,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
     const p = filters.data;
     const where: Record<string, unknown> = {};
-    if (p.state) where.state = p.state;
-    if (p.district) where.district = p.district;
-    if (p.constituency) where.constituency = p.constituency;
+    if (p.hasCoordinates) {
+      where.latitude = { not: null };
+      where.longitude = { not: null };
+    }
+    if (p.state) where.state = { equals: p.state, mode: 'insensitive' };
+    if (p.district) where.district = { equals: p.district, mode: 'insensitive' };
+    if (p.constituency) where.constituency = { equals: p.constituency, mode: 'insensitive' };
     if (p.sector) where.sector = p.sector;
     if (p.status) where.status = p.status;
     if (p.minAmount !== undefined || p.maxAmount !== undefined) {

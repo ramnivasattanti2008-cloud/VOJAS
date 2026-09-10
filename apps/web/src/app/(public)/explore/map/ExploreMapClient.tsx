@@ -38,6 +38,7 @@ export function ExploreMapClient() {
   const { data, isLoading, isError } = usePublicProjects({
     search: search || undefined,
     state: state || undefined,
+    hasCoordinates: true,
     limit: MAP_PAGE_SIZE,
   });
 

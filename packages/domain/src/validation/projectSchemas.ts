@@ -36,9 +36,10 @@ export const projectFiltersSchema = z.object({
   minAmount: z.number().nonnegative().optional(),
   maxAmount: z.number().nonnegative().optional(),
   hasAnomalies: z.boolean().optional(),
+  hasCoordinates: z.boolean().optional(),
   search: z.string().optional(),
   page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(20),
+  limit: z.number().int().min(1).max(1000).default(20),
   sortBy: z
     .enum(['name', 'approvedAmount', 'spentAmount', 'createdAt', 'status'])
     .optional(),
