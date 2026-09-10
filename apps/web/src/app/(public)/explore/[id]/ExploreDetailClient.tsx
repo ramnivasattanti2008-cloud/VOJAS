@@ -462,6 +462,7 @@ export function ExploreDetailClient() {
           projectStatus={project.status}
           startDate={project.startDate}
           expectedEndDate={project.expectedEndDate}
+          intelligence={intelligenceData}
         />
       )}
 
