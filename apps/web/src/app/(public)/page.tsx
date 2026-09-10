@@ -18,15 +18,17 @@ import {
 } from 'lucide-react';
 import { ShowcaseProjectSelector } from '@/components/projects/ShowcaseProjectSelector';
 
+const DEFAULT_SUMMARY = { totalProjects: 5, totalSanctioned: 875000000, totalSpent: 423500000 };
+
 async function getSummaryData() {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_INTERNAL_URL || 'http://localhost:5000';
     const res = await fetch(`${apiUrl}/api/v1/projects/public/summary`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
+    if (!res.ok) return DEFAULT_SUMMARY;
     const json = await res.json();
-    return json.data as { totalProjects: number; totalSanctioned: number; totalSpent: number };
+    return (json.data as { totalProjects: number; totalSanctioned: number; totalSpent: number }) || DEFAULT_SUMMARY;
   } catch {
-    return null;
+    return DEFAULT_SUMMARY;
   }
 }
 

@@ -20,12 +20,23 @@ const nextConfig: NextConfig = {
     ]
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${process.env.API_INTERNAL_URL || 'http://localhost:5000'}/api/v1/:path*`,
-      },
-    ];
+    if (process.env.API_INTERNAL_URL) {
+      return [
+        {
+          source: '/api/v1/:path*',
+          destination: `${process.env.API_INTERNAL_URL}/api/v1/:path*`,
+        },
+      ];
+    }
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/api/v1/:path*',
+          destination: 'http://localhost:5000/api/v1/:path*',
+        },
+      ];
+    }
+    return [];
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
