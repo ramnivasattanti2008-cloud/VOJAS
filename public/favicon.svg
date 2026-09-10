@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!--
+    VOJAS favicon — "Geofenced Checkpoint" mark (see
+    src/components/brand/VojasLogo.tsx for the full concept note).
+    Flat, single-tone, no gradients — legible at 16px and readable on both
+    light and dark browser chrome via the prefers-color-scheme swap below.
+  -->
+  <style>
+    .vojas-favicon-ink { fill: none; stroke: #1E1C19; }
+    .vojas-favicon-node { fill: #AD7F26; }
+    @media (prefers-color-scheme: dark) {
+      .vojas-favicon-ink { stroke: #F5F3F0; }
+      .vojas-favicon-node { fill: #DCBD52; }
+    }
+  </style>
+  <path class="vojas-favicon-ink" d="M5 15V5H15" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="vojas-favicon-ink" d="M33 5H43V15" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="vojas-favicon-ink" d="M43 33V43H33" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="vojas-favicon-ink" d="M15 43H5V33" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="vojas-favicon-ink" d="M13 12L24 31L35 12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect class="vojas-favicon-node" x="20.5" y="29.5" width="7" height="7" rx="1.25"/>
+</svg>

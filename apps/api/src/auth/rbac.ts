@@ -28,7 +28,7 @@ export {
   hasAllPermissions,
   getPermissionsForRole,
   roleHasPermission,
-  Permission,
+  type Permission,
   PERMISSIONS,
   ROLE_PERMISSIONS,
   ROLE_DISPLAY_NAMES,

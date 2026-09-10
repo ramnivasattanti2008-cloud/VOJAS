@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   VOJAS DESIGN TOKENS
+   ==========================================================================
+   Brand direction: government intelligence dashboard / geospatial command
+   center / financial accountability workspace. Deliberately NOT the
+   stereotypical blue+green civic-tech pairing, NOT a neon "AI startup"
+   gradient palette, NOT glassmorphism.
+
+   NEUTRAL FOUNDATION — "Dossier Stone"
+   A warm, slightly desaturated graphite ramp (hue ~30°, low chroma) rather
+   than a cold blue-grey. It reads like paper, ink and case files — evidence
+   room, not tech demo — and stays legible/authoritative in both themes.
+     --vojas-neutral-50 .. -950   (see tailwind.config.ts `stone` scale)
+
+   BRAND ACCENT — "Seal Bronze" (--vojas-color-primary)
+   A muted antique gold/bronze, evocative of an official seal, medal ribbon
+   or notarised stamp — EVIDENCE + GOVERNANCE + TRUST — without being blue,
+   green, or a purple/pink AI gradient. It is deliberately darker and less
+   saturated than the semantic "medium risk" amber below so the two are
+   never mistaken for one another: brand bronze = institutional chrome,
+   risk amber = an alert badge used sparingly.
+
+   SEMANTIC RISK SCALE — separate from the brand accent, used sparingly
+   (status pills, risk badges, map markers) and never for chrome/branding.
+     low      — muted forest green   (safe / on-track)
+     medium   — bright golden amber  (watch)
+     high     — burnt orange         (elevated risk)
+     critical — restrained alert red (confirmed anomaly)
+
+   RISK CONTRAST — measured WCAG 2.x ratios (sRGB relative luminance) for
+   solid `bg-risk-*` fills. Only two of the four clear 4.5:1 (AA, normal
+   text) with white; the other two need dark text instead:
+     bg-risk-low      (#3F8F5F) + white text  → 3.96:1  FAILS AA
+     bg-risk-low      (#3F8F5F) + black text  → 5.31:1  PASSES  ← use -fg
+     bg-risk-medium   (#D69E1F) + white text  → 2.39:1  FAILS AA badly
+     bg-risk-medium   (#D69E1F) + black text  → 8.77:1  PASSES  ← use -fg
+     bg-risk-high     (#C6631B) + white text  → 4.04:1  FAILS AA
+     bg-risk-high     (#C6631B) + black text  → 5.20:1  PASSES  ← use -fg
+     bg-risk-critical (#B3261E) + white text  → 6.54:1  PASSES  ← use -fg
+     bg-risk-critical (#B3261E) + black text  → 3.21:1  FAILS AA
+   RULE: a solid `bg-risk-*` fill must always pair with its matching
+   `text-risk-*-fg` utility (e.g. `bg-risk-medium text-risk-medium-fg`) —
+   never bare `text-white` / `text-black`. No risk step needed darkening;
+   each one already clears 4.5:1 against one of pure black or pure white.
+   PREFERRED PATTERN: for status pills/badges, prefer the existing
+   light-tint + dark-text convention already used by `Badge.tsx` and ~60
+   pages (e.g. `bg-amber-50 text-amber-700`) over a solid risk fill — it is
+   the safer default and reads calmer at list/table density. Reserve solid
+   `bg-risk-*` + `-fg` pairs for small high-emphasis chips/markers (e.g. a
+   map pin) where a solid fill is actually wanted.
+   ========================================================================== */
+
+:root {
+  /* Neutral surfaces / text (warm graphite ramp) */
+  --vojas-color-bg: 250 249 247;           /* stone-50  #FAF9F7 */
+  --vojas-color-surface: 255 255 255;      /* pure white cards on warm bg */
+  --vojas-color-surface-raised: 255 255 255;
+  --vojas-color-fg: 30 28 25;              /* stone-900 #1E1C19 */
+  --vojas-color-muted: 99 94 85;           /* stone-600 #635E55 */
+  --vojas-color-border: 228 225 218;       /* stone-200 #E4E1DA */
+
+  /* Brand accent — Seal Bronze */
+  --vojas-color-primary: 173 127 38;       /* accent-500 #AD7F26 */
+  --vojas-color-primary-hover: 140 101 25; /* accent-600 #8C6519 */
+  --vojas-color-primary-fg: 255 255 255;   /* text/icon color on primary fill */
+
+  /* Semantic risk scale (separate from brand accent) */
+  --vojas-risk-low: 63 143 95;             /* #3F8F5F */
+  --vojas-risk-medium: 214 158 31;         /* #D69E1F */
+  --vojas-risk-high: 198 99 27;            /* #C6631B */
+  --vojas-risk-critical: 179 38 30;        /* #B3261E */
+
+  /* Paired foreground for each risk step — whichever of black/white clears
+     4.5:1 (AA) against that exact background. See the ratio table above.
+     Always pair a solid risk background with its matching -fg token. */
+  --vojas-risk-low-fg: 0 0 0;              /* 5.31:1 on risk-low */
+  --vojas-risk-medium-fg: 0 0 0;           /* 8.77:1 on risk-medium */
+  --vojas-risk-high-fg: 0 0 0;             /* 5.20:1 on risk-high */
+  --vojas-risk-critical-fg: 255 255 255;   /* 6.54:1 on risk-critical */
+
+  /* Back-compat aliases (kept so any existing reference keeps working) */
+  --vojas-color-success: var(--vojas-risk-low);
+  --vojas-color-warning: var(--vojas-risk-medium);
+  --vojas-color-danger: var(--vojas-risk-critical);
+}
+
+/* Dark mode: follows the OS by default, or an explicit data-theme="dark"
+   set on <html> if/when a manual theme toggle is added later. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --vojas-color-bg: 18 17 16;              /* stone-950 #121110 */
+    --vojas-color-surface: 30 28 25;         /* stone-900 #1E1C19 */
+    --vojas-color-surface-raised: 41 38 34;  /* stone-800ish #292622 */
+    --vojas-color-fg: 245 243 240;           /* near stone-50 */
+    --vojas-color-muted: 168 161 150;        /* stone-400 #A8A196 */
+    --vojas-color-border: 74 70 64;          /* stone-700 #4A4640 */
+
+    --vojas-color-primary: 220 189 82;       /* accent-300, brighter for AA contrast on dark */
+    --vojas-color-primary-hover: 242 189 82; /* accent-300/400 blend */
+    --vojas-color-primary-fg: 30 28 25;
+
+    --vojas-risk-low: 111 191 143;
+    --vojas-risk-medium: 232 181 74;
+    --vojas-risk-high: 224 138 84;
+    --vojas-risk-critical: 224 96 88;
+  }
+}
+
+:root[data-theme='dark'] {
+  --vojas-color-bg: 18 17 16;
+  --vojas-color-surface: 30 28 25;
+  --vojas-color-surface-raised: 41 38 34;
+  --vojas-color-fg: 245 243 240;
+  --vojas-color-muted: 168 161 150;
+  --vojas-color-border: 74 70 64;
+
+  --vojas-color-primary: 220 189 82;
+  --vojas-color-primary-hover: 242 189 82;
+  --vojas-color-primary-fg: 30 28 25;
+
+  --vojas-risk-low: 111 191 143;
+  --vojas-risk-medium: 232 181 74;
+  --vojas-risk-high: 224 138 84;
+  --vojas-risk-critical: 224 96 88;
+}
+
+html,
+body {
+  height: 100%;
+  background-color: rgb(var(--vojas-color-bg));
+  color: rgb(var(--vojas-color-fg));
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  border-color: rgb(var(--vojas-color-border));
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--vojas-color-primary));
+  outline-offset: 2px;
+}
+
+/* Solid surface treatment — the intended replacement for the old
+   glassmorphism `.glass-panel` (removed: no backdrop blur / translucency
+   per brand direction). Opaque card surface with a hairline border and a
+   restrained shadow instead of a frosted-glass look. */
+.surface-panel {
+  background-color: rgb(var(--vojas-color-surface));
+  border: 1px solid rgb(var(--vojas-color-border));
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06);
+}
+
+.gradient-civic-hero {
+  background: linear-gradient(135deg, #1e1c19 0%, #292622 50%, #1f170a 100%);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
