@@ -347,12 +347,23 @@ export async function downloadWithRetry(
 // ─── Database init helper ───────────────────────────────────────────────────
 
 /**
- * The ingest writes through the workspace Prisma client in packages/db.
- * This previously imported backend/src/config/database.js — the superseded v1
- * app, which is not part of the pnpm workspace and is not deployed, so the
- * ingest failed with ERR_MODULE_NOT_FOUND anywhere except a full v1 checkout.
+ * The ingest talks to Postgres through @prisma/client directly, which is a
+ * root dependency and therefore resolvable when these scripts run from the
+ * repository root.
+ *
+ * It previously imported backend/src/config/database.js — the superseded v1
+ * app, which is not part of the pnpm workspace and is not deployed. Importing
+ * @vojas/db instead does not work either: the root package has no dependency
+ * on it, so pnpm never links it into the root node_modules. Both failed with
+ * ERR_MODULE_NOT_FOUND. The generated client is shared, so this reads and
+ * writes exactly the same schema as the API.
  */
+let _prisma: InstanceType<typeof import("@prisma/client").PrismaClient> | undefined;
+
 export async function getPrisma() {
-  const { prisma } = await import("@vojas/db");
-  return prisma;
+  if (!_prisma) {
+    const { PrismaClient } = await import("@prisma/client");
+    _prisma = new PrismaClient();
+  }
+  return _prisma;
 }
