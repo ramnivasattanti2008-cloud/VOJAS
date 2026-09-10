@@ -147,6 +147,149 @@ const STATUS_PALETTE: Record<string, string> = {
 const INDIA_CENTER: [number, number] = [78.9629, 22.5937];
 const DEFAULT_ZOOM = 4.3;
 
+function renderProjectPopupHTML(props: any, publicMode: boolean): string {
+  const detailHref = publicMode ? `/explore/${props.id}` : `/projects/${props.id}`;
+  const timeMachineHref = `/projects/${props.id}/time-machine`;
+  const amountFormatted = props.approvedAmount
+    ? formatCurrency(Number(props.approvedAmount))
+    : 'Amount not specified';
+
+  const statusColor = props.color || '#3b82f6';
+  const statusText = (props.status || 'UNKNOWN').replace(/_/g, ' ');
+
+  return `
+    <div style="font-family:system-ui,-apple-system,sans-serif;padding:6px;color:#0f172a;min-width:240px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px">
+        <span style="font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;background-color:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40">
+          ${escapeHtml(statusText)}
+        </span>
+        <span style="font-size:11px;font-weight:700;color:#059669">
+          ${amountFormatted}
+        </span>
+      </div>
+      <h4 style="font-size:13px;font-weight:700;line-height:1.35;margin:0 0 6px 0;color:#0f172a">
+        ${escapeHtml(props.name)}
+      </h4>
+      <div style="font-size:11px;color:#64748b;margin-bottom:10px;display:flex;flex-direction:column;gap:2px">
+        ${props.district || props.state ? `<span>📍 ${escapeHtml([props.district, props.state].filter(Boolean).join(', '))}</span>` : ''}
+        ${props.sector ? `<span>📂 Sector: ${escapeHtml(props.sector.replace(/_/g, ' '))}</span>` : ''}
+        ${props.riskLevel ? `<span style="color:${props.riskLevel === 'HIGH' || props.riskLevel === 'CRITICAL' ? '#ef4444' : '#64748b'}">⚠️ Risk: ${escapeHtml(props.riskLevel)}</span>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;padding-top:6px;border-top:1px solid #e2e8f0">
+        <a href="${detailHref}" style="flex:1;text-align:center;padding:7px 10px;background:#2563eb;color:#ffffff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;display:inline-block">
+          View Project
+        </a>
+        <a href="${timeMachineHref}" style="padding:7px 10px;background:#f1f5f9;color:#0f172a;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;border:1px solid #cbd5e1;display:inline-block" title="Satellite Time Machine">
+          🛰️ Timeline
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+function ensureLayers(map: import('maplibre-gl').Map, geojsonData: any) {
+  const existingSource = map.getSource('projects-source') as any;
+  if (!existingSource) {
+    map.addSource('projects-source', {
+      type: 'geojson',
+      data: geojsonData,
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 50,
+    });
+  } else {
+    existingSource.setData(geojsonData);
+  }
+
+  // 1. Cluster circles
+  if (!map.getLayer('clusters')) {
+    map.addLayer({
+      id: 'clusters',
+      type: 'circle',
+      source: 'projects-source',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': [
+          'step',
+          ['get', 'point_count'],
+          '#3b82f6', // blue < 10
+          10,
+          '#8b5cf6', // purple < 50
+          50,
+          '#f59e0b', // amber < 100
+          100,
+          '#ef4444', // red >= 100
+        ],
+        'circle-radius': [
+          'step',
+          ['get', 'point_count'],
+          20,
+          10,
+          24,
+          50,
+          30,
+          100,
+          36,
+        ],
+        'circle-stroke-width': 3,
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity': 0.92,
+      },
+    });
+  }
+
+  // 2. Cluster count text
+  if (!map.getLayer('cluster-count')) {
+    map.addLayer({
+      id: 'cluster-count',
+      type: 'symbol',
+      source: 'projects-source',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count_abbreviated}',
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': 13,
+      },
+      paint: {
+        'text-color': '#ffffff',
+      },
+    });
+  }
+
+  // 3. Invisible touch target buffer for unclustered points (44px hit diameter for mobile touch)
+  if (!map.getLayer('unclustered-point-hit')) {
+    map.addLayer({
+      id: 'unclustered-point-hit',
+      type: 'circle',
+      source: 'projects-source',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-radius': 22,
+        'circle-opacity': 0,
+        'circle-stroke-width': 0,
+      },
+    });
+  }
+
+  // 4. Unclustered individual points
+  if (!map.getLayer('unclustered-point')) {
+    map.addLayer({
+      id: 'unclustered-point',
+      type: 'circle',
+      source: 'projects-source',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': ['get', 'color'],
+        'circle-radius': 8,
+        'circle-stroke-width': 2.5,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-opacity': 1,
+        'circle-opacity': 0.95,
+      },
+    });
+  }
+}
+
 export function UnifiedMap({
   projects,
   className,
@@ -162,6 +305,14 @@ export function UnifiedMap({
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
   const popupRef = useRef<import('maplibre-gl').Popup | null>(null);
   const isMountedRef = useRef(true);
+
+  // Keep refs for event listeners so map-level events always have access to latest state
+  const projectsRef = useRef(projects);
+  projectsRef.current = projects;
+  const publicModeRef = useRef(publicMode);
+  publicModeRef.current = publicMode;
+  const onSelectProjectRef = useRef(onSelectProject);
+  onSelectProjectRef.current = onSelectProject;
 
   const [basemap, setBasemap] = useState<BasemapMode>(defaultBasemap);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -216,177 +367,103 @@ export function UnifiedMap({
         zoom: DEFAULT_ZOOM,
         minZoom: 3,
         maxZoom: 18,
+        clickTolerance: 12, // High touch tolerance for mobile & tablet taps
       });
 
       map.addControl(new ml.NavigationControl({ showCompass: true }), 'top-right');
 
-      map.on('load', () => {
-        if (!isMountedRef.current) return;
+      // Universal click & touch handler for dots and clusters
+      let lastHandledTime = 0;
+      const handleMapInteraction = (e: any) => {
+        const now = Date.now();
+        if (now - lastHandledTime < 350) return;
+        lastHandledTime = now;
 
-        // Add clustered GeoJSON source
-        map.addSource('projects-source', {
-          type: 'geojson',
-          data: toGeoJSON(validProjects) as any,
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 50,
+        const bbox: [[number, number], [number, number]] = [
+          [e.point.x - 14, e.point.y - 14],
+          [e.point.x + 14, e.point.y + 14],
+        ];
+
+        // 1. Check if user clicked/touched an individual project dot
+        const pointFeatures = map.queryRenderedFeatures(bbox, {
+          layers: ['unclustered-point', 'unclustered-point-hit'],
         });
 
-        // 1. Cluster circles
-        map.addLayer({
-          id: 'clusters',
-          type: 'circle',
-          source: 'projects-source',
-          filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': [
-              'step',
-              ['get', 'point_count'],
-              '#3b82f6', // blue < 10
-              10,
-              '#8b5cf6', // purple < 50
-              50,
-              '#f59e0b', // amber < 100
-              100,
-              '#ef4444', // red >= 100
-            ],
-            'circle-radius': [
-              'step',
-              ['get', 'point_count'],
-              18,
-              10,
-              22,
-              50,
-              28,
-              100,
-              34,
-            ],
-            'circle-stroke-width': 3,
-            'circle-stroke-color': '#ffffff',
-            'circle-opacity': 0.9,
-          },
-        });
-
-        // 2. Cluster count text
-        map.addLayer({
-          id: 'cluster-count',
-          type: 'symbol',
-          source: 'projects-source',
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': '{point_count_abbreviated}',
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-            'text-size': 12,
-          },
-          paint: {
-            'text-color': '#ffffff',
-          },
-        });
-
-        // 3. Unclustered individual points
-        map.addLayer({
-          id: 'unclustered-point',
-          type: 'circle',
-          source: 'projects-source',
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-color': ['get', 'color'],
-            'circle-radius': 7,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-opacity': 1,
-            'circle-opacity': 0.95,
-          },
-        });
-
-        // Click on cluster: zoom in
-        map.on('click', 'clusters', (e) => {
-          const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] });
-          const clusterId = features[0]?.properties?.cluster_id;
-          if (clusterId == null) return;
-
-          const source = map.getSource('projects-source') as any;
-          source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
-            if (err) return;
-            map.easeTo({
-              center: (features[0].geometry as any).coordinates,
-              zoom: Math.min(zoom + 0.5, 16),
-              duration: 500,
-            });
-          });
-        });
-
-        // Hover cursor pointer
-        map.on('mouseenter', 'clusters', () => {
-          map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', 'clusters', () => {
-          map.getCanvas().style.cursor = '';
-        });
-        map.on('mouseenter', 'unclustered-point', () => {
-          map.getCanvas().style.cursor = 'pointer';
-        });
-        map.on('mouseleave', 'unclustered-point', () => {
-          map.getCanvas().style.cursor = '';
-        });
-
-        // Click on single project: show popup
-        map.on('click', 'unclustered-point', (e) => {
-          const features = map.queryRenderedFeatures(e.point, { layers: ['unclustered-point'] });
-          if (!features.length) return;
-
-          const feat = features[0];
-          const coords = (feat.geometry as any).coordinates.slice();
+        if (pointFeatures.length > 0) {
+          const feat = pointFeatures[0];
+          const coords = (feat.geometry as any).coordinates.slice() as [number, number];
           const props = feat.properties as any;
 
-          const detailHref = publicMode ? `/explore/${props.id}` : `/projects/${props.id}`;
-          const timeMachineHref = `/projects/${props.id}/time-machine`;
-          const amountFormatted = props.approvedAmount
-            ? formatCurrency(Number(props.approvedAmount))
-            : 'Amount not specified';
+          // Smoothly zoom directly into the project location on high-resolution satellite imagery!
+          const targetZoom = Math.max(map.getZoom(), 16);
+          map.flyTo({
+            center: coords,
+            zoom: targetZoom,
+            duration: 1200,
+            essential: true,
+          });
 
-          const statusColor = props.color || '#3b82f6';
-          const statusText = (props.status || 'UNKNOWN').replace(/_/g, ' ');
-
+          // Display rich project popup right on the project
           popupRef.current?.remove();
           popupRef.current = new ml.Popup({ offset: 14, maxWidth: '320px', closeButton: true })
             .setLngLat(coords)
-            .setHTML(`
-              <div style="font-family:system-ui,-apple-system,sans-serif;padding:4px;color:#0f172a">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px">
-                  <span style="font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:2px 8px;border-radius:9999px;background-color:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40">
-                    ${escapeHtml(statusText)}
-                  </span>
-                  <span style="font-size:11px;font-weight:700;color:#059669">
-                    ${amountFormatted}
-                  </span>
-                </div>
-                <h4 style="font-size:13px;font-weight:700;line-height:1.35;margin:0 0 6px 0;color:#0f172a">
-                  ${escapeHtml(props.name)}
-                </h4>
-                <div style="font-size:11px;color:#64748b;margin-bottom:10px;display:flex;flex-direction:column;gap:2px">
-                  ${props.district || props.state ? `<span>📍 ${escapeHtml([props.district, props.state].filter(Boolean).join(', '))}</span>` : ''}
-                  ${props.sector ? `<span>📂 Sector: ${escapeHtml(props.sector.replace(/_/g, ' '))}</span>` : ''}
-                  ${props.riskLevel ? `<span style="color:${props.riskLevel === 'HIGH' || props.riskLevel === 'CRITICAL' ? '#ef4444' : '#64748b'}">⚠️ Risk: ${escapeHtml(props.riskLevel)}</span>` : ''}
-                </div>
-                <div style="display:flex;gap:6px;padding-top:6px;border-top:1px solid #e2e8f0">
-                  <a href="${detailHref}" style="flex:1;text-align:center;padding:6px 10px;background:#2563eb;color:#ffffff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none">
-                    View Project
-                  </a>
-                  <a href="${timeMachineHref}" style="padding:6px 10px;background:#f1f5f9;color:#0f172a;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;border:1px solid #cbd5e1" title="Satellite Time Machine">
-                    🛰️ Timeline
-                  </a>
-                </div>
-              </div>
-            `)
+            .setHTML(renderProjectPopupHTML(props, publicModeRef.current))
             .addTo(map);
 
-          if (onSelectProject) {
-            const matched = projects.find((p) => p.id === props.id);
-            if (matched) onSelectProject(matched);
+          if (onSelectProjectRef.current) {
+            const matched = projectsRef.current.find((p) => p.id === props.id);
+            if (matched) onSelectProjectRef.current(matched);
           }
+          return;
+        }
+
+        // 2. Check if user clicked/touched a cluster dot
+        const clusterFeatures = map.queryRenderedFeatures(bbox, {
+          layers: ['clusters', 'cluster-count'],
         });
 
+        if (clusterFeatures.length > 0) {
+          const feat = clusterFeatures[0];
+          const clusterId = feat.properties?.cluster_id;
+          const coords = (feat.geometry as any).coordinates.slice() as [number, number];
+
+          if (clusterId != null) {
+            const source = map.getSource('projects-source') as any;
+            if (source) {
+              source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+                const currentZoom = map.getZoom();
+                const targetZoom = (!err && zoom > currentZoom) ? zoom : Math.min(currentZoom + 2.5, 16);
+                map.flyTo({
+                  center: coords,
+                  zoom: targetZoom,
+                  duration: 800,
+                  essential: true,
+                });
+              });
+            }
+          }
+        }
+      };
+
+      // Bind interaction listeners
+      map.on('click', handleMapInteraction);
+      map.on('touchend', handleMapInteraction);
+
+      // Hover pointer cursor
+      map.on('mousemove', (e) => {
+        const bbox: [[number, number], [number, number]] = [
+          [e.point.x - 12, e.point.y - 12],
+          [e.point.x + 12, e.point.y + 12],
+        ];
+        const feats = map.queryRenderedFeatures(bbox, {
+          layers: ['unclustered-point', 'unclustered-point-hit', 'clusters', 'cluster-count'],
+        });
+        map.getCanvas().style.cursor = feats.length > 0 ? 'pointer' : '';
+      });
+
+      map.on('load', () => {
+        if (!isMountedRef.current) return;
+        ensureLayers(map, toGeoJSON(validProjects));
         setMapLoaded(true);
       });
 
@@ -406,10 +483,7 @@ export function UnifiedMap({
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
 
-    const source = map.getSource('projects-source') as any;
-    if (source) {
-      source.setData(toGeoJSON(validProjects));
-    }
+    ensureLayers(map, toGeoJSON(validProjects));
   }, [validProjects, mapLoaded, toGeoJSON]);
 
   // Handle Basemap Switch
@@ -424,79 +498,8 @@ export function UnifiedMap({
 
       // Re-add sources and layers after style changes
       map.once('style.load', () => {
-        if (!mapRef.current) return;
-
-        map.addSource('projects-source', {
-          type: 'geojson',
-          data: toGeoJSON(validProjects) as any,
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 50,
-        });
-
-        map.addLayer({
-          id: 'clusters',
-          type: 'circle',
-          source: 'projects-source',
-          filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': [
-              'step',
-              ['get', 'point_count'],
-              '#3b82f6',
-              10,
-              '#8b5cf6',
-              50,
-              '#f59e0b',
-              100,
-              '#ef4444',
-            ],
-            'circle-radius': [
-              'step',
-              ['get', 'point_count'],
-              18,
-              10,
-              22,
-              50,
-              28,
-              100,
-              34,
-            ],
-            'circle-stroke-width': 3,
-            'circle-stroke-color': '#ffffff',
-            'circle-opacity': 0.9,
-          },
-        });
-
-        map.addLayer({
-          id: 'cluster-count',
-          type: 'symbol',
-          source: 'projects-source',
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': '{point_count_abbreviated}',
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-            'text-size': 12,
-          },
-          paint: {
-            'text-color': '#ffffff',
-          },
-        });
-
-        map.addLayer({
-          id: 'unclustered-point',
-          type: 'circle',
-          source: 'projects-source',
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-color': ['get', 'color'],
-            'circle-radius': 7,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-opacity': 1,
-            'circle-opacity': 0.95,
-          },
-        });
+        if (!mapRef.current || !isMountedRef.current) return;
+        ensureLayers(mapRef.current, toGeoJSON(validProjects));
       });
     },
     [validProjects, toGeoJSON]
@@ -522,11 +525,37 @@ export function UnifiedMap({
     if (project?.latitude && project?.longitude) {
       mapRef.current.flyTo({
         center: [project.longitude, project.latitude],
-        zoom: 13,
+        zoom: 16,
         duration: 1200,
+        essential: true,
+      });
+
+      // Automatically open the popup for focused project
+      getMapLibre().then((ml) => {
+        if (!mapRef.current || !isMountedRef.current) return;
+        popupRef.current?.remove();
+        popupRef.current = new ml.Popup({ offset: 14, maxWidth: '320px', closeButton: true })
+          .setLngLat([project.longitude!, project.latitude!])
+          .setHTML(
+            renderProjectPopupHTML(
+              {
+                id: project.id,
+                name: project.name,
+                status: project.status,
+                approvedAmount: project.approvedAmount,
+                state: project.state,
+                district: project.district,
+                sector: project.sector,
+                riskLevel: project.riskLevel,
+                color: STATUS_PALETTE[project.status] ?? '#3b82f6',
+              },
+              publicMode
+            )
+          )
+          .addTo(mapRef.current);
       });
     }
-  }, [focusProjectId, selectedProjectId, projects, mapLoaded]);
+  }, [focusProjectId, selectedProjectId, projects, mapLoaded, publicMode]);
 
   // Fullscreen Toggle
   const toggleFullscreen = useCallback(() => {
