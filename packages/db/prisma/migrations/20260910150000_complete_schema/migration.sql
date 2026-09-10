@@ -1,4 +1,4 @@
-﻿-- Completes the schema in the database.
+-- Completes the schema in the database.
 -- The 20260101000000_init migration only creates 27 of the ~60 tables the
 -- Prisma schema defines, so tables including reports, notifications,
 -- anomalies, referrals, risk_signals and vendors did not exist in production.
