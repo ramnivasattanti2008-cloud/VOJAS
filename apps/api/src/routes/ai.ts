@@ -2,6 +2,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
+import type { ProjectSector, ProjectStatus } from '@vojas/db';
 import { success } from '../utils/apiResponse.js';
 
 const router = Router();
@@ -12,21 +13,30 @@ const router = Router();
 function parseQueryIntent(query: string) {
   const q = query.toLowerCase();
   
-  // Extract potential sector
-  let sector: string | undefined;
+  // Extract potential sector.
+  // Typed as ProjectSector rather than string: 'DRINKING_WATER' was being
+  // emitted here, which is not a member of the enum, so every water query
+  // died in Prisma with "Invalid value for argument `sector`". Typing it
+  // makes that a compile error instead of a 500.
+  let sector: ProjectSector | undefined;
   if (q.includes('road') || q.includes('transport') || q.includes('bridge') || q.includes('pathway') || q.includes('footpath')) sector = 'TRANSPORT';
-  else if (q.includes('water') || q.includes('drinking') || q.includes('pipeline') || q.includes('tank')) sector = 'DRINKING_WATER';
+  else if (q.includes('water') || q.includes('drinking') || q.includes('pipeline') || q.includes('tank') || q.includes('sanitation') || q.includes('toilet')) sector = 'WATER_SANITATION';
   else if (q.includes('health') || q.includes('hospital') || q.includes('dispensary') || q.includes('clinic')) sector = 'HEALTH';
   else if (q.includes('school') || q.includes('college') || q.includes('education') || q.includes('library') || q.includes('classroom')) sector = 'EDUCATION';
   else if (q.includes('light') || q.includes('solar') || q.includes('electric') || q.includes('power')) sector = 'ENERGY';
-  else if (q.includes('community') || q.includes('hall') || q.includes('sanitation') || q.includes('toilet') || q.includes('shed')) sector = 'PUBLIC_INFRASTRUCTURE';
+  else if (q.includes('community') || q.includes('hall') || q.includes('shed')) sector = 'PUBLIC_INFRASTRUCTURE';
 
-  // Extract potential status
-  let status: string | undefined;
+  // Extract potential status. Typed for the same reason as sector: 'DELAYED'
+  // was being emitted here and is not a member of ProjectStatus, so every
+  // "delayed"/"pending" query would have thrown in Prisma. There is no
+  // DELAYED state — lateness is derived from expectedEndDate, not stored — so
+  // those words fall through to the keyword search rather than inventing a
+  // status filter that cannot be honoured.
+  let status: ProjectStatus | undefined;
   if (q.includes('completed') || q.includes('finished') || q.includes('done')) status = 'COMPLETED';
   else if (q.includes('in progress') || q.includes('ongoing') || q.includes('active') || q.includes('underway')) status = 'IN_PROGRESS';
-  else if (q.includes('delayed') || q.includes('pending') || q.includes('lagging')) status = 'DELAYED';
   else if (q.includes('sanctioned') || q.includes('approved')) status = 'SANCTIONED';
+  else if (q.includes('unsanctioned')) status = 'UNSANCTIONED';
 
   // Check for satellite or ground discrepancy interest
   const wantsSatellite = q.includes('satellite') || q.includes('imagery') || q.includes('sentinel') || q.includes('spectral') || q.includes('change');
