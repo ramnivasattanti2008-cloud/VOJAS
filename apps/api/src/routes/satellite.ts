@@ -31,9 +31,8 @@ const router = Router();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const CUID_RE = /^c[a-z0-9]{20,}$/i;
 function isValidProjectId(id: string): boolean {
-  return typeof id === 'string' && CUID_RE.test(id);
+  return typeof id === 'string' && id.trim().length > 0;
 }
 
 function isValidCoords(lat: number, lng: number): boolean {
@@ -90,19 +89,6 @@ router.get(
         });
       }
 
-      if (!configured) {
-        return success(res, {
-          availability: 'NO_USABLE_OBSERVATION',
-          reason: 'AUTHENTICATION_REQUIRED',
-          baseline: null,
-          latest: null,
-          observationCount: 0,
-          window: null,
-          message: 'No satellite provider credentials configured. Set CDSE_CLIENT_ID and CDSE_CLIENT_SECRET to enable real Sentinel-2 imagery.',
-          providerStatus: 'NOT_CONFIGURED',
-        });
-      }
-
       const [observationCount, latest, baseline, jobsForProject] = await Promise.all([
         prisma.satelliteObservation.count({ where: { projectId } }),
         prisma.satelliteObservation.findFirst({
@@ -114,6 +100,19 @@ router.get(
         }),
         Promise.resolve(satelliteJobQueue.getJobsForProject(projectId)),
       ]);
+
+      if (observationCount === 0 && !configured) {
+        return success(res, {
+          availability: 'NO_USABLE_OBSERVATION',
+          reason: 'AUTHENTICATION_REQUIRED',
+          baseline: null,
+          latest: null,
+          observationCount: 0,
+          window: null,
+          message: 'No satellite provider credentials configured. Set CDSE_CLIENT_ID and CDSE_CLIENT_SECRET to enable real Sentinel-2 imagery.',
+          providerStatus: 'NOT_CONFIGURED',
+        });
+      }
 
       const runningJob = jobsForProject.find((j) => j.status === 'RUNNING' || j.status === 'PENDING' || j.status === 'RETRYING');
       const latestJob = jobsForProject[0];

@@ -28,6 +28,7 @@ export const metadata: Metadata = {
 };
 import { Header } from '@/components/layout/Header';
 import { AuthGate } from '@/components/auth/AuthGate';
+import { CivicAICopilot } from '@/components/ai/CivicAICopilot';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
@@ -47,6 +48,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
+      <CivicAICopilot />
     </AuthGate>
   );
 }

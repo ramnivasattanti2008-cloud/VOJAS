@@ -36,11 +36,11 @@ services:
     ports:
       - "5432:5432"
 
-  # ── Backend (Express + Prisma) ─────────────────────────────────────────────
+  # ── Backend (API + AI + Satellite Engine) ─────────────────────────────────
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: vojas-backend
     restart: unless-stopped
     depends_on:
@@ -53,33 +53,35 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-this-in-production-please-use-a-strong-secret}
       JWT_EXPIRES_IN: 7d
       BCRYPT_ROUNDS: 10
-      CLIENT_BASE_URL: http://localhost
-      # Set true to seed demo data on first boot (recommended for staging/demo; disable for production)
+      CLIENT_BASE_URL: http://localhost:3000
       SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
     ports:
       - "5000:5000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/v1/health"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/v1/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 40s
 
-  # ── Frontend (Nginx serving Vite static build) ─────────────────────────────
+  # ── Frontend (Next.js 15 Web Application) ─────────────────────────────────
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     container_name: vojas-frontend
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:5000
     ports:
-      - "80:80"
-      - "443:443"
+      - "3000:3000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

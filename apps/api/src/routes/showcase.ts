@@ -66,7 +66,8 @@ showcaseRouter.get('/projects', async (_req: Request, res: Response): Promise<vo
  */
 showcaseRouter.get('/projects/:id/weekly-report', async (req: Request, res: Response): Promise<void> => {
   try {
-    const report = await analyzeConstructionProject(req.params.id);
+    const projectId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const report = await analyzeConstructionProject(projectId);
     if (!report) {
       res.status(404).json({ success: false, error: 'Project not found' });
       return;

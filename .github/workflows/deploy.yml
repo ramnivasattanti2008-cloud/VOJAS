@@ -1,44 +1,14 @@
 name: Deploy to Production
 
-# Auto-deploys on every push to master/main.
-# For each platform, add the required secret to GitHub:
-#   Settings → Secrets and variables → Actions
-#
-# ── Vercel (Frontend) ──────────────────────────────────────────
-#   Add secret: VERCEL_TOKEN (from vercel.com/account/tokens)
-#   Frontend auto-deploys via Vercel GitHub App (vercel.com → GitHub integration)
-#
-# ── Render (Backend) ────────────────────────────────────────────
-#   Add secret: RENDER_DEPLOY_HOOK (from Render dashboard → your backend → Deploy Hooks)
-#
-# ── Cyclic (Backend — free always-on) ──────────────────────────
-#   Add secret: CYCLIC_APP_ID (your Cyclic app slug, e.g. "vojas-backend")
-#   Cyclic auto-deploys when you connect the GitHub repo in Cyclic dashboard
-#
-# ── Fly.io (Backend — free tier) ───────────────────────────────
-#   Add secrets: FLY_API_TOKEN (from fly.io/account/tokens)
-#   Deploys the GHCR image built in the "build" job
-#
-# ── Railway (Backend) ──────────────────────────────────────────
-#   Add secret: RAILWAY_DEPLOY_HOOK (from Railway dashboard → your project → Deploy hooks)
-#
-# ── Self-hosted (VPS via SSH) ─────────────────────────────────
-#   Add secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY
-
 on:
   push:
     branches: [master, main]
     paths:
       - "apps/api/**"
       - "apps/web/**"
-      - "packages/db/**"
-      - "packages/domain/**"
-      - "packages/api-client/**"
-      - "packages/shared/**"
+      - "packages/**"
       - "docker-compose.yml"
-      - "render.yaml"
-      - "cyclic.json"
-      - "fly.toml"
+      - "Dockerfile"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
@@ -53,24 +23,23 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}
-  BACKEND_IMAGE: ghcr.io/${{ github.repository }}-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}-frontend
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}-api
 
 jobs:
-  # ── Build & push container images ────────────────────────────────
+  # ── Build & push container image ────────────────────────────────
   build:
-    name: Build images
+    name: Build & push container image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     outputs:
-      backend_tag: ${{ steps.meta.outputs.backend_tag }}
+      backend_tag: ${{ steps.meta.outputs.tags }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Log in to GHCR
+        if: github.repository_owner != ''
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -89,17 +58,17 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest
 
-      - name: Build & push backend
+      - name: Build & push backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/api
-          file: ./apps/api/Dockerfile
-          push: true
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Deploy backend to all configured platforms ────────────────────
+  # ── Deploy backend to configured platforms ───────────────────────
   deploy-backend:
     name: Deploy backend
     runs-on: ubuntu-latest
@@ -111,7 +80,7 @@ jobs:
         run: |
           echo "Triggering Render deploy…"
           curl -fsS -X POST "${{ vars.RENDER_DEPLOY_HOOK }}"
-          echo "Done."
+          echo "Render deploy triggered."
 
       # ── Railway ─────────────────────────────────────────────────
       - name: Deploy to Railway
@@ -119,7 +88,7 @@ jobs:
         run: |
           echo "Triggering Railway deploy…"
           curl -fsS -X POST "${{ vars.RAILWAY_DEPLOY_HOOK }}"
-          echo "Done."
+          echo "Railway deploy triggered."
 
       # ── Fly.io ──────────────────────────────────────────────────
       - name: Deploy to Fly.io
@@ -139,16 +108,18 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHITHUB_TOKEN }}
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
             docker pull ${{ env.BACKEND_IMAGE }}:latest
             docker compose up -d backend
             docker image prune -f
 
-  # ── Deploy frontend to Vercel ───────────────────────────────────
+  # ── Deploy frontend to Vercel (Only if VERCEL_TOKEN secret configured) ───
   deploy-frontend:
     name: Deploy frontend to Vercel
     runs-on: ubuntu-latest
+    if: secrets.VERCEL_TOKEN != ''
     steps:
+      - uses: actions/checkout@v4
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
