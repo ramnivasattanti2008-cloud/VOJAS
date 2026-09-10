@@ -347,10 +347,12 @@ export async function downloadWithRetry(
 // ─── Database init helper ───────────────────────────────────────────────────
 
 /**
- * Prisma client is in backend/, but ingest scripts may run from project root.
- * Use a relative path to backend prisma client.
+ * The ingest writes through the workspace Prisma client in packages/db.
+ * This previously imported backend/src/config/database.js — the superseded v1
+ * app, which is not part of the pnpm workspace and is not deployed, so the
+ * ingest failed with ERR_MODULE_NOT_FOUND anywhere except a full v1 checkout.
  */
 export async function getPrisma() {
-  const { prisma } = await import("../../backend/src/config/database.js");
+  const { prisma } = await import("@vojas/db");
   return prisma;
 }
