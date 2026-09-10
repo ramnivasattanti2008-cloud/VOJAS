@@ -14,11 +14,12 @@
 import { prisma } from '@vojas/db';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
-import { projectFiltersSchema } from '@vojas/domain';
+import { projectFiltersSchema, EvidenceService } from '@vojas/domain';
 import { success } from '../utils/apiResponse.js';
 import { CACHE_TTL, get, set } from '../utils/cache.js';
 
 const router = Router();
+const evidenceService = new EvidenceService(prisma);
 
 // Fields safe to expose to anonymous citizens. Excludes internal attribution
 // (createdById, districtId/stateId/etc., sourceDataSourceId) and boundary/
@@ -391,6 +392,32 @@ router.get('/:id/risk', async (req: Request, res: Response, next: NextFunction) 
       findings,
       disclaimer:
         'These findings are AI-assisted signals requiring human review. They are not proof of wrongdoing.',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id/evidence — public subset of the project's
+ * unified evidence feed. Only returns entries marked isPublic: true.
+ * Must be registered BEFORE the /:id catch-all below.
+ */
+router.get('/:id/evidence', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.id as string;
+    const exists = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+    if (!exists) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    const allEvidence = await evidenceService.getProjectEvidence(projectId);
+    const publicEvidence = evidenceService.filterPublic(allEvidence);
+
+    success(res, {
+      projectId,
+      total: publicEvidence.length,
+      items: publicEvidence,
     });
   } catch (err) {
     next(err);

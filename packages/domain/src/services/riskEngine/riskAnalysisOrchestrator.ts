@@ -25,7 +25,7 @@ import { CorrelationEngine } from './correlationEngine.js';
 import { RiskScorer, ProjectRiskResult } from './riskScorer.js';
 import { DataQualityGate } from './dataQualityGate.js';
 import { AIExplainer } from './aiExplainer.js';
-import { RiskRuleEngine, ProjectDataSnapshot } from './ruleEngine.js';
+import { RiskRuleEngine, ProjectDataSnapshot, registerCoreRules } from './ruleEngine.js';
 import type {
   RiskSignal,
   CorrelatedFinding,
@@ -85,6 +85,11 @@ export class RiskAnalysisOrchestrator {
     this.dataQualityGate = new DataQualityGate(prisma);
     this.aiExplainer = new AIExplainer('rule-engine-v1.0', 'explain-v1.0');
     this.ruleEngine = new RiskRuleEngine(prisma);
+    // Registers the rule-code -> handler map (ProgressSatelliteMismatchRule,
+    // FinancialPhysicalMismatchRule, ProjectDelayRule). Previously never
+    // called anywhere, which meant every RiskRule row silently fell through
+    // to "not implemented" in evaluateRule(). Registration is idempotent.
+    registerCoreRules();
   }
 
   /**
@@ -282,6 +287,14 @@ export class RiskAnalysisOrchestrator {
       take: 50,
     });
 
+    // Latest field verification, most recently scheduled first (whether or
+    // not it has been completed — an overdue/never-completed inspection is
+    // itself relevant to freshness).
+    const latestFieldVerification = await this.prisma.fieldVerification.findFirst({
+      where: { projectId },
+      orderBy: [{ completedDate: 'desc' }, { scheduledDate: 'desc' }],
+    });
+
     return {
       projectId,
       project: {
@@ -370,6 +383,14 @@ export class RiskAnalysisOrchestrator {
         status: a.status,
         description: a.description,
       })),
+      latestFieldVerification: latestFieldVerification
+        ? {
+            id: latestFieldVerification.id,
+            scheduledDate: latestFieldVerification.scheduledDate,
+            completedDate: latestFieldVerification.completedDate,
+            result: latestFieldVerification.result,
+          }
+        : null,
     };
   }
 

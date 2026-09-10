@@ -10,12 +10,14 @@ import citizenReportRoutes from './citizenReports.js';
 import documentRoutes from './documents.js';
 import exportRoutes from './export.js';
 import financialRoutes from './financial.js';
+import investigationsRoutes from './investigations.js';
 import locationRoutes from './locations.js';
 import mpRoutes from './mps.js';
 import notificationRoutes from './notifications.js';
 import officerRoutes from './officer.js';
 import projectRoutes from './projects.js';
 import publicProjectsRoutes from './publicProjects.js';
+import referralsRoutes from './referrals.js';
 import reportRoutes from './reports.js';
 import reportSearchRoutes from './reportSearch.js';
 import riskRoutes from './risk.js';
@@ -25,6 +27,7 @@ import sectorsRoutes from './sectors.js';
 import timelineRoutes from './timeline.js';
 import userRoutes from './users.js';
 import vendorRoutes from './vendors.js';
+import contractorRoutes from './contractor.js';
 
 const router = Router();
 
@@ -102,6 +105,13 @@ router.use('/export', authenticate, requirePermission('admin.manage'), exportRou
 
 // M14: Officer Command Center routes
 router.use('/officer', authenticate, officerRoutes);
+
+// Phase 4: Investigation dossier + enforcement referral
+router.use('/investigations', investigationsRoutes);
+router.use('/referrals', referralsRoutes);
+
+// Contractor portal routes
+router.use('/contractor', contractorRoutes);
 
 // M16: Advanced Analytics routes
 router.use('/analytics', authenticate, analyticsRoutes);

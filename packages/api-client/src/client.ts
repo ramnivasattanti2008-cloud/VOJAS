@@ -22,7 +22,9 @@ export class ApiClient {
     endpoint: string,
     options?: { body?: unknown; params?: Record<string, string | number | boolean | undefined> }
   ): Promise<T> {
-    const url = new URL(`${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`);
+    const cleanEndpoint = endpoint.startsWith('/api/v1') ? endpoint.slice(7) : endpoint;
+    const path = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+    const url = new URL(`${this.baseUrl}${path}`);
     if (options?.params) {
       Object.entries(options.params).forEach(([k, v]) => {
         if (v !== undefined) url.searchParams.set(k, String(v));

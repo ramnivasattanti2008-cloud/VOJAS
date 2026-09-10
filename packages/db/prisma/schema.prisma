@@ -292,6 +292,24 @@ enum AuditAction {
   RISK_SIGNAL_GENERATED
   RISK_RULE_TRIGGERED
   RISK_SCORE_UPDATED
+  // Phase 1: Investigation Workflow
+  ANOMALY_NOTE_ADDED
+  ANOMALY_INFO_REQUESTED
+  ANOMALY_INSPECTION_REQUESTED
+  ANOMALY_CONTRACTOR_RESPONSE_REQUESTED
+  ANOMALY_VERIFIED
+  ANOMALY_REOPENED
+  ANOMALY_EVIDENCE_LINKED
+  FIELD_VERIFICATION_SCHEDULED
+  FIELD_VERIFICATION_COMPLETED
+  CONTRACTOR_UPDATE_REVIEWED
+  // Phase 4: Enforcement Referral
+  VERIFICATION_CASE_CREATED
+  REFERRAL_CREATED
+  REFERRAL_APPROVED
+  REFERRAL_REJECTED
+  REFERRAL_STATUS_CHANGED
+  CONTRACTOR_UPDATE_SUBMITTED
 }
 
 // ────────────────────────────────────────────────────────────
@@ -316,6 +334,8 @@ model User {
   riskFindingsAck          RiskFinding[]       @relation("RiskFindingAcknowledgedBy")
   riskFindingsResolved     RiskFinding[]       @relation("RiskFindingResolvedBy")
   verificationCases        VerificationCase[]  @relation("VerificationCaseAssigned")
+  referralsPrepared        Referral[]          @relation("ReferralPreparedBy")
+  referralsApproved        Referral[]          @relation("ReferralApprovedBy")
   documents                Document[]          @relation("DocumentUploadedBy")
   documentVerified         Document[]          @relation("DocumentVerifiedBy")
   contractorUpdates        ContractorUpdate[]  @relation("ContractorUpdateSubmittedBy")
@@ -413,6 +433,7 @@ model MP {
   stateRecord State?    @relation("MPState", fields: [stateId], references: [id])
   projects    Project[]
 
+  @@unique([name, constituency, term])
   @@index([state])
   @@index([constituency])
   @@index([house, term])
@@ -505,6 +526,7 @@ model Project {
   riskFindings          RiskFinding[]
   verificationCases     VerificationCase[]
   fieldVerifications    FieldVerification[]
+  referrals             Referral[]
   documents             Document[]
   contractorUpdates     ContractorUpdate[]
   anomalies             Anomaly[]
@@ -916,6 +938,7 @@ model RiskFinding {
   acknowledgedBy User? @relation("RiskFindingAcknowledgedBy", fields: [acknowledgedById], references: [id])
   resolvedBy     User? @relation("RiskFindingResolvedBy", fields: [resolvedById], references: [id])
   cases          VerificationCase[]
+  referrals      Referral[]
 
   @@index([projectId])
   @@index([status])
@@ -945,6 +968,7 @@ model VerificationCase {
   finding            RiskFinding?        @relation(fields: [findingId], references: [id])
   assignedTo         User?               @relation("VerificationCaseAssigned", fields: [assignedToId], references: [id])
   fieldVerifications FieldVerification[]
+  referrals          Referral[]
 
   @@index([projectId, status])
   @@index([assignedToId])
@@ -978,6 +1002,42 @@ model FieldVerification {
   @@index([assignedToId])
   @@index([result])
   @@map("field_verifications")
+}
+
+// ────────────────────────────────────────────────────────────
+// ENFORCEMENT REFERRAL (Phase 4)
+// ────────────────────────────────────────────────────────────
+model Referral {
+  id                    String    @id @default(cuid())
+  caseId                String    @map("case_id")
+  projectId             String    @map("project_id")
+  findingId             String?   @map("finding_id")
+  destinationAuthority  String    @map("destination_authority") // e.g. ACB_OFFICE | POLICE_OFFICE | CVC | LOKAYUKTA | VIGILANCE | COMPTROLLER
+  referenceNo           String    @unique @map("reference_no")
+  reason                String
+  status                String    @default("DRAFT") @map("status") // DRAFT | PENDING_REVIEW | APPROVED | REFERRED | ACKNOWLEDGED | UNDER_REVIEW | ACTION_TAKEN | RESOLVED | CLOSED
+  dossier               Json // structured snapshot generated at DRAFT time — see ReferralDossier in referralService.ts
+  notes                 String?
+  preparedById          String    @map("prepared_by_id")
+  approvedById          String?   @map("approved_by_id")
+  approvedAt            DateTime? @map("approved_at") @db.Timestamptz(6)
+  referredAt            DateTime? @map("referred_at") @db.Timestamptz(6)
+  acknowledgedAt        DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  closedAt              DateTime? @map("closed_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  case       VerificationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  finding    RiskFinding?     @relation(fields: [findingId], references: [id])
+  preparedBy User             @relation("ReferralPreparedBy", fields: [preparedById], references: [id])
+  approvedBy User?            @relation("ReferralApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([caseId])
+  @@index([projectId])
+  @@index([status])
+  @@index([destinationAuthority])
+  @@map("referrals")
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1169,6 +1229,7 @@ enum SignalType {
   CITIZEN_OFFICIAL_DISCREPANCY
   CONTRACTOR_PATTERN
   ENVIRONMENTAL_RISK
+  INSPECTION_FRESHNESS
 }
 
 // ────────────────────────────────────────────────────────────

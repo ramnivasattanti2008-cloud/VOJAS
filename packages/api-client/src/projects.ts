@@ -181,13 +181,130 @@ export interface ProjectTimelineEvent {
   metadata?: Record<string, unknown>;
 }
 
+// Matches EvidenceItem in packages/domain/src/services/evidenceService.ts.
+// A normalized read-side pointer into a real evidence-bearing table
+// (Document, SatelliteObservation, SatelliteAnalysis, FieldVerification,
+// ContractorUpdate, ReportMedia, ProjectEvent, RiskFinding) — never a
+// fabricated or synthesized record.
+export type EvidenceType =
+  | 'DOCUMENT'
+  | 'SATELLITE_OBSERVATION'
+  | 'SATELLITE_ANALYSIS'
+  | 'INSPECTION'
+  | 'CITIZEN_MEDIA'
+  | 'CONTRACTOR_SUBMISSION'
+  | 'AI_FINDING'
+  | 'PROJECT_EVENT';
+
+export type EvidenceVerificationStatus =
+  | 'VERIFIED'
+  | 'NOT_VERIFIED'
+  | 'REJECTED'
+  | 'REQUIRES_INFO'
+  | 'NOT_APPLICABLE';
+
+export type EvidenceAccessLevel = 'PUBLIC' | 'CONTRACTOR' | 'GOVERNMENT' | 'INVESTIGATOR' | 'ADMIN';
+
 export interface ProjectEvidence {
   id: string;
+  projectId: string;
+  caseId: string | null;
+  evidenceType: EvidenceType;
+  sourceTable: string;
+  sourceId: string;
+  title: string;
+  description: string | null;
+  url: string | null;
+  creatorId: string | null;
+  capturedAt: string;
+  createdAt: string;
+  latitude: number | null;
+  longitude: number | null;
+  verificationStatus: EvidenceVerificationStatus;
+  confidence: string | null;
+  evidenceLevel: string;
+  accessLevel: EvidenceAccessLevel;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ProjectEvidenceFeed {
+  projectId: string;
+  total: number;
+  items: ProjectEvidence[];
+}
+
+// Matches ProjectIntelligence in packages/domain/src/services/projectIntelligenceService.ts
+export type SignalCardStatus = 'LOW' | 'MEDIUM' | 'HIGH' | 'UNAVAILABLE';
+export type FreshnessStatus = 'FRESH' | 'STALE' | 'UNAVAILABLE';
+
+export interface FreshnessInfo {
+  status: FreshnessStatus;
+  ageDays: number | null;
+  referenceDate: string | null;
+}
+
+export interface SignalCard {
+  key: 'FINANCIAL' | 'PROGRESS' | 'TIMELINE' | 'INSPECTION' | 'CONTRACTOR' | 'CITIZEN' | 'SATELLITE';
+  label: string;
+  status: SignalCardStatus;
+  summary: string;
+  freshness: FreshnessInfo;
+}
+
+export interface CrossSignalFindingSummary {
+  id: string;
   type: string;
-  url: string;
-  caption?: string;
-  capturedAt?: string;
-  source?: string;
+  title: string;
+  description: string;
+  severity: string;
+  riskScore: number;
+  confidence: string;
+  status: string;
+  recommendedAction: string | null;
+  limitations: string | null;
+  contributingSignalCount: number;
+  detectedAt: string;
+}
+
+export interface ProjectIntelligence {
+  projectId: string;
+  project: {
+    name: string;
+    sector: string;
+    status: string;
+    state: string | null;
+    district: string | null;
+    constituency: string | null;
+    mp: { id: string; name: string } | null;
+    approvedAmount: number;
+    spentAmount: number;
+  };
+  overallStatus: SignalCardStatus;
+  risk: {
+    score: number;
+    level: string;
+    confidence: string;
+    primaryDriver: string | null;
+    computedAt: string | null;
+  } | null;
+  signalCards: SignalCard[];
+  crossSignalFindings: CrossSignalFindingSummary[];
+  activeAnomalies: Array<{ id: string; category: string; severity: string; status: string; description: string }>;
+  evidenceSummary: {
+    total: number;
+    byType: Record<string, number>;
+    recent: Array<{ id: string; evidenceType: string; title: string; capturedAt: string; verificationStatus: string }>;
+  };
+  openInvestigation: { id: string; type: string; status: string; priority: string; assignedToId: string | null } | null;
+  whyFlagged: string[];
+  recommendedActions: string[];
+  dataFreshness: {
+    financial: FreshnessInfo;
+    progress: FreshnessInfo;
+    satellite: FreshnessInfo;
+    inspection: FreshnessInfo;
+  };
+  computedAt: string;
 }
 
 export interface Project {
@@ -282,7 +399,10 @@ export function createProjectsApi(client: ApiClient) {
       return client.get<ProjectLocation[]>(`/projects/${id}/locations`);
     },
     getEvidence(id: string) {
-      return client.get<ProjectEvidence[]>(`/projects/${id}/evidence`);
+      return client.get<ProjectEvidenceFeed>(`/projects/${id}/evidence`);
+    },
+    getIntelligence(id: string) {
+      return client.get<ProjectIntelligence>(`/projects/${id}/intelligence`);
     },
     findNearby(params: { latitude: number; longitude: number; radiusKm?: number }) {
       return client.get<Project[]>('/projects/nearby', params);
@@ -311,6 +431,9 @@ export function createProjectsApi(client: ApiClient) {
       },
       getRiskSummary(id: string) {
         return client.get<PublicRiskSummary>(`/projects/public/${id}/risk`);
+      },
+      getEvidence(id: string) {
+        return client.get<ProjectEvidenceFeed>(`/projects/public/${id}/evidence`);
       },
     },
   };

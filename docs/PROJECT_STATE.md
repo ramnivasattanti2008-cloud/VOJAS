@@ -1,12 +1,20 @@
 # VOJAS Project State
 
 ## Status
-**NEO Monorepo — M17 Final Production Hardening (2026-09-07).** pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 5 typechecks pass. Next.js build: 7 static + 45 dynamic pages. **Production gate: CONDITIONAL PASS** — see `docs/PRODUCTION_READINESS.md`. Live URLs need user-driven manual re-deploy — see `DEPLOY-STATUS.md`.
+**NEO Monorepo — M26 GIS Map Overhaul & Case Intelligence (2026-09-10).** pnpm monorepo at `apps/api` (Express + Prisma) and `apps/web` (Next.js 15 + React 19). All 6 workspace packages pass strict TypeScript typecheck (`shared`, `db`, `domain`, `api-client`, `api`, `web`). Next.js production build: 16 static + 58 dynamic pages (70+ routes total).
 
 ## Current Phase
-✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M16 (Advanced Analytics) + M17 (Performance & Polish) + M17-FINAL (Deployment Hardening, Security Audit, Production Gate) + M18 (Export Engine) + M19 (PWA Install + Offline) + M20 (Performance & Bundle Optimization) + M21 (WCAG 2.1 Accessibility Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live + Smoke Tests) + M24 (Frontend Build Verified) + M25 (Deployment Verification).
+✅ NEO Monorepo + M5 (Real Sentinel-2) + M6 (Project Time Machine) + M7 (Change Analysis) + M8 (Risk Dashboard) + M9 (All Pages Complete) + M14 (RBAC System Documentation) + M16 (Advanced Analytics) + M17 (Performance & Polish) + M17-FINAL (Deployment Hardening, Security Audit) + M22 (RBAC Code Implementation) + M23 (NEO API Live) + M24 (Frontend Build Verified) + M25 (Deployment Verification) + M26 (MapLibre GIS Overhaul & Multi-Basemaps) + M27 (Investigations, Referrals & Evidence Engine).
 
 ## Last Completed Action
+**M26 & M27 GIS Map Overhaul & Case Intelligence (2026-09-10):**
+- ✅ **GIS Map Overhaul**: Replaced crude SVG wireframes and simulated dashed grids with a unified MapLibre GL engine (`UnifiedMap.tsx`) across `/map-view`, `/explore/map`, `/officer/map`, and `/mp/map`.
+- ✅ **Multi-Basemap Support**: Real high-resolution satellite basemap (Esri World Imagery), Hybrid satellite with labels, Civic Street (CARTO Positron), and Tactical Dark (CARTO Dark Matter).
+- ✅ **Clustering & Interaction**: Built-in GeoJSON clustering with color-coded point count badges, cluster click zoom expansion, and rich project cards with deep links to Project Details and Satellite Time Machine.
+- ✅ **Investigations & Referrals**: Implemented investigation case management (`investigationService.ts`, `routes/investigations.ts`), vigilance/ACB referrals (`referralService.ts`, `routes/referrals.ts`), and chain-of-custody evidence service (`evidenceService.ts`).
+- ✅ **Test Suite**: 156/156 domain unit tests passing.
+- ✅ **Typecheck & Production Build**: 0 TypeScript errors across all 6 packages; `next build` compiled cleanly.
+
 **M17 Final Production Hardening (2026-09-07, commits `bd49993` + `0bc07b9`):**
 - ✅ Security audit (`bd49993`): 39/46 items PASS, 3 PARTIAL, 4 NOT VERIFIED (CWV, live API latency require live URL)
 - ✅ Performance hardening (`0bc07b9`): 8 new Prisma indexes, 10 unbounded queries paginated, in-memory TTL cache, 17-endpoint perf test script

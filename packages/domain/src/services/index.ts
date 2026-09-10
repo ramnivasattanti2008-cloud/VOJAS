@@ -83,3 +83,62 @@ export type {
   ScenarioResult,
   ScenarioType,
 } from './scenarioService.js';
+
+// Phase 1: Unified Evidence Foundation
+export { EvidenceService } from './evidenceService.js';
+export type {
+  EvidenceType,
+  EvidenceVerificationStatus,
+  EvidenceAccessLevel,
+  EvidenceItem,
+  EvidenceViewerContext,
+} from './evidenceService.js';
+
+// Phase 1: Investigation Workflow
+export {
+  deriveFieldInspectionStatus,
+  deriveFieldVerificationResult,
+  mapContractorUpdateStatus,
+  canReopenAnomalyCase,
+} from './investigationService.js';
+export type {
+  FieldInspectionStatus,
+  FieldVerificationLike,
+  ChecklistItem,
+  FieldVerificationResult,
+  ContractorResponseStatus,
+} from './investigationService.js';
+
+// Phase 3: Cross-Signal Intelligence
+export {
+  ProjectIntelligenceService,
+  classifyFreshness,
+  buildFinancialSignalCard,
+  buildProgressSignalCard,
+  buildTimelineSignalCard,
+  buildInspectionSignalCard,
+  buildContractorSignalCard,
+  buildCitizenSignalCard,
+  buildSatelliteSignalCard,
+  buildWhyFlaggedSummary,
+  buildRecommendedActions,
+  computeOverallStatus,
+} from './projectIntelligenceService.js';
+export type {
+  SignalCardStatus,
+  FreshnessStatus,
+  FreshnessInfo,
+  SignalCard,
+  CrossSignalFindingSummary,
+  ProjectIntelligence,
+} from './projectIntelligenceService.js';
+
+// Phase 4: Enforcement Referral + Investigation Dossier
+export {
+  ReferralService,
+  REFERRAL_AUTHORITIES,
+  referralAuthorityLabel,
+  generateReferralReferenceNo,
+  isValidReferralTransition,
+} from './referralService.js';
+export type { ReferralAuthorityCode, ReferralStatus, ReferralDossier } from './referralService.js';

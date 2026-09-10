@@ -2,6 +2,20 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const UnifiedMap = dynamic(
+  () => import('@/components/map/UnifiedMap').then((m) => m.UnifiedMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] flex flex-col items-center justify-center bg-slate-900 text-slate-400 rounded-xl">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-sm font-medium">Initializing Tactical Officer GIS Map…</p>
+      </div>
+    ),
+  }
+);
 import {
   Shield,
   Map,
@@ -208,79 +222,23 @@ export default function OfficerMapPage() {
                   </div>
                 </div>
               ) : (
-                <div className="absolute inset-0 bg-slate-100 flex items-center justify-center">
-                  {/* India Map placeholder with entity markers */}
-                  <div className="relative w-full h-full">
-                    <svg
-                      viewBox="0 0 1000 850"
-                      className="w-full h-full opacity-30"
-                      style={{ maxHeight: '600px' }}
-                    >
-                      <rect x="0" y="0" width="1000" height="850" fill="#e2e8f0" />
-                      {/* Simplified India outline */}
-                      <path
-                        d="M150,300 Q200,250 300,280 Q400,200 500,250 Q600,180 700,220 Q800,280 850,350 Q800,450 750,500 Q650,550 550,520 Q450,580 350,550 Q250,500 200,420 Q150,350 150,300 Z"
-                        fill="#cbd5e1"
-                        stroke="#94a3b8"
-                        strokeWidth="2"
-                      />
-                    </svg>
-
-                    {/* Entity markers would be positioned here based on lat/lng */}
-                    {/* For demo, show a few sample markers */}
-                    {activeLayers.projects && data?.projects?.slice(0, 10).map((p, i) => (
-                      <div
-                        key={`project-${p.id}`}
-                        className="absolute w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform"
-                        style={{
-                          left: `${20 + (i % 5) * 15}%`,
-                          top: `${25 + Math.floor(i / 5) * 20}%`,
-                        }}
-                        onClick={() => setSelectedEntity({ ...p, type: 'project' })}
-                        title={p.name}
-                      />
-                    ))}
-
-                    {activeLayers.riskFindings && data?.riskFindings?.slice(0, 5).map((f, i) => (
-                      <div
-                        key={`finding-${f.id}`}
-                        className="absolute w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform"
-                        style={{
-                          left: `${35 + (i % 4) * 12}%`,
-                          top: `${35 + Math.floor(i / 4) * 18}%`,
-                        }}
-                        onClick={() => setSelectedEntity({ ...f, type: 'riskFinding' })}
-                        title={f.title}
-                      />
-                    ))}
-
-                    {activeLayers.cases && data?.cases?.slice(0, 5).map((c, i) => (
-                      <div
-                        key={`case-${c.id}`}
-                        className="absolute w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform"
-                        style={{
-                          left: `${55 + (i % 4) * 10}%`,
-                          top: `${40 + Math.floor(i / 4) * 15}%`,
-                        }}
-                        onClick={() => setSelectedEntity({ ...c, type: 'case' })}
-                        title={c.title}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Map Legend */}
-                  <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 border border-slate-200 shadow-sm">
-                    <p className="text-xs font-medium text-slate-600 mb-2">Legend</p>
-                    <div className="space-y-1.5">
-                      {LAYER_TYPES.filter(({ key }) => activeLayers[key]).map(({ key, label, color }) => (
-                        <div key={key} className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${key === 'projects' ? 'bg-blue-500' : key === 'riskFindings' ? 'bg-red-500' : key === 'cases' ? 'bg-purple-500' : 'bg-vojas-500'}`} />
-                          <span className="text-xs text-slate-600">{label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <UnifiedMap
+                  projects={(data?.projects ?? []).map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    status: p.status,
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                    approvedAmount: p.approvedAmount,
+                    state: p.state,
+                    district: p.district,
+                    sector: p.sector,
+                    riskLevel: p.riskLevel,
+                  }))}
+                  height="600px"
+                  defaultBasemap="dark"
+                  onSelectProject={(p) => p && setSelectedEntity({ ...p, type: 'project' })}
+                />
               )}
 
               {/* Selected Entity Panel */}

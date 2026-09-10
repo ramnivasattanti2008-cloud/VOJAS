@@ -226,6 +226,13 @@ export interface ProjectDataSnapshot {
     methodology: string;
     limitations: string | null;
   }> | null;
+  // Latest field verification (for inspection-freshness signal)
+  latestFieldVerification: {
+    id: string;
+    scheduledDate: Date | null;
+    completedDate: Date | null;
+    result: string;
+  } | null;
   // Anomaly records
   anomalies: Array<{
     id: string;

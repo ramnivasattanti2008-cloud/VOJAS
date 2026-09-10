@@ -7,6 +7,20 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const UnifiedMap = dynamic(
+  () => import('@/components/map/UnifiedMap').then((m) => m.UnifiedMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] flex flex-col items-center justify-center bg-slate-900 text-slate-400 rounded-xl">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-sm font-medium">Loading Constituency GIS Satellite Map…</p>
+      </div>
+    ),
+  }
+);
 import {
   MapPin, Layers, Eye, EyeOff, AlertTriangle, CheckCircle2,
   Clock, Filter, X, Building2, ChevronRight
@@ -178,59 +192,25 @@ export default function MPMapPage() {
               </div>
 
               {/* Map Canvas */}
-              <div className="relative bg-slate-100 rounded-xl overflow-hidden" style={{ minHeight: '600px' }}>
-                {/* Placeholder for actual map - would use MapLibre/Leaflet */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <MapPin className="h-16 w-16 mx-auto mb-4 text-slate-300" />
-                    <p className="text-slate-500 mb-2">Interactive Map View</p>
-                    <p className="text-xs text-slate-400 mb-4">
-                      {showLayers.projects ? `${filteredProjects.length} project markers` : 'Projects layer hidden'}
-                    </p>
-
-                    {/* Simulated Map Grid */}
-                    <div className="relative w-96 h-64 bg-slate-200/50 rounded-lg border-2 border-dashed border-slate-300 overflow-hidden">
-                      {/* District boundaries placeholder */}
-                      {Object.entries(projectsByDistrict).slice(0, 4).map(([district, districtProjects], i) => (
-                        <div
-                          key={district}
-                          className={cn(
-                            'absolute bg-white/30 rounded-lg border border-slate-300',
-                            i === 0 && 'top-2 left-2 w-1/2 h-1/2',
-                            i === 1 && 'top-2 right-2 w-1/2 h-1/3',
-                            i === 2 && 'bottom-2 left-2 w-1/3 h-1/3',
-                            i === 3 && 'bottom-2 right-2 w-1/2 h-1/3'
-                          )}
-                        >
-                          <p className="text-[8px] text-slate-500 p-1">{district}</p>
-                          {/* Project markers */}
-                          {showLayers.projects && districtProjects.slice(0, 5).map((project: any, j: number) => {
-                            const config = STATUS_COLORS[project.status] ?? STATUS_COLORS[ProjectStatus.PROPOSED];
-                            return (
-                              <button
-                                key={project.id}
-                                onClick={() => setSelectedProject(project)}
-                                onMouseEnter={() => setHoveredProject(project)}
-                                onMouseLeave={() => setHoveredProject(null)}
-                                className={cn(
-                                  'absolute w-4 h-4 rounded-full transform -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-150',
-                                  showLayers.attention && attentionProjects.includes(project) && 'ring-2 ring-red-500'
-                                )}
-                                style={{
-                                  backgroundColor: config.fill,
-                                  border: `2px solid ${config.stroke}`,
-                                  left: `${20 + j * 15}%`,
-                                  top: `${30 + (i % 2) * 30}%`,
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
+              <div className="relative rounded-xl overflow-hidden" style={{ minHeight: '600px' }}>
+                <UnifiedMap
+                  projects={filteredProjects.map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    status: p.status,
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                    approvedAmount: p.approvedAmount ?? p.sanctionedAmount,
+                    state: p.state,
+                    district: p.district,
+                    sector: p.sector,
+                    riskLevel: p.riskLevel,
+                  }))}
+                  height="600px"
+                  defaultBasemap="hybrid"
+                  onSelectProject={(p) => setSelectedProject(p)}
+                />
+              </div>
                 {/* Hover Tooltip */}
                 {hoveredProject && (
                   <div className="absolute top-4 right-4 bg-slate-900 text-white rounded-lg shadow-xl px-4 py-3 z-20 max-w-xs">
@@ -254,7 +234,6 @@ export default function MPMapPage() {
                     </p>
                   </div>
                 )}
-              </div>
             </CardBody>
           </Card>
         </div>

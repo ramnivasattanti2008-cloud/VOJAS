@@ -116,7 +116,7 @@ export function createOfficerApi(client: ApiClient) {
   return {
     // ── Dashboard ─────────────────────────────────────────────
     getDashboardStats() {
-      return client.get<OfficerDashboardStats>('/api/v1/officer/dashboard/stats');
+      return client.get<OfficerDashboardStats>('/officer/dashboard/stats');
     },
 
     // ── Cases / Queue ─────────────────────────────────────────
@@ -132,75 +132,75 @@ export function createOfficerApi(client: ApiClient) {
       page?: number;
       limit?: number;
     }) {
-      return client.get<PaginatedResponse<OfficerCase>>('/api/v1/officer/cases', params);
+      return client.get<PaginatedResponse<OfficerCase>>('/officer/cases', params);
     },
 
     getCase(caseId: string) {
-      return client.get<OfficerCase>(`/api/v1/officer/cases/${caseId}`);
+      return client.get<OfficerCase>(`/officer/cases/${caseId}`);
     },
 
     // ── Case Actions ──────────────────────────────────────────
     assignCase(caseId: string, officerId: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/assign`, { officerId });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/assign`, { officerId });
     },
 
     reassignCase(caseId: string, officerId: string, notes?: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/reassign`, { officerId, notes });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/reassign`, { officerId, notes });
     },
 
     acknowledgeCase(caseId: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/acknowledge`);
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/acknowledge`);
     },
 
     reviewCase(caseId: string, notes?: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/review`, { notes });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/review`, { notes });
     },
 
     requestInfo(caseId: string, infoType: string, notes?: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/request-info`, { infoType, notes });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/request-info`, { infoType, notes });
     },
 
     requestInspection(caseId: string, reason?: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/request-inspection`, { reason });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/request-inspection`, { reason });
     },
 
     requestContractorResponse(caseId: string, contractorId?: string, deadline?: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/request-contractor-response`, {
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/request-contractor-response`, {
         contractorId,
         deadline,
       });
     },
 
     addEvidence(caseId: string, evidence: { type: string; title: string; description?: string; url?: string; source: string }) {
-      return client.post<Evidence>(`/api/v1/officer/cases/${caseId}/evidence`, evidence);
+      return client.post<Evidence>(`/officer/cases/${caseId}/evidence`, evidence);
     },
 
     addNotes(caseId: string, notes: string) {
-      return client.post<CaseAction>(`/api/v1/officer/cases/${caseId}/notes`, { notes });
+      return client.post<CaseAction>(`/officer/cases/${caseId}/notes`, { notes });
     },
 
     verifyCase(caseId: string, verified: boolean, notes?: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/verify`, { verified, notes });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/verify`, { verified, notes });
     },
 
     dismissCase(caseId: string, reason: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/dismiss`, { reason });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/dismiss`, { reason });
     },
 
     resolveCase(caseId: string, resolution: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/resolve`, { resolution });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/resolve`, { resolution });
     },
 
     reopenCase(caseId: string, reason: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/reopen`, { reason });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/reopen`, { reason });
     },
 
     escalateCase(caseId: string, authority: string, reason?: string) {
-      return client.post<OfficerCase>(`/api/v1/officer/cases/${caseId}/escalate`, { authority, reason });
+      return client.post<OfficerCase>(`/officer/cases/${caseId}/escalate`, { authority, reason });
     },
 
     getCaseHistory(caseId: string) {
-      return client.get<{ actions: CaseAction[] }>(`/api/v1/officer/cases/${caseId}/history`);
+      return client.get<{ actions: CaseAction[] }>(`/officer/cases/${caseId}/history`);
     },
 
     // ── Evidence ──────────────────────────────────────────────
@@ -214,19 +214,19 @@ export function createOfficerApi(client: ApiClient) {
       page?: number;
       limit?: number;
     }) {
-      return client.get<PaginatedResponse<Evidence>>('/api/v1/officer/evidence', params);
+      return client.get<PaginatedResponse<Evidence>>('/officer/evidence', params);
     },
 
     getEvidenceById(evidenceId: string) {
-      return client.get<Evidence>(`/api/v1/officer/evidence/${evidenceId}`);
+      return client.get<Evidence>(`/officer/evidence/${evidenceId}`);
     },
 
     verifyEvidence(evidenceId: string, verified: boolean, notes?: string) {
-      return client.patch<Evidence>(`/api/v1/officer/evidence/${evidenceId}`, { verified, notes });
+      return client.patch<Evidence>(`/officer/evidence/${evidenceId}`, { verified, notes });
     },
 
     linkEvidenceToCase(evidenceId: string, caseId: string) {
-      return client.post<Evidence>(`/api/v1/officer/evidence/${evidenceId}/link`, { caseId });
+      return client.post<Evidence>(`/officer/evidence/${evidenceId}/link`, { caseId });
     },
 
     // ── Contractor Responses ──────────────────────────────────
@@ -237,11 +237,11 @@ export function createOfficerApi(client: ApiClient) {
       page?: number;
       limit?: number;
     }) {
-      return client.get<PaginatedResponse<ContractorResponse>>('/api/v1/officer/contractor-responses', params);
+      return client.get<PaginatedResponse<ContractorResponse>>('/officer/contractor-responses', params);
     },
 
     reviewContractorResponse(responseId: string, status: 'ACCEPTED' | 'REJECTED' | 'CLARIFICATION_REQUESTED', notes?: string) {
-      return client.patch<ContractorResponse>(`/api/v1/officer/contractor-responses/${responseId}`, {
+      return client.patch<ContractorResponse>(`/officer/contractor-responses/${responseId}`, {
         status,
         reviewNotes: notes,
       });
@@ -256,11 +256,11 @@ export function createOfficerApi(client: ApiClient) {
       page?: number;
       limit?: number;
     }) {
-      return client.get<PaginatedResponse<FieldInspection>>('/api/v1/officer/field-inspections', params);
+      return client.get<PaginatedResponse<FieldInspection>>('/officer/field-inspections', params);
     },
 
     getFieldInspection(inspectionId: string) {
-      return client.get<FieldInspection>(`/api/v1/officer/field-inspections/${inspectionId}`);
+      return client.get<FieldInspection>(`/officer/field-inspections/${inspectionId}`);
     },
 
     updateFieldInspection(
@@ -272,7 +272,7 @@ export function createOfficerApi(client: ApiClient) {
         status?: string;
       }
     ) {
-      return client.patch<FieldInspection>(`/api/v1/officer/field-inspections/${inspectionId}`, updates);
+      return client.patch<FieldInspection>(`/officer/field-inspections/${inspectionId}`, updates);
     },
 
     submitFieldInspection(inspectionId: string, data: {
@@ -280,7 +280,7 @@ export function createOfficerApi(client: ApiClient) {
       notes?: string;
       photos?: string[];
     }) {
-      return client.post<FieldInspection>(`/api/v1/officer/field-inspections/${inspectionId}/submit`, data);
+      return client.post<FieldInspection>(`/officer/field-inspections/${inspectionId}/submit`, data);
     },
 
     // ── Map Data ──────────────────────────────────────────────
@@ -302,7 +302,7 @@ export function createOfficerApi(client: ApiClient) {
         citizenSignals: Array<{ id: string; category: string; lat: number; lng: number; severity: string }>;
         satelliteEvidence: Array<{ id: string; type: string; lat: number; lng: number; capturedAt: string }>;
         fieldInspections: Array<{ id: string; projectName: string; lat: number; lng: number; status: string }>;
-      }>('/api/v1/officer/map/layers', params);
+      }>('/officer/map/layers', params);
     },
   };
 }
