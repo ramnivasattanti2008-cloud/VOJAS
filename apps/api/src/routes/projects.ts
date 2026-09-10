@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { AuditService, EvidenceService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
+import { AuditService, EvidenceService, ProjectIntelligenceService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
 import { AuditAction, PERMISSIONS, ROLE_PERMISSIONS, getPermissionsForRole, getProjectVisibilityFilter, canAccessProject, buildUserContext } from '@vojas/shared';
 import {
   createProjectSchema,
@@ -14,6 +14,7 @@ import { success, created } from '../utils/apiResponse.js';
 const router = Router();
 const auditService = new AuditService(prisma);
 const evidenceService = new EvidenceService(prisma);
+const projectIntelligenceService = new ProjectIntelligenceService(prisma);
 
 /**
  * GET /projects — authenticated with permission-based scoping
@@ -29,7 +30,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
       ...req.query,
       page: clampedPage,
       limit: clampedLimit,
-      hasCoordinates: req.query.hasCoordinates !== undefined ? (req.query.hasCoordinates === 'true' || req.query.hasCoordinates === true) : undefined,
+      hasCoordinates: req.query.hasCoordinates !== undefined ? String(req.query.hasCoordinates) === 'true' : undefined,
       minAmount: req.query.minAmount ? Number(req.query.minAmount) : undefined,
       maxAmount: req.query.maxAmount ? Number(req.query.maxAmount) : undefined,
     });
@@ -247,6 +248,43 @@ router.get('/:id/evidence', authenticate, async (req: Request, res: Response, ne
       total: visibleEvidence.length,
       items: visibleEvidence,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/:id/intelligence — authenticated cross-signal intelligence dossier
+ */
+router.get('/:id/intelligence', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const project = await prisma.project.findUnique({
+      where: { id },
+      select: { id: true, constituency: true },
+    });
+    if (!project) {
+      throw new NotFoundError('Project');
+    }
+
+    const user = req.user!;
+    const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+    const userCtx = buildUserContext(user.role, user.userId, perms as any);
+    if (!canAccessProject(userCtx, project as any)) {
+      throw new ForbiddenError('You do not have access to this project');
+    }
+
+    const intel = await projectIntelligenceService.getProjectIntelligence(id, {
+      userId: user.userId,
+      role: user.role,
+      mpHasOversight: user.role === UserRole.MP,
+    });
+
+    if (!intel) {
+      throw new NotFoundError('Project');
+    }
+
+    success(res, intel);
   } catch (err) {
     next(err);
   }

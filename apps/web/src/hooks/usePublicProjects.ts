@@ -38,3 +38,11 @@ export function usePublicProjectRisk(id: string | null | undefined, enabled: boo
     enabled: !!id && enabled,
   });
 }
+
+export function usePublicProjectIntelligence(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ['public-projects', id, 'intelligence'],
+    queryFn: () => projectsApi.public.getIntelligence(id!),
+    enabled: !!id,
+  });
+}

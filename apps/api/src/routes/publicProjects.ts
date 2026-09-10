@@ -14,12 +14,14 @@
 import { prisma } from '@vojas/db';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
-import { projectFiltersSchema, EvidenceService } from '@vojas/domain';
+import { projectFiltersSchema, EvidenceService, ProjectIntelligenceService } from '@vojas/domain';
+import { UserRole } from '@vojas/shared';
 import { success } from '../utils/apiResponse.js';
 import { CACHE_TTL, get, set } from '../utils/cache.js';
 
 const router = Router();
 const evidenceService = new EvidenceService(prisma);
+const projectIntelligenceService = new ProjectIntelligenceService(prisma);
 
 // Fields safe to expose to anonymous citizens. Excludes internal attribution
 // (createdById, districtId/stateId/etc., sourceDataSourceId) and boundary/
@@ -75,7 +77,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       ...req.query,
       page: clampedPage,
       limit: clampedLimit,
-      hasCoordinates: req.query.hasCoordinates !== undefined ? (req.query.hasCoordinates === 'true' || req.query.hasCoordinates === true) : undefined,
+      hasCoordinates: req.query.hasCoordinates !== undefined ? String(req.query.hasCoordinates) === 'true' : undefined,
       minAmount: req.query.minAmount ? Number(req.query.minAmount) : undefined,
       maxAmount: req.query.maxAmount ? Number(req.query.maxAmount) : undefined,
     });
@@ -429,6 +431,33 @@ router.get('/:id/evidence', async (req: Request, res: Response, next: NextFuncti
       total: publicEvidence.length,
       items: publicEvidence,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id/intelligence — public-safe cross-signal civic intelligence briefing.
+ */
+router.get('/:id/intelligence', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.id as string;
+    const exists = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+    if (!exists) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    const intel = await projectIntelligenceService.getProjectIntelligence(projectId, {
+      userId: null,
+      role: UserRole.CITIZEN,
+      mpHasOversight: false,
+    });
+
+    if (!intel) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    success(res, intel);
   } catch (err) {
     next(err);
   }

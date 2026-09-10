@@ -437,6 +437,9 @@ export function createProjectsApi(client: ApiClient) {
       getEvidence(id: string) {
         return client.get<ProjectEvidenceFeed>(`/projects/public/${id}/evidence`);
       },
+      getIntelligence(id: string) {
+        return client.get<ProjectIntelligence>(`/projects/public/${id}/intelligence`);
+      },
     },
   };
 }

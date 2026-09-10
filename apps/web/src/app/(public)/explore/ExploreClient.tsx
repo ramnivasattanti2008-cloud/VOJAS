@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, X, Loader2, AlertTriangle } from 'lucide-react';
+import { Search, X, Loader2, AlertTriangle, Download } from 'lucide-react';
 import { ProjectSector, ProjectStatus } from '@vojas/shared';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
 import { useQuery } from '@tanstack/react-query';
@@ -34,6 +34,7 @@ export function ExploreClient() {
   const [sector, setSector] = useState(() => initialParams.get('sector') ?? '');
   const [status, setStatus] = useState(() => initialParams.get('status') ?? '');
   const [page, setPage] = useState(1);
+  const [isExporting, setIsExporting] = useState(false);
 
   const search = useDebounced(searchInput, 400);
 
@@ -68,13 +69,104 @@ export function ExploreClient() {
   const projects = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
 
+  const handleExportCsv = async () => {
+    try {
+      setIsExporting(true);
+      const exportData = await projectsApi.public.list({
+        ...filters,
+        page: 1,
+        limit: 1000,
+      });
+
+      const records = exportData.data;
+      if (!records || records.length === 0) {
+        alert('No projects found to export.');
+        return;
+      }
+
+      const headers = [
+        'Project ID',
+        'Project Name',
+        'Sector',
+        'Status',
+        'State',
+        'District',
+        'Approved Amount (INR)',
+        'Spent Amount (INR)',
+        'Utilization (%)',
+        'Latitude',
+        'Longitude',
+        'Has Coordinates',
+        'Source Registry',
+        'Source Work ID',
+      ];
+
+      const escapeCsv = (str: unknown) => {
+        if (str == null) return '""';
+        const s = String(str).replace(/"/g, '""');
+        return `"${s}"`;
+      };
+
+      const rows = records.map((p) => {
+        const utilPercent = p.approvedAmount > 0 ? ((p.spentAmount / p.approvedAmount) * 100).toFixed(1) : '0.0';
+        return [
+          escapeCsv(p.id),
+          escapeCsv(p.name),
+          escapeCsv(p.sector),
+          escapeCsv(p.status),
+          escapeCsv(p.state ?? 'Not Recorded'),
+          escapeCsv(p.district ?? 'Not Recorded'),
+          p.approvedAmount ?? 0,
+          p.spentAmount ?? 0,
+          utilPercent,
+          p.latitude != null ? p.latitude : 'Not Geocoded',
+          p.longitude != null ? p.longitude : 'Not Geocoded',
+          p.latitude != null ? 'YES' : 'NO',
+          escapeCsv(p.source ?? 'MoSPI MPLADS'),
+          escapeCsv(p.sourceWorkId ?? 'Not Recorded'),
+        ].join(',');
+      });
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const stateSuffix = state ? `_${state.replace(/\s+/g, '_')}` : '';
+      link.href = url;
+      link.setAttribute('download', `vojas_mplad_projects${stateSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export CSV', err);
+      alert('Could not generate export. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Explore Projects</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {isLoading ? 'Loading…' : `${data?.total ?? 0} MPLAD project${data?.total === 1 ? '' : 's'} found`}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Explore Projects</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {isLoading ? 'Loading…' : `${data?.total ?? 0} MPLAD project${data?.total === 1 ? '' : 's'} found`}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={isExporting || isLoading || projects.length === 0}
+            leftIcon={isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          >
+            {isExporting ? 'Exporting…' : 'Export CSV'}
+          </Button>
+        </div>
       </div>
 
       {/* Search + filters */}

@@ -28,8 +28,12 @@ import timelineRoutes from './timeline.js';
 import userRoutes from './users.js';
 import vendorRoutes from './vendors.js';
 import contractorRoutes from './contractor.js';
+import aiRoutes from './ai.js';
 
 const router = Router();
+
+// AI Intelligence routes (natural language search, civic Q&A, evidence explanations)
+router.use('/ai', aiRoutes);
 
 // Auth routes
 router.use('/auth', authRoutes);

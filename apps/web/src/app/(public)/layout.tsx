@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Shield, MapPin, Search, BarChart3, Wallet, FileText, Satellite } from 'lucide-react';
 import { PublicHeaderActions } from '@/components/layout/PublicHeaderActions';
+import { CivicAICopilot } from '@/components/ai/CivicAICopilot';
 
 export const metadata: Metadata = {
   title: 'VOJAS — Public Infrastructure Intelligence Platform',
@@ -169,6 +170,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </footer>
+      <CivicAICopilot />
     </div>
   );
 }
