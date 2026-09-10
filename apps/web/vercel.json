@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile --filter @vojas/web...",
-  "buildCommand": "cd ../.. && pnpm --filter @vojas/shared build && pnpm --filter @vojas/domain build && pnpm --filter @vojas/api-client build && pnpm --filter @vojas/web build",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile --prod=false --filter @vojas/web...",
+  "buildCommand": "cd ../.. && pnpm db:generate && pnpm run build:packages && pnpm --filter @vojas/web build",
   "build": {
     "env": {
       "NEXT_PUBLIC_API_URL": "https://vojas-api.onrender.com"
