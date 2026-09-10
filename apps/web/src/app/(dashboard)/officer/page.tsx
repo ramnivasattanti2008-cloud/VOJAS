@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useOfficerDashboardStats, useOfficerCases } from '@/hooks/useOfficer';
 import { formatDate } from '@/lib/utils';
+import { ShowcaseProjectSelector } from '@/components/projects/ShowcaseProjectSelector';
 
 // Stat card component
 function StatCard({
@@ -265,6 +266,21 @@ export default function OfficerDashboardPage() {
             Officer Map
           </Button>
         </Link>
+      </div>
+      {/* AI Construction Fraud & Sentinel-2 Verification Desk */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Shield className="h-5 w-5 text-red-600" />
+              AI Construction Fraud & Sentinel-2 Verification Desk
+            </h2>
+            <p className="text-xs text-slate-500">
+              Deterministic cross-referencing between contractor claimed progress and multi-week Sentinel-2 NDBI satellite ground truth.
+            </p>
+          </div>
+        </div>
+        <ShowcaseProjectSelector />
       </div>
 
       {/* Critical/High Priority Cases */}

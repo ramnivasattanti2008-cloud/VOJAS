@@ -16,6 +16,7 @@ import { useCitizenReports } from '@/hooks/useCitizenReports';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
 import { REPORT_STATUS_LABELS, REPORT_CATEGORY_LABELS } from '@vojas/api-client';
 import { formatDate, formatCurrency, cn } from '@/lib/utils';
+import { ShowcaseProjectSelector } from '@/components/projects/ShowcaseProjectSelector';
 
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   SUBMITTED: 'info',
@@ -252,6 +253,21 @@ export default function CitizenHomePage() {
           value={projects.filter((p: any) => p.status === 'IN_PROGRESS').length}
           color="bg-purple-50 text-purple-600"
         />
+      </div>
+      {/* Public Satellite Verification & Construction Transparency */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-vojas-600" />
+              Public Construction Works & Satellite Audit
+            </h2>
+            <p className="text-xs text-slate-500">
+              Inspect government works in your area: View week-by-week satellite imagery to see if contractors are genuinely building or committing fraud.
+            </p>
+          </div>
+        </div>
+        <ShowcaseProjectSelector />
       </div>
 
       {/* Quick Actions */}

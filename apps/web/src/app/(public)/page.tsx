@@ -12,7 +12,11 @@ import {
   Sparkles,
   CheckCircle2,
   Building2,
+  Users,
+  Landmark,
+  HardHat,
 } from 'lucide-react';
+import { ShowcaseProjectSelector } from '@/components/projects/ShowcaseProjectSelector';
 
 async function getSummaryData() {
   try {
@@ -30,7 +34,57 @@ export default async function HomePage() {
   const summary = await getSummaryData();
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-12">
+      {/* Role-Based Authentication Portal Bar */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-lg border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center justify-center font-black text-base shadow-xs shrink-0">
+            ⚡
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Select Your Access Portal</h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                1-Click Sign In
+              </span>
+            </div>
+            <p className="text-xs text-slate-300">
+              Role-specific interfaces for Citizens, Members of Parliament, Vigilance Officers, and Contractors.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all"
+          >
+            <Users className="h-3.5 w-3.5 text-blue-400" />
+            <span>Citizen</span>
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-400/30 transition-all"
+          >
+            <Landmark className="h-3.5 w-3.5 text-purple-300" />
+            <span>MP Oversight</span>
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 transition-all"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 text-rose-300" />
+            <span>Vigilance Officer</span>
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/30 transition-all"
+          >
+            <HardHat className="h-3.5 w-3.5 text-amber-300" />
+            <span>Contractor</span>
+          </Link>
+        </div>
+      </div>
       {/* Hero Banner Section */}
       <section className="relative overflow-hidden rounded-3xl gradient-civic-hero text-white p-8 sm:p-12 lg:p-16 shadow-xl border border-slate-800">
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -96,6 +150,11 @@ export default async function HomePage() {
             <div className="text-slate-400 font-medium mt-0.5">10m Multispectral Verification</div>
           </div>
         </div>
+      </section>
+
+      {/* 13 Curated Construction Showcase & Weekly Satellite AI Fraud Detector */}
+      <section className="p-6 sm:p-8 bg-slate-50 border border-slate-200/90 rounded-3xl shadow-sm">
+        <ShowcaseProjectSelector />
       </section>
 
       {/* Core Platform Pillars */}

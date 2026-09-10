@@ -19,6 +19,7 @@ import { useMPConstituency } from '@/hooks/useMP';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
+import { ShowcaseProjectSelector } from '@/components/projects/ShowcaseProjectSelector';
 
 // Sector labels for the constituency
 const SECTOR_LABELS: Record<string, string> = {
@@ -128,6 +129,22 @@ export default function MPHomePage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Constituency Construction Projects & Satellite Audit Engine */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-vojas-600" />
+              Constituency Construction Projects & Satellite Verification
+            </h2>
+            <p className="text-xs text-slate-500">
+              Direct oversight of sanctioned works: Compare contractor claimed completion vs. weekly Sentinel-2 satellite imagery ground truth.
+            </p>
+          </div>
+        </div>
+        <ShowcaseProjectSelector />
       </div>
 
       {/* Main Content Grid */}

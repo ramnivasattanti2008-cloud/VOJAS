@@ -29,6 +29,7 @@ import {
 } from '@/hooks/useContractor';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import type { ContractorProject } from '@vojas/api-client';
+import { ContractorWeeklySubmission } from '@/components/contractor/ContractorWeeklySubmission';
 
 const statusVariant: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   IN_PROGRESS: 'info',
@@ -242,6 +243,9 @@ export default function ContractorHomePage() {
           )}
         </div>
       )}
+
+      {/* Weekly Progress & Fund Utilization Filing Engine */}
+      <ContractorWeeklySubmission />
 
       {/* Project List */}
       <div className="space-y-4">

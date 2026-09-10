@@ -29,8 +29,12 @@ import userRoutes from './users.js';
 import vendorRoutes from './vendors.js';
 import contractorRoutes from './contractor.js';
 import aiRoutes from './ai.js';
+import { showcaseRouter } from './showcase.js';
 
 const router = Router();
+
+// Showcase & Construction AI Fraud routes
+router.use('/showcase', showcaseRouter);
 
 // AI Intelligence routes (natural language search, civic Q&A, evidence explanations)
 router.use('/ai', aiRoutes);
