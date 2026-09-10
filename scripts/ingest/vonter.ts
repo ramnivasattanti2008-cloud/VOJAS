@@ -74,6 +74,24 @@ async function main() {
     return;
   }
 
+  // Project.createdById is required and is a real FK to User. Ingested rows are
+  // not authored by a person, so they are attributed to a non-login service
+  // account: the password hash is not a valid bcrypt hash, so no password can
+  // ever match it, and the account is inactive.
+  const systemUser = await prisma.user.upsert({
+    where: { email: "ingest@vojas.gov" },
+    update: {},
+    create: {
+      email: "ingest@vojas.gov",
+      name: "VOJAS Data Ingest",
+      passwordHash: "!login-disabled",
+      role: "VIEWER",
+      isActive: false,
+    },
+    select: { id: true },
+  });
+  const systemUserId = systemUser.id;
+
   // ── Pass 2: ingest ──
   const progress = new Progress("   ingest");
   let processed = 0;
@@ -225,11 +243,15 @@ async function main() {
     rowsBuffer.push({
       source: SOURCE,
       sourceWorkId: String(lineNum),
-      sourceRef: JSON.stringify({
+      // Project.sourceRef is Json, so the original row is stored as an object
+      // rather than a JSON-encoded string. This is the provenance record for
+      // every field the v2 Project model has no column for.
+      sourceRef: {
         mpName, workDesc, category, state, constituency,
         ida, city, ward, block, village,
         recommendedDate, allocationAmount, idaApproval, status, house,
-      }),
+      },
+      createdById: systemUserId,
       name: workDesc.slice(0, 200),
       description: `${workDesc}\n\nBlock: ${block || "—"}\nVillage: ${village || "—"}\nIDA: ${ida || "—"}\nRecommended: ${recommendedDate}`,
       status: mapStatus(status) as any,
@@ -248,12 +270,10 @@ async function main() {
       approvedAmount: rupeesToFloat(allocationAmount),
       spentAmount: 0,
       mpId,
-      mpName: mpName.trim(),
-      house: inferHouseFromValue(house) as any,
-      term: termFromDate as any,
-      implementingAgency: (ida || "").trim() || null,
-      idaApproval: mapIdaApproval(idaApproval) as any,
-      recommendedDate: recDate,
+      // house / term / implementingAgency / idaApproval / recommendedDate are
+      // not columns on Project in packages/db — house and term live on MP, and
+      // the rest are recommendation-stage attributes. They stay in sourceRef
+      // above, which preserves the full original CSV row verbatim.
       contractor: null,
       startDate: null,
       expectedEndDate: null,
@@ -277,16 +297,17 @@ async function main() {
   console.log(`   skipped:       ${skipped.toLocaleString()}`);
   console.log(`   errors:        ${errors.toLocaleString()}`);
 
-  // Summary by house
-  const byHouse = await prisma.project.groupBy({
-    by: ["house"],
+  // Summary by status. (There is no `house` column on Project — house is a
+  // property of the MP, not of the work.)
+  const byStatus = await prisma.project.groupBy({
+    by: ["status"],
     where: { source: SOURCE },
     _count: true,
     _sum: { approvedAmount: true },
   });
-  console.log(`\n   By house:`);
-  for (const r of byHouse) {
-    console.log(`     ${r.house ?? "null"}: ${r._count.toLocaleString()} projects, ₹${(r._sum.approvedAmount ?? 0).toLocaleString()}`);
+  console.log(`\n   By status:`);
+  for (const r of byStatus) {
+    console.log(`     ${r.status}: ${r._count.toLocaleString()} projects, ₹${(r._sum.approvedAmount ?? 0).toLocaleString()}`);
   }
 
   // Summary by state (top 10)
