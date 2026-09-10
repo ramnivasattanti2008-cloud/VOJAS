@@ -20,6 +20,7 @@
 import {
   DATA_DIR,
   categoryToSector,
+  inferSector,
   fileExists,
   inferHouseFromValue,
   mapIdaApproval,
@@ -209,8 +210,19 @@ async function main() {
       continue;
     }
 
-    const sector = sectorCache.get(category) || categoryToSector(category);
-    sectorCache.set(category, sector);
+    // The Vonter CATEGORY column carries only four values across all 60,359
+    // rows (Normal/Others, Repair and Renovation, Trust and Society, Bar and
+    // Associations), so categoryToSector alone put 60,154 works into
+    // PUBLIC_INFRASTRUCTURE and made sector filtering meaningless. The real
+    // sector signal is in the work description, which is what inferSector
+    // reads. Fall back to the category only where the description is
+    // uninformative, so "Trust and Society" still yields SOCIAL_WELFARE.
+    let sector = sectorCache.get(workDesc);
+    if (!sector) {
+      const inferred = inferSector(workDesc);
+      sector = inferred === "PUBLIC_INFRASTRUCTURE" ? categoryToSector(category) : inferred;
+      sectorCache.set(workDesc, sector);
+    }
 
     // MP cache — upsert once, reuse id
     const mpKey = `${slugify(mpName)}|${slugify(constituency)}|EIGHTEENTH`;
