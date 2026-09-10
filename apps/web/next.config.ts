@@ -19,8 +19,16 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '**' }
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${process.env.API_INTERNAL_URL || 'http://localhost:5000'}/api/v1/:path*`,
+      },
+    ];
+  },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
     // Server-side only (available in next.config.ts and server components, NOT exposed to client)
     SENTRY_DSN: process.env.SENTRY_DSN,
   }
