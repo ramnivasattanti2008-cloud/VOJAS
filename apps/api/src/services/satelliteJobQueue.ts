@@ -14,7 +14,7 @@
  * The BullMQ backend uses a local in-memory mirror so reads are O(1) sync calls.
  */
 
-import { isRedisAvailable } from '../config/redis.js';
+import { isRedisAvailable, reportRedisDetectionResult } from '../config/redis.js';
 import { logger } from '../utils/logger.js';
 import { queue as bullmqQueue } from './satelliteJobQueue.bullmq.js';
 import { inProcessQueue } from './satelliteJobQueue.inprocess.js';
@@ -40,6 +40,7 @@ async function detectBackend(): Promise<void> {
     useBullMQ = false;
     logger.warn('[sat-queue] Backend: in-process (Redis unavailable — set REDIS_URL for production)');
   }
+  reportRedisDetectionResult(useBullMQ);
 }
 
 // Kick off detection eagerly so the first enqueue() doesn't block.

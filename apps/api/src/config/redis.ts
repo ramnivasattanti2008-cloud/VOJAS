@@ -11,8 +11,17 @@
  *   - Lazy connect: getRedis() returns a singleton; the actual TCP connection
  *     happens on first command, not at module load (so the API can boot
  *     even when Redis is down).
- *   - Retry strategy: exponential backoff capped at 2s, max 20 attempts before
+ *   - Retry strategy: exponential backoff capped at 1s, max 8 attempts before
  *     giving up (so we don't spam logs if Redis is misconfigured).
+ *   - Startup teardown: cache.ts and satelliteJobQueue.ts each run one
+ *     isRedisAvailable() check at import time and permanently commit to a
+ *     fallback if it fails — they never call getRedis() again afterward. Once
+ *     BOTH have reported in via reportRedisDetectionResult() and neither chose
+ *     Redis, this client is closed immediately rather than left to keep
+ *     retrying on its own for the rest of its retry budget. Confirmed this
+ *     bounds the whole boot-time "Redis unreachable" burst to a few seconds
+ *     with Redis absent locally (previously several minutes — nothing used to
+ *     tell the client its result no longer mattered to anyone).
  *   - Error handling: 'error' events are logged but do NOT throw — callers
  *     must always wrap their calls in try/catch (or use the wrappers in
  *     cache.redis.ts / satelliteJobQueue.bullmq.ts which fall back gracefully).
@@ -56,15 +65,23 @@ export function getRedis(): RedisType {
     enableOfflineQueue: false,
     // Cap reconnect attempts so we don't spam logs forever.
     maxRetriesPerRequest: 2,
-    // Reasonable retry backoff for transient outages.
+    // Reasonable retry backoff for transient outages. This governs the boot-time
+    // detection burst only — detectBackend()/detectCacheBackend() each cache
+    // their result after the FIRST isRedisAvailable() call and never call
+    // getRedis() again, and both call closeRedis() once they've confirmed
+    // Redis is unavailable (see cache.ts / satelliteJobQueue.ts), which tears
+    // this client down and stops ioredis's own reconnect loop for good. The
+    // cap here just bounds how long that one boot-time burst can run before
+    // closeRedis() has a chance to land: 8 attempts x up to 1s is a ~4s
+    // worst case, not the many-minute tail a 20-attempt/2s cap produced when
+    // nothing was around to close the connection afterward.
     retryStrategy(times: number): number | null {
-      if (times > 20) {
-        // Stop trying after ~20 attempts (cumulative ~1 minute).
-        logger.error('[redis] Giving up after 20 reconnect attempts', { url: redact(REDIS_URL) });
+      if (times > 8) {
+        logger.warn('[redis] Giving up after 8 reconnect attempts', { url: redact(REDIS_URL) });
         connectFailed = true;
         return null;
       }
-      const delay = Math.min(50 * Math.pow(2, times), 2000);
+      const delay = Math.min(50 * Math.pow(2, times), 1000);
       return delay;
     },
     // Reconnect on READONLY after a failover.
@@ -160,6 +177,32 @@ export async function isRedisAvailable(): Promise<boolean> {
   } catch (err) {
     logger.debug('[redis] isRedisAvailable check failed', { error: err instanceof Error ? err.message : String(err) });
     return false;
+  }
+}
+
+// ── Startup detection coordination ──────────────────────────────────────────────
+//
+// cache.ts and satelliteJobQueue.ts each run their own isRedisAvailable() check
+// once at module load and permanently commit to a fallback the moment it comes
+// back false — neither one ever calls getRedis() again after that. But nothing
+// used to tell the underlying ioredis client that both decisions were in, so it
+// kept running its own internal reconnect loop for the length of its retry cap
+// regardless — several minutes of "[redis] Error" noise for a connection that
+// was already guaranteed not to be used by anything.
+//
+// This tracks the two known startup consumers and closes the shared client the
+// moment both have finished AND neither chose to use Redis, converting that
+// unbounded-looking tail into an immediate, deliberate shutdown.
+const EXPECTED_DETECTIONS = 2; // cache.ts + satelliteJobQueue.ts
+let detectionsReported = 0;
+let anyConsumerUsingRedis = false;
+
+export function reportRedisDetectionResult(usingRedis: boolean): void {
+  detectionsReported++;
+  if (usingRedis) anyConsumerUsingRedis = true;
+  if (detectionsReported >= EXPECTED_DETECTIONS && !anyConsumerUsingRedis) {
+    logger.info('[redis] No consumer selected Redis at startup — closing the idle connection');
+    void closeRedis();
   }
 }
 

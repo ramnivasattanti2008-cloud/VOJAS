@@ -23,7 +23,7 @@
  *   - Write operations
  */
 
-import { isRedisAvailable } from '../config/redis.js';
+import { isRedisAvailable, reportRedisDetectionResult } from '../config/redis.js';
 import { logger } from './logger.js';
 import { cache as redisCache } from './cache.redis.js';
 
@@ -110,6 +110,7 @@ async function detectCacheBackend(): Promise<void> {
     useRedis = false;
     logger.warn('[cache] Backend: in-memory (Redis unavailable)');
   }
+  reportRedisDetectionResult(useRedis);
 }
 
 void detectCacheBackend();

@@ -17,7 +17,8 @@ import fs from 'fs';
 import crypto from 'crypto';
 import multer from 'multer';
 import { z } from 'zod';
-import { prisma, Prisma } from '@vojas/db';
+import type { Prisma } from '@vojas/db';
+import { prisma } from '@vojas/db';
 import {
   AuditService,
   NotFoundError,
@@ -101,16 +102,25 @@ const reportSubmitSchema = z.object({
   source: z.string().default('WEB'),
 });
 
-const reportListSchema = z.object({
-  status: z.string().optional(),
-  category: z.string().optional(),
-  severity: z.string().optional(),
-  triageStatus: z.string().optional(),
-  projectId: z.string().optional(),
-  assignedToId: z.string().optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(200).default(20),
-});
+// NOTE: this shadows the exported reportListSchema in @vojas/domain. This is
+// the one that takes effect for GET /reports, because citizenReportRoutes is
+// mounted ahead of reportRoutes in routes/index.ts.
+const reportListSchema = z
+  .object({
+    status: z.string().optional(),
+    category: z.string().optional(),
+    severity: z.string().optional(),
+    triageStatus: z.string().optional(),
+    projectId: z.string().optional(),
+    assignedToId: z.string().optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(200).default(20),
+  })
+  // Reject unsupported query parameters rather than letting zod strip them.
+  // Stripping meant GET /reports?latitude=999 answered 200 with an unfiltered
+  // list — the caller believes it filtered, and on a transparency API a
+  // silently ignored filter reads as "there is nothing there".
+  .strict();
 
 const moderationSchema = z.object({
   action: z.enum(['PUBLISH', 'RESTRICT', 'REQUEST_MORE_INFORMATION', 'REJECT', 'ESCALATE']),
@@ -257,6 +267,22 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
         notes: 'Report received via public submission',
       },
     });
+
+    // A project-linked report belongs on that project's unified timeline
+    // alongside satellite observations, milestones, and financial updates —
+    // not just in the reports queue. No code path wrote this before.
+    if (report.projectId) {
+      await prisma.projectEvent.create({
+        data: {
+          projectId: report.projectId,
+          eventType: 'CITIZEN_REPORT',
+          eventDate: report.submittedAt,
+          source: data.isAnonymous ? 'Anonymous citizen report' : 'Citizen report',
+          description: `Citizen report submitted: "${report.title}" (${report.category}).`,
+          confidence: null,
+        },
+      });
+    }
 
     await auditService.logEvent({
       actorId: data.isAnonymous ? 'anonymous' : (data.reporterEmail ?? 'anonymous'),

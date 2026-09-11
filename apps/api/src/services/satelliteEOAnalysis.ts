@@ -10,7 +10,7 @@
  * - We NEVER fabricate a satellite capture to fill a week.
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import { cdseService, type CDSENearestResult } from './cdseService.js';
 import { logger } from '../utils/logger.js';
 
@@ -25,7 +25,8 @@ export type ChangeClassification =
   | 'NO_OBSERVABLE_CHANGE'
   | 'LOW_OBSERVABLE_CHANGE'
   | 'MODERATE_OBSERVABLE_CHANGE'
-  | 'HIGH_OBSERVABLE_CHANGE';
+  | 'HIGH_OBSERVABLE_CHANGE'
+  | 'INSUFFICIENT_DATA';
 
 export type Confidence = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -119,28 +120,64 @@ async function processCheckpoint(
 
   const scene = result.scene!;
 
-  // Upsert the observation
-  const upserted = await upsertObservation(prisma, projectId, scene, targetDate, 'NEAREST_TARGET');
-  let observationId: string | null = null;
+  // Upsert the observation, then look it up by its (now correctly
+  // project-scoped) natural key regardless of whether this call created it or
+  // a previous checkpoint already had — several weekly targets can legitimately
+  // resolve to the same nearest scene when coverage has a gap.
+  await upsertObservation(prisma, projectId, scene, targetDate, 'NEAREST_TARGET');
+  const obs = await prisma.satelliteObservation.findFirst({
+    where: { projectId, sceneId: scene.id },
+    select: { id: true },
+  });
+  const observationId = obs?.id ?? null;
 
-  if (upserted) {
-    // Find the just-created observation's ID
-    const obs = await prisma.satelliteObservation.findFirst({
-      where: { projectId, sceneId: scene.id },
-      select: { id: true },
-    });
-    observationId = obs?.id ?? null;
-  } else {
-    const obs = await prisma.satelliteObservation.findFirst({
-      where: { projectId, sceneId: scene.id },
-      select: { id: true },
-    });
-    observationId = obs?.id ?? null;
+  // Project timeline entry — deliberately the same table every other event
+  // source writes to (ProjectEvent), not a satellite-only feed. Without this,
+  // a satellite sync never appeared on GET /projects/:id/timeline at all: no
+  // code path in the app wrote ProjectEvent rows for satellite observations,
+  // so "unified timeline" only ever showed whatever the dev seed happened to
+  // insert by hand. Keyed by observationId so a re-sync upserts, not
+  // duplicates, and multiple checkpoints landing on the same scene write once.
+  if (observationId) {
+    await upsertSatelliteProjectEvent(prisma, projectId, observationId, scene);
   }
 
   const targetDifference = Math.round((scene.observationDate.getTime() - targetDate.getTime()) / (24 * 60 * 60 * 1000));
   await upsertCheckpoint(prisma, projectId, targetDate, observationId, windowStart, windowEnd, 'AVAILABLE', null, targetDifference);
   return { observationId, availability: 'AVAILABLE', reason: null };
+}
+
+/**
+ * Records a satellite observation on the project's unified timeline. The
+ * description states observation quality (cloud cover) only — never a claim
+ * about construction progress, which cloud-free imagery alone does not
+ * establish.
+ */
+async function upsertSatelliteProjectEvent(
+  prisma: PrismaClient,
+  projectId: string,
+  observationId: string,
+  scene: import('./cdseService.js').CDSEScene
+): Promise<void> {
+  const id = `sat-evt-${observationId}`;
+  const cloudPct = Math.round(scene.cloudCover);
+  await prisma.projectEvent.upsert({
+    where: { id },
+    update: {},
+    create: {
+      id,
+      projectId,
+      eventType: 'SATELLITE_OBSERVATION',
+      eventDate: scene.observationDate,
+      source: 'Copernicus Data Space Ecosystem',
+      sourceUrl: scene.sourceUrl,
+      dataset: scene.dataset,
+      description: `Sentinel-2 L2A satellite observation captured over the project area (cloud cover ${cloudPct}%).`,
+      evidenceUrls: scene.thumbnailUrl ? { thumbnailUrl: scene.thumbnailUrl } : undefined,
+      actor: scene.satellite,
+      confidence: cloudPct < 30 ? 'HIGH' : cloudPct < 60 ? 'MEDIUM' : 'LOW',
+    },
+  });
 }
 
 async function upsertObservation(
@@ -151,7 +188,13 @@ async function upsertObservation(
   selectionReason: string
 ): Promise<boolean> {
   const existing = await prisma.satelliteObservation.findUnique({
-    where: { sceneId_observationDate: { sceneId: scene.id, observationDate: scene.observationDate } },
+    where: {
+      projectId_sceneId_observationDate: {
+        projectId,
+        sceneId: scene.id,
+        observationDate: scene.observationDate,
+      },
+    },
   });
   if (existing) return false;
 
@@ -268,13 +311,19 @@ async function selectBaseline(prisma: PrismaClient, projectId: string, lat: numb
 
 // ── Change analysis ─────────────────────────────────────────────────────────
 
-function classifyChange(ndviBefore: number | null, ndviAfter: number | null, ndbiiBefore: number | null, ndbiiAfter: number | null): ChangeClassification {
-  const ndviChange = ndviAfter != null && ndviBefore != null
-    ? Math.abs(ndviAfter - ndviBefore)
-    : 0;
-  const ndbiiChange = ndbiiAfter != null && ndbiiBefore != null
-    ? Math.abs(ndbiiAfter - ndbiiBefore)
-    : 0;
+export function classifyChange(ndviBefore: number | null, ndviAfter: number | null, ndbiiBefore: number | null, ndbiiAfter: number | null): ChangeClassification {
+  const hasNdvi = ndviBefore != null && ndviAfter != null;
+  const hasNdbi = ndbiiBefore != null && ndbiiAfter != null;
+
+  // No pixel-derived index on either side of the pair means nothing was
+  // measured — never report that as "no change" (a real finding) instead of
+  // "no data" (an honest gap). NDVI/NDBI require the CDSE Sentinel Hub Process
+  // API, which needs OAuth credentials; catalog-only observations never have
+  // these fields set.
+  if (!hasNdvi && !hasNdbi) return 'INSUFFICIENT_DATA';
+
+  const ndviChange = hasNdvi ? Math.abs(ndviAfter! - ndviBefore!) : 0;
+  const ndbiiChange = hasNdbi ? Math.abs(ndbiiAfter! - ndbiiBefore!) : 0;
 
   // Scale NDVI/NDBI change (range -1 to 1) to a 0-50 score each
   const ndviScore = ndviChange * 50;
@@ -287,7 +336,13 @@ function classifyChange(ndviBefore: number | null, ndviAfter: number | null, ndb
   return 'HIGH_OBSERVABLE_CHANGE';
 }
 
-function computeConfidence(cloudCoverBefore: number, cloudCoverAfter: number, projectCoverage: number): Confidence {
+export function computeConfidence(
+  cloudCoverBefore: number,
+  cloudCoverAfter: number,
+  projectCoverage: number,
+  classification: ChangeClassification = 'NO_OBSERVABLE_CHANGE'
+): Confidence {
+  if (classification === 'INSUFFICIENT_DATA') return 'LOW';
   const avgCloud = (cloudCoverBefore + cloudCoverAfter) / 2;
   if (avgCloud < 30 && projectCoverage > 0.8) return 'HIGH';
   if (avgCloud < 60) return 'MEDIUM';
@@ -311,7 +366,7 @@ async function computePairwiseAnalysis(
     ? obsAfter.ndbi - obsBefore.ndbi
     : null;
 
-  const confidence = computeConfidence(obsBefore.cloudCover, obsAfter.cloudCover, obsBefore.projectCoverage);
+  const confidence = computeConfidence(obsBefore.cloudCover, obsAfter.cloudCover, obsBefore.projectCoverage, classification);
 
   await prisma.satelliteAnalysis.upsert({
     where: {
@@ -363,13 +418,16 @@ export function compareProgress(
   classification: ChangeClassification,
   confidence: Confidence
 ): ProgressComparisonResult {
-  const observableChange = classification !== 'NO_OBSERVABLE_CHANGE';
+  const observableChange = classification !== 'NO_OBSERVABLE_CHANGE' && classification !== 'INSUFFICIENT_DATA';
 
   let status: ProgressComparisonResult['status'];
   let evidence: string;
   let limitations = 'Comparison based on satellite-observable change only. Sub-10m features, underground work, and interior work are not visible. Cloud cover may have affected the observation.';
 
-  if (confidence === 'LOW') {
+  if (classification === 'INSUFFICIENT_DATA') {
+    status = 'INSUFFICIENT_DATA';
+    evidence = 'No NDVI/NDBI pixel data available for either observation — this project has catalog observations but no pixel-level analysis has run (requires CDSE credentials). Cannot compare change to reported progress.';
+  } else if (confidence === 'LOW') {
     status = 'INSUFFICIENT_DATA';
     evidence = `Satellite confidence is LOW (cloud cover high or project coverage insufficient) — cannot make a reliable comparison.`;
   } else if (!observableChange && reportedProgress <= 20) {
@@ -394,11 +452,12 @@ export function compareProgress(
 
 // ── Timeline builder ─────────────────────────────────────────────────────────
 
-export function computeDevelopmentScore(ndvi: number | null, ndbii: number | null): number {
-  if (ndvi == null && ndbii == null) return 0;
-  const n = (ndvi ?? 0 + 1) / 2; // 0→1
-  const b = (ndbii ?? 0 + 1) / 2; // 0→1
-  return Math.round((b * 100)); // NDBI gives built-up score
+export function computeDevelopmentScore(_ndvi: number | null, ndbii: number | null): number | null {
+  // No NDBI means no pixel-level analysis has run for this observation. Return
+  // null (an honest "not measured") rather than a numeric score of any kind.
+  if (ndbii == null) return null;
+  const b = (ndbii + 1) / 2; // rescale NDBI from [-1, 1] to [0, 1]
+  return Math.round(b * 100); // NDBI gives a 0-100 built-up score
 }
 
 export async function buildTimeline(prisma: PrismaClient, projectId: string): Promise<TimelineEntry[]> {
@@ -451,9 +510,14 @@ export async function syncProjectSatellite(
     return { status: 'NO_COORDINATES' };
   }
 
-  if (!cdseService.isConfigured()) {
-    return { status: 'NOT_CONFIGURED' };
-  }
+  // Catalog search (processCheckpoint -> cdseService.getNearestScene) is
+  // public and needs no CDSE credential — this used to bail out of the whole
+  // sync (checkpoints, observations, baseline selection) whenever
+  // CDSE_CLIENT_ID/SECRET were unset, even though none of that work actually
+  // requires them. Pixel-level metrics (NDVI/NDBI/BSI) genuinely do require
+  // OAuth and are handled honestly: classifyChange() reports
+  // INSUFFICIENT_DATA rather than a fabricated "no change" when those columns
+  // are unset (see cdsePixelProvider.ts for that path).
 
   const jobId = `sync-${projectId}-${Date.now()}`;
   logger.info(`[satellite-eo] Sync started: jobId=${jobId} projectId=${projectId}`);
@@ -510,6 +574,10 @@ export async function syncProjectSatellite(
 
     const existing = await prisma.satelliteAnalysis.findUnique({ where: { id: baselineKey } });
     if (!existing) {
+      const baselineClassification = classifyChange(
+        first.ndvi ?? null, last.ndvi ?? null,
+        first.ndbi ?? null, last.ndbi ?? null
+      );
       await prisma.satelliteAnalysis.upsert({
         where: { id: baselineKey },
         update: {},
@@ -522,11 +590,12 @@ export async function syncProjectSatellite(
           analysisDate: new Date(),
           baselineDate: first.observationDate,
           comparisonDate: last.observationDate,
-          changeClassification: classifyChange(
-            first.ndvi ?? null, last.ndvi ?? null,
-            first.ndbi ?? null, last.ndbi ?? null
-          ),
-          confidence: computeConfidence(first.cloudCover, last.cloudCover, first.projectCoverage),
+          changeClassification: baselineClassification,
+          // Same bug this file fixed once already in computePairwiseAnalysis:
+          // without passing the classification through, a MEDIUM/HIGH cloud-
+          // based confidence got attached to an INSUFFICIENT_DATA finding —
+          // confidence in a conclusion that was never reached.
+          confidence: computeConfidence(first.cloudCover, last.cloudCover, first.projectCoverage, baselineClassification),
           methodology: 'Baseline vs latest comparison. Compares earliest available observation to most recent. Sentinel-2 L2A, 10m resolution.',
           evidence: {
             sceneBaseline: first.sceneId,

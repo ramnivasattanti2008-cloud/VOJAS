@@ -75,7 +75,15 @@ router.get(
       const project = await getProjectOrThrow(projectId);
 
       const hasCoords = project.latitude != null && project.longitude != null;
-      const configured = cdseService.isConfigured();
+      // CDSE catalog search (dates, cloud cover, product ids, quicklook
+      // imagery) is public and needs no credential. Only pixel-level
+      // processing -- true-colour rendering cropped to the AOI, and NDVI /
+      // NDBI / BSI computed from real bands -- requires CDSE_CLIENT_ID /
+      // CDSE_CLIENT_SECRET. This route used to report AUTHENTICATION_REQUIRED
+      // and hide all stored observations whenever those credentials were
+      // absent, even though the catalog half of the pipeline works without
+      // them. providerStatus below tells the truth about which tier is live.
+      const pixelProcessingConfigured = cdseService.isConfigured();
 
       if (!hasCoords) {
         return success(res, {
@@ -86,20 +94,7 @@ router.get(
           observationCount: 0,
           window: null,
           message: 'Project has no latitude/longitude — cannot determine where to search for satellite imagery.',
-          providerStatus: configured ? 'CONFIGURED' : 'NOT_CONFIGURED',
-        });
-      }
-
-      if (!configured) {
-        return success(res, {
-          availability: 'NO_USABLE_OBSERVATION',
-          reason: 'AUTHENTICATION_REQUIRED',
-          baseline: null,
-          latest: null,
-          observationCount: 0,
-          window: null,
-          message: 'No satellite provider credentials configured. Set CDSE_CLIENT_ID and CDSE_CLIENT_SECRET to enable real Sentinel-2 imagery.',
-          providerStatus: 'NOT_CONFIGURED',
+          providerStatus: pixelProcessingConfigured ? 'CONFIGURED' : 'CATALOG_ONLY',
         });
       }
 
@@ -157,7 +152,7 @@ router.get(
         reliabilityState,
         processingStatus: runningJob ? `PROCESSING:${runningJob.status}` : observationCount > 0 ? 'IDLE' : 'PENDING',
         jobId: runningJob?.jobId ?? null,
-        providerStatus: 'CONFIGURED',
+        providerStatus: pixelProcessingConfigured ? 'CONFIGURED' : 'CATALOG_ONLY',
         lastSyncAt: latestJob?.completedAt?.toISOString() ?? null,
       });
     } catch (err) {
@@ -291,9 +286,11 @@ router.post(
       if (!project.latitude || !project.longitude) {
         return success(res, { status: 'NO_COORDINATES', message: 'Project has no coordinates' });
       }
-      if (!cdseService.isConfigured()) {
-        return success(res, { status: 'NOT_CONFIGURED', message: 'Satellite provider not configured' });
-      }
+      // Sync runs the CDSE catalog search (public, no credential needed) to
+      // populate weekly checkpoints and observations. It used to require
+      // CDSE_CLIENT_ID/SECRET before enqueueing at all, which blocked catalog
+      // ingestion for no reason — those credentials only gate the separate
+      // pixel-processing path (NDVI/NDBI/true-colour rendering).
 
       const { jobId, status } = satelliteJobQueue.enqueue(projectId);
       return success(res, { status, jobId });
