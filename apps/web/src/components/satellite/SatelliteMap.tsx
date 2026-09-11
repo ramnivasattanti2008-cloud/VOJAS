@@ -35,6 +35,24 @@ const LAYERS: MapLayer[] = [
   { id: 'earth-obs', label: 'Earth Observation', type: 'overlay' },
 ];
 
+/**
+ * A GeoJSON Polygon approximating a circle of `radiusMeters` around a point —
+ * used only for the derived "satellite observation area" overlay, never for
+ * an official project boundary.
+ */
+function circlePolygon(lat: number, lng: number, radiusMeters: number, points = 48) {
+  const earthRadius = 6_371_000;
+  const latRad = (lat * Math.PI) / 180;
+  const coords: [number, number][] = [];
+  for (let i = 0; i <= points; i++) {
+    const angle = (i / points) * 2 * Math.PI;
+    const dLat = (radiusMeters * Math.cos(angle)) / earthRadius;
+    const dLng = (radiusMeters * Math.sin(angle)) / (earthRadius * Math.cos(latRad));
+    coords.push([lng + (dLng * 180) / Math.PI, lat + (dLat * 180) / Math.PI]);
+  }
+  return { type: 'Polygon' as const, coordinates: [coords] };
+}
+
 interface ProjectMapProps {
   lat: number;
   lng: number;
@@ -113,6 +131,32 @@ export function ProjectMap({ lat, lng, observation, projectName, className }: Pr
           if (destroyed) return;
           setLoaded(true);
 
+          // Satellite observation area — a small circle derived from the
+          // project's point coordinate, NOT an official project boundary.
+          // This is the same 1000m search radius cdseService.ts uses to query
+          // CDSE. Dashed styling and the label below are deliberate: nothing
+          // here should read as an authoritative site boundary.
+          try {
+            map.addSource('observation-area', {
+              type: 'geojson',
+              data: { type: 'Feature', geometry: circlePolygon(lat, lng, 1000), properties: {} },
+            });
+            map.addLayer({
+              id: 'observation-area-fill',
+              type: 'fill',
+              source: 'observation-area',
+              paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.06 },
+            });
+            map.addLayer({
+              id: 'observation-area-line',
+              type: 'line',
+              source: 'observation-area',
+              paint: { 'line-color': '#f59e0b', 'line-width': 1.5, 'line-dasharray': [2, 2] },
+            });
+          } catch {
+            // ignore
+          }
+
           // Add project marker
           const markerEl = document.createElement('div');
           markerEl.className = 'vojas-map-marker';
@@ -133,7 +177,11 @@ export function ProjectMap({ lat, lng, observation, projectName, className }: Pr
             )
             .addTo(map);
 
-          // Observation footprint
+          // Sentinel-2 tile footprint — the full satellite scene's own
+          // geometry as CDSE reports it (~100km across), NOT the project's
+          // observation area. Kept distinct from the small circle above so a
+          // viewer never mistakes "the tile this pixel came from" for "the
+          // site being watched".
           if (observation?.bbox) {
             const bbox = observation.bbox as { sw: [number, number]; ne: [number, number] } | null;
             if (bbox?.sw && bbox?.ne) {
@@ -293,11 +341,17 @@ export function ProjectMap({ lat, lng, observation, projectName, className }: Pr
         </div>
       )}
 
-      {/* Coordinates overlay */}
+      {/* Coordinates + derived-AOI legend overlay */}
       {loaded && (
-        <div className="absolute bottom-3 left-3">
+        <div className="absolute bottom-3 left-3 space-y-1">
           <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm">
             <span className="text-xs font-mono text-slate-600">{lat.toFixed(5)}°N, {lng.toFixed(5)}°E</span>
+          </div>
+          <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg px-2.5 py-1 shadow-sm flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-dashed border-amber-500" aria-hidden />
+            <span className="text-[10px] text-slate-500">
+              Dashed circle: satellite observation area, derived from the project coordinate — not an official boundary
+            </span>
           </div>
         </div>
       )}

@@ -159,7 +159,12 @@ function TimeMachinePageInner({ projectId }: { projectId: string }) {
     );
   }
 
-  const notConfigured = status?.providerStatus === 'NOT_CONFIGURED';
+  // CATALOG_ONLY means CDSE credentials aren't set, but catalog search (dates,
+  // cloud cover, product ids, quicklook imagery) is public and works
+  // regardless. This used to be treated as a hard blocking condition that hid
+  // real, already-ingested observations behind a "not configured" banner —
+  // rendered as an informational badge further down instead.
+  const catalogOnly = status?.providerStatus === 'CATALOG_ONLY';
   const noCoords = status?.reason === 'NO_COORDINATES';
   const processing = status?.processingStatus === 'PROCESSING';
   const hasData = (status?.observationCount ?? 0) > 0;
@@ -167,15 +172,13 @@ function TimeMachinePageInner({ projectId }: { projectId: string }) {
   const lng = project.longitude ?? 0;
 
   // ── Error states ───────────────────────────────────────────────────────────────
-  if (notConfigured || noCoords) {
+  if (noCoords) {
     return (
       <div className="space-y-4">
         <StatusBanner
-          icon={notConfigured ? <AlertCircle className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
-          title={notConfigured ? 'Satellite provider not configured' : 'No project coordinates'}
-          description={notConfigured
-            ? 'Set CDSE_CLIENT_ID and CDSE_CLIENT_SECRET in the API environment to enable real Sentinel-2 imagery.'
-            : 'This project has no latitude/longitude — satellite search is not possible.'}
+          icon={<MapPin className="h-5 w-5" />}
+          title="No project coordinates"
+          description="This project has no latitude/longitude — satellite search is not possible."
           variant="warning"
         />
         <div className="flex justify-end">
@@ -215,6 +218,14 @@ function TimeMachinePageInner({ projectId }: { projectId: string }) {
               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               Syncing…
             </Badge>
+          )}
+          {catalogOnly && (
+            <span title="Catalog search works without CDSE credentials. NDVI, true-colour AOI rendering and change metrics need CDSE_CLIENT_ID/SECRET set in the API environment.">
+              <Badge variant="neutral">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Catalog only
+              </Badge>
+            </span>
           )}
           <Button
             variant="secondary"

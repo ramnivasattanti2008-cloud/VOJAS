@@ -6,6 +6,31 @@ Stack: pnpm 9.12 monorepo · Next.js 15 + React 19 (apps/web) · Express (apps/a
 
 legacy/ is the superseded v1 app. It is not built, deployed, or linted. Don't fix, refactor, or lint it. frontend/ is a leftover v1 directory with no package.json — same rule.
 
+## 🤝 AI Collaboration Protocol: Antigravity & Claude Rapport
+
+This repository is actively co-developed by **Claude** and **Antigravity (Gemini)**. Both agents must adhere to strict domain boundaries to prevent collisions:
+
+### 1. Domain Separation
+
+- **🎨 Antigravity's Domain (UI, Maps & AI Agent Lead)**:
+  - **UI & UX (`apps/web`)**: High-fidelity frontend design, responsive layouts, glassmorphism, officer/citizen dashboards.
+  - **Map Features**: Interactive GIS maps, satellite observation layers, Satellite Time Machine, temporal comparison slider, change detection visualizations, Mapbox/GIS toggles, location inspectors.
+  - **AI Agent Features**: Autonomous AI investigative agent interfaces, AI Situation Briefs, AI Risk Explainer dialogs/modals, conversational civic copilot, and automated anomaly summarization.
+  - **Rule for Claude**: Do not edit or overwrite UI layout, map components, or AI agent interfaces in `apps/web`.
+- **⚙️ Claude's Domain (Build, Deployment, Backend & Data Lead)**:
+  - **Build & Deployment**: All monorepo builds (`pnpm build`), Vercel & Render deployment troubleshooting, CI/CD workflows, Dockerfiles, and GitHub push/release pipeline.
+  - **Backend & APIs (`apps/api`)**: Express routes, auth, middleware, controller logic.
+  - **Domain Engines (`packages/domain`)**: Investigation service, statutory referrals (ACB/CVC/CBI), Evidence service, Risk/Anomaly engines.
+  - **Database & Schema (`packages/db`)**: Prisma schema, migrations, seeds, queries.
+  - **Testing & Ingestion**: Backend Vitest test suites, data ingestion scripts (`scripts/ingest/`).
+  - **Rule for Antigravity**: Antigravity will not modify backend domain engines, database migrations, or build/deployment infrastructure configs.
+
+### 2. Live Synchronization & Hand-off
+
+- Always check `COLLAB.md` for live progress, locked directories, and handover messages.
+- Always commit work atomically (`git commit -m "feat/fix: ..."`) after testing so the other agent has a clean working tree.
+- Never force push or overwrite each other's in-progress changes.
+
 ## The rule that matters most: never fabricate civic data
 
 VOJAS is an anti-corruption tool. A plausible-looking invented number is worse than a blank field, because a citizen or auditor cannot tell the difference. This codebase previously shipped fabricated data in production paths; all of it was deliberately removed. Do not reintroduce it in any form.

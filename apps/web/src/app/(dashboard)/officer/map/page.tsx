@@ -1,27 +1,38 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import Link from 'next/link';
-import {
-  Shield,
-  Map,
-  Layers,
-  Filter,
-  X,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  MapPin,
-  Satellite,
-  FileText,
-  Users,
-  CheckCircle2,
-  ChevronDown,
-} from 'lucide-react';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { useOfficerMapLayers } from '@/hooks/useOfficer';
+import {
+    AlertTriangle,
+    Eye,
+    EyeOff,
+    FileText,
+    Filter,
+    Layers,
+    Map,
+    MapPin,
+    Satellite,
+    Shield,
+    Users,
+    X
+} from 'lucide-react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+
+const InteractiveGisMap = dynamic(
+  () => import('@/components/map/InteractiveGisMap').then((m) => m.InteractiveGisMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] rounded-2xl bg-slate-950 flex items-center justify-center text-sm text-slate-400 font-mono">
+        INITIALIZING TACTICAL GIS MAP ENGINE…
+      </div>
+    ),
+  }
+);
 
 // Layer types
 const LAYER_TYPES = [
@@ -98,6 +109,69 @@ export default function OfficerMapPage() {
     satelliteEvidence: data?.satelliteEvidence?.length ?? 0,
     fieldInspections: data?.fieldInspections?.length ?? 0,
   }), [data]);
+
+  const mappedProjects = useMemo(() => {
+    return (data?.projects ?? [])
+      .filter((p: any) => p.latitude != null && p.longitude != null && !isNaN(p.latitude) && !isNaN(p.longitude))
+      .map((p: any) => ({
+        id: p.id,
+        title: p.name || p.title || 'Untitled Project',
+        latitude: Number(p.latitude),
+        longitude: Number(p.longitude),
+        district: p.district,
+        state: p.state,
+        constituency: p.constituency,
+        sanctionedAmount: p.sanctionedAmount,
+        expenditure: p.expenditure,
+        status: p.status,
+        contractorName: p.contractorName,
+      }));
+  }, [data?.projects]);
+
+  const mappedRisks = useMemo(() => {
+    return (data?.riskFindings ?? [])
+      .filter((f: any) => f.latitude != null && f.longitude != null && !isNaN(f.latitude) && !isNaN(f.longitude))
+      .map((f: any) => ({
+        id: f.id,
+        title: f.title || 'Risk Anomaly',
+        latitude: Number(f.latitude),
+        longitude: Number(f.longitude),
+        severity: (f.severity || 'HIGH') as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+        district: f.district,
+        description: f.description,
+        projectId: f.projectId,
+      }));
+  }, [data?.riskFindings]);
+
+  const mappedCitizen = useMemo(() => {
+    return (data?.citizenSignals ?? [])
+      .filter((cs: any) => cs.latitude != null && cs.longitude != null && !isNaN(cs.latitude) && !isNaN(cs.longitude))
+      .map((cs: any) => ({
+        id: cs.id,
+        title: cs.title || 'Citizen Grievance',
+        latitude: Number(cs.latitude),
+        longitude: Number(cs.longitude),
+        status: cs.status || 'REPORTED',
+        district: cs.district,
+        description: cs.description,
+      }));
+  }, [data?.citizenSignals]);
+
+  const mappedSatellite = useMemo(() => {
+    return (data?.satelliteEvidence ?? [])
+      .filter((se: any) => se.latitude != null && se.longitude != null && !isNaN(se.latitude) && !isNaN(se.longitude))
+      .map((se: any) => ({
+        id: se.id,
+        title: se.title || 'Satellite Observation',
+        latitude: Number(se.latitude),
+        longitude: Number(se.longitude),
+        observationDate: se.observationDate,
+        ndvi: se.ndvi,
+        ndbi: se.ndbi,
+        changeScore: se.changeScore,
+        district: se.district,
+      }));
+  }, [data?.satelliteEvidence]);
 
   const totalVisible = Object.entries(activeLayers).filter(([key, active]) => active).length;
 
@@ -198,137 +272,14 @@ export default function OfficerMapPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Map */}
         <div className="lg:col-span-3">
-          <Card className="h-[600px]">
-            <CardBody className="p-0 relative h-full">
-              {isLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <Map className="h-12 w-12 text-slate-300 animate-pulse mx-auto mb-2" />
-                    <p className="text-sm text-slate-400">Loading map data...</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="absolute inset-0 bg-slate-100 flex items-center justify-center">
-                  {/* India Map placeholder with entity markers */}
-                  <div className="relative w-full h-full">
-                    <svg
-                      viewBox="0 0 1000 850"
-                      className="w-full h-full opacity-30"
-                      style={{ maxHeight: '600px' }}
-                    >
-                      <rect x="0" y="0" width="1000" height="850" fill="#e2e8f0" />
-                      {/* Simplified India outline */}
-                      <path
-                        d="M150,300 Q200,250 300,280 Q400,200 500,250 Q600,180 700,220 Q800,280 850,350 Q800,450 750,500 Q650,550 550,520 Q450,580 350,550 Q250,500 200,420 Q150,350 150,300 Z"
-                        fill="#cbd5e1"
-                        stroke="#94a3b8"
-                        strokeWidth="2"
-                      />
-                    </svg>
-
-                    {/* Entity markers would be positioned here based on lat/lng */}
-                    {/* For demo, show a few sample markers */}
-                    {activeLayers.projects && data?.projects?.slice(0, 10).map((p, i) => (
-                      <div
-                        key={`project-${p.id}`}
-                        className="absolute w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform"
-                        style={{
-                          left: `${20 + (i % 5) * 15}%`,
-                          top: `${25 + Math.floor(i / 5) * 20}%`,
-                        }}
-                        onClick={() => setSelectedEntity({ ...p, type: 'project' })}
-                        title={p.name}
-                      />
-                    ))}
-
-                    {activeLayers.riskFindings && data?.riskFindings?.slice(0, 5).map((f, i) => (
-                      <div
-                        key={`finding-${f.id}`}
-                        className="absolute w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform"
-                        style={{
-                          left: `${35 + (i % 4) * 12}%`,
-                          top: `${35 + Math.floor(i / 4) * 18}%`,
-                        }}
-                        onClick={() => setSelectedEntity({ ...f, type: 'riskFinding' })}
-                        title={f.title}
-                      />
-                    ))}
-
-                    {activeLayers.cases && data?.cases?.slice(0, 5).map((c, i) => (
-                      <div
-                        key={`case-${c.id}`}
-                        className="absolute w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow-lg cursor-pointer hover:scale-125 transition-transform"
-                        style={{
-                          left: `${55 + (i % 4) * 10}%`,
-                          top: `${40 + Math.floor(i / 4) * 15}%`,
-                        }}
-                        onClick={() => setSelectedEntity({ ...c, type: 'case' })}
-                        title={c.title}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Map Legend */}
-                  <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 border border-slate-200 shadow-sm">
-                    <p className="text-xs font-medium text-slate-600 mb-2">Legend</p>
-                    <div className="space-y-1.5">
-                      {LAYER_TYPES.filter(({ key }) => activeLayers[key]).map(({ key, label, color }) => (
-                        <div key={key} className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${key === 'projects' ? 'bg-blue-500' : key === 'riskFindings' ? 'bg-red-500' : key === 'cases' ? 'bg-purple-500' : 'bg-vojas-500'}`} />
-                          <span className="text-xs text-slate-600">{label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Selected Entity Panel */}
-              {selectedEntity && (
-                <div className="absolute top-4 right-4 w-80 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      {selectedEntity.type === 'project' ? 'Project' : selectedEntity.type === 'riskFinding' ? 'Risk Finding' : 'Case'}
-                    </h3>
-                    <button
-                      onClick={() => setSelectedEntity(null)}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="px-4 py-3 space-y-2">
-                    <p className="text-sm font-medium text-slate-700">
-                      {selectedEntity.name || selectedEntity.title}
-                    </p>
-                    {(selectedEntity.sector || selectedEntity.severity || selectedEntity.priority) && (
-                      <div className="flex items-center gap-2">
-                        {selectedEntity.sector && <Badge variant="neutral">{selectedEntity.sector}</Badge>}
-                        {selectedEntity.severity && (
-                          <Badge variant={selectedEntity.severity === 'CRITICAL' || selectedEntity.severity === 'HIGH' ? 'danger' : 'warning'}>
-                            {selectedEntity.severity}
-                          </Badge>
-                        )}
-                        {selectedEntity.priority && (
-                          <Badge variant={selectedEntity.priority === 'CRITICAL' || selectedEntity.priority === 'HIGH' ? 'danger' : 'warning'}>
-                            {selectedEntity.priority}
-                          </Badge>
-                        )}
-                        {selectedEntity.status && <Badge variant="info">{selectedEntity.status}</Badge>}
-                      </div>
-                    )}
-                    <div className="pt-2">
-                      <Link href={getEntityHref(selectedEntity, selectedEntity.type === 'project' ? 'projects' : selectedEntity.type === 'riskFinding' ? 'riskFindings' : 'cases')}>
-                        <Button variant="primary" size="sm" className="w-full">
-                          Open {selectedEntity.type === 'project' ? 'Project' : 'Case'}
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardBody>
-          </Card>
+          <InteractiveGisMap
+            projects={mappedProjects}
+            riskFindings={mappedRisks}
+            citizenSignals={mappedCitizen}
+            satelliteObservations={mappedSatellite}
+            heightClass="h-[640px]"
+            className="rounded-2xl"
+          />
         </div>
 
         {/* Entity List Sidebar */}

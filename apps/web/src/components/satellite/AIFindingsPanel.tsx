@@ -11,6 +11,7 @@ interface AIFindingsPanelProps {
   analyses: SatelliteAnalysis[];
   comparison?: {
     status: string;
+    changeClassification: string;
     reportedProgress: number;
     evidence: string;
     limitations: string;
@@ -22,6 +23,7 @@ const CHANGE_LABELS: Record<string, string> = {
   LOW_OBSERVABLE_CHANGE: 'Low Observable Change',
   MODERATE_OBSERVABLE_CHANGE: 'Moderate Observable Change',
   HIGH_OBSERVABLE_CHANGE: 'High Observable Change',
+  INSUFFICIENT_DATA: 'Not Measured (No Pixel Data)',
 };
 
 const STATUS_LABELS: Record<string, { icon: typeof CheckCircle2; label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {
@@ -102,7 +104,11 @@ export function AIFindingsPanel({ analyses, comparison }: AIFindingsPanelProps) 
                 <div className="flex-1">
                   <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">Observable Change</div>
                   <div className="text-base font-bold text-slate-800">
-                    {CHANGE_LABELS[comparison.status] ?? 'Insufficient Data'}
+                    {/* Was looking up comparison.status (a CONSISTENT/INCONCLUSIVE/etc.
+                        value) against a map keyed by changeClassification, so this
+                        always missed and silently showed "Insufficient Data" no
+                        matter what the actual observable change was. */}
+                    {CHANGE_LABELS[comparison.changeClassification] ?? comparison.changeClassification}
                   </div>
                 </div>
               </div>

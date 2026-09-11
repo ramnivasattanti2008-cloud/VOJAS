@@ -11,6 +11,7 @@ const CHANGE_LABELS: Record<string, string> = {
   LOW_OBSERVABLE_CHANGE: 'Low observable change',
   MODERATE_OBSERVABLE_CHANGE: 'Moderate observable change',
   HIGH_OBSERVABLE_CHANGE: 'High observable change',
+  INSUFFICIENT_DATA: 'Not measured (no pixel data)',
 };
 
 const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle; label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {

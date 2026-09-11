@@ -71,30 +71,18 @@ export function SatelliteTab({ projectId, lat, lng, projectName }: SatelliteTabP
     );
   }
 
-  const notConfigured = status?.providerStatus === 'NOT_CONFIGURED';
+  // CATALOG_ONLY means CDSE credentials aren't set, but catalog search
+  // (dates, cloud cover, product ids, quicklook imagery) is public and works
+  // regardless — this used to be an early-return blocking banner that hid
+  // real, already-ingested observations. It's informational only now (shown
+  // inline in the status bar below); only pixel-level analysis (NDVI,
+  // true-colour AOI rendering) is actually unavailable in this state, and the
+  // panels that need those specific fields (EvidenceChain, AIFindingsPanel)
+  // already degrade honestly when they're null.
+  const catalogOnly = status?.providerStatus === 'CATALOG_ONLY';
   const noCoords = status?.reason === 'NO_COORDINATES';
   const processing = status?.processingStatus === 'PROCESSING';
   const hasData = (status?.observationCount ?? 0) > 0;
-
-  // State: not configured
-  if (notConfigured) {
-    return (
-      <div className="space-y-6">
-        <StatusBanner
-          icon={<AlertCircle className="h-5 w-5" />}
-          title="Satellite provider not configured"
-          description="Set CDSE_CLIENT_ID and CDSE_CLIENT_SECRET in the API environment to enable real Sentinel-2 imagery."
-          variant="warning"
-        />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <ProjectMap lat={lat} lng={lng} projectName={projectName} className="h-64 rounded-xl" />
-          </div>
-          <EvidenceChain hasBaseline={false} hasLatest={false} analysisCount={0} />
-        </div>
-      </div>
-    );
-  }
 
   // State: no coordinates
   if (noCoords) {
@@ -169,6 +157,14 @@ export function SatelliteTab({ projectId, lat, lng, projectName }: SatelliteTabP
               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
               Syncing…
             </Badge>
+          )}
+          {catalogOnly && (
+            <span title="Catalog search (dates, cloud cover, imagery) works without CDSE credentials. NDVI, true-colour AOI rendering and change metrics need CDSE_CLIENT_ID/SECRET set in the API environment.">
+              <Badge variant="neutral">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Catalog only — pixel analysis unavailable
+              </Badge>
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2">
