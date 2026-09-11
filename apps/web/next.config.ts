@@ -48,3 +48,5 @@ export default withSentryConfig(nextConfig, {
   // Disable Sentry's own telemetry of the build process.
   telemetry: false,
 });
+
+// deploy trigger
