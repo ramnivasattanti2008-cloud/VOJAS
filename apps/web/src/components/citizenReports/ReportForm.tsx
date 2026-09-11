@@ -6,33 +6,23 @@ import { Input } from '@/components/ui/Input';
 import { useSubmitReport } from '@/hooks/useCitizenReports';
 import { usePublicProject } from '@/hooks/usePublicProjects';
 import {
-    PRIVACY_LABELS,
-    type ReportPrivacyLevel
+  PRIVACY_LABELS,
+  type ReportPrivacyLevel
 } from '@vojas/api-client';
 import { AlertCircle, Building2, Calendar, CheckCircle, Info, MapPin, Shield } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
 const CATEGORIES = [
-  { value: 'PROJECT_NOT_STARTED', label: 'Project Not Started', icon: '🏗️' },
-  { value: 'PROJECT_DELAY', label: 'Project Delay', icon: '⏰' },
-  { value: 'WORK_QUALITY', label: 'Work Quality Issue', icon: '🔧' },
-  { value: 'PROJECT_INCOMPLETE', label: 'Project Incomplete', icon: '📋' },
-  { value: 'PUBLIC_SAFETY', label: 'Public Safety Concern', icon: '⚠️' },
-  { value: 'ENVIRONMENTAL_CONCERN', label: 'Environmental Concern', icon: '🌿' },
-  { value: 'FINANCIAL_CONCERN', label: 'Financial Concern', icon: '💰' },
-  { value: 'DOCUMENT_CONCERN', label: 'Document Concern', icon: '📄' },
-  { value: 'CONTRACTOR_CONCERN', label: 'Contractor Concern', icon: '👷' },
-  { value: 'OTHER', label: 'Other', icon: '❓' },
-  { value: 'CONSTRUCTION_QUALITY', label: 'Work Quality Issue', icon: '🔧' },
-  { value: 'DELAYED_WORK', label: 'Project Delay', icon: '⏰' },
   { value: 'ABANDONED_WORK', label: 'Project Not Started / Abandoned', icon: '🏗️' },
-  { value: 'PROGRESS_MISMATCH', label: 'Project Incomplete / Progress Mismatch', icon: '📋' },
-  { value: 'SAFETY_HAZARD', label: 'Public Safety Concern', icon: '⚠️' },
-  { value: 'ENVIRONMENTAL_VIOLATION', label: 'Environmental Concern', icon: '🌿' },
-  { value: 'FINANCIAL_IRREGULARITY', label: 'Financial Concern / Corruption', icon: '💰' },
-  { value: 'FAKE_DOCUMENTS', label: 'Document Concern', icon: '📄' },
-  { value: 'VENDOR_MISCONDUCT', label: 'Contractor Misconduct', icon: '👷' },
+  { value: 'DELAYED_WORK', label: 'Project Delay / Incomplete', icon: '⏰' },
+  { value: 'CONSTRUCTION_QUALITY', label: 'Substandard Construction / Quality Issue', icon: '🔧' },
+  { value: 'PROGRESS_MISMATCH', label: 'Progress Mismatch / False Completion', icon: '📋' },
+  { value: 'SAFETY_HAZARD', label: 'Public Safety Hazard', icon: '⚠️' },
+  { value: 'ENVIRONMENTAL_VIOLATION', label: 'Environmental Violation', icon: '🌿' },
+  { value: 'FINANCIAL_IRREGULARITY', label: 'Financial Irregularity / Corruption', icon: '💰' },
+  { value: 'FAKE_DOCUMENTS', label: 'Fake or Forged Documents', icon: '📄' },
+  { value: 'VENDOR_MISCONDUCT', label: 'Contractor / Vendor Misconduct', icon: '👷' },
   { value: 'LOCATION_MISMATCH', label: 'Ghost Project / Location Mismatch', icon: '📍' },
   { value: 'OTHER', label: 'Other Observation', icon: '❓' },
 ];
@@ -143,11 +133,11 @@ export function ReportForm() {
         category: formData.category,
         privacyLevel: formData.privacyLevel,
         locationDesc: formData.locationDesc.trim() || undefined,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
-        locationAccuracyM: formData.locationAccuracyM ? parseFloat(formData.locationAccuracyM) : undefined,
+        latitude: (!formData.unknownLocation && formData.latitude) ? parseFloat(formData.latitude) : undefined,
+        longitude: (!formData.unknownLocation && formData.longitude) ? parseFloat(formData.longitude) : undefined,
+        locationAccuracyM: (!formData.unknownLocation && formData.locationAccuracyM) ? parseFloat(formData.locationAccuracyM) : undefined,
         incidentDate: formData.incidentDate ? new Date(formData.incidentDate).toISOString() : undefined,
-        projectId: formData.projectId.trim() || undefined,
+        projectId: (!formData.unknownProject && formData.projectId.trim()) ? formData.projectId.trim() : undefined,
         reporterName: formData.isAnonymous ? undefined : formData.reporterName.trim() || undefined,
         reporterEmail: formData.isAnonymous ? undefined : formData.reporterEmail.trim() || undefined,
         reporterPhone: formData.isAnonymous ? undefined : formData.reporterPhone.trim() || undefined,
@@ -347,7 +337,14 @@ export function ReportForm() {
                 <input
                   type="checkbox"
                   checked={formData.unknownLocation}
-                  onChange={(e) => handleChange('unknownLocation', e.target.checked)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData((prev) => ({
+                      ...prev,
+                      unknownLocation: checked,
+                      ...(checked ? { latitude: '', longitude: '', locationAccuracyM: '', useLocation: false } : {}),
+                    }));
+                  }}
                   className="rounded"
                 />
                 I don&apos;t know the exact location
@@ -437,7 +434,14 @@ export function ReportForm() {
               <input
                 type="checkbox"
                 checked={formData.unknownProject}
-                onChange={(e) => handleChange('unknownProject', e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormData((prev) => ({
+                    ...prev,
+                    unknownProject: checked,
+                    ...(checked ? { projectId: '' } : {}),
+                  }));
+                }}
                 className="rounded"
               />
               I don&apos;t know which project this relates to
