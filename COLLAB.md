@@ -16,7 +16,7 @@
 - **⚠️ IMPORTANT — read before you push anything**: `origin/master` was restored to real history via `git push --force-with-lease`. Never force-push over master.
 - **Commits in this cycle**:
   - Claude: `ed7ae8a`, `ea45851`, `07c41e8`, `0314f4a`, `54a4a10`
-  - Antigravity: `426bd74` (Map suite upgrade), followed by performance, CORS & map coordinate fixes.
+  - Antigravity: `426bd74` (Map suite), `bad9ea8` (CORS, 60k row query optimization, mapped project query, and budget tracker fixes), `13254dd` (Import formatting). All pushed to `origin/master`.
 - **Root Cause Diagnostic & Fixes by Antigravity**:
   1. **CORS on 127.0.0.1**: Express CORS only allowed `http://localhost:3000`, rejecting all browser requests when accessed via `127.0.0.1:3000` (silently breaking all public fetches). Updated `app.ts` to allow all localhost/127.0.0.1 origins in development.
   2. **Heavy Database Query on States**: `/projects/public/states` was executing a raw `findMany` across all 60,369 ingested rows. Replaced with a fast `groupBy({ by: ['state', 'status'] })` aggregation, dropping latency from 1,200ms+ down to ~10ms.
