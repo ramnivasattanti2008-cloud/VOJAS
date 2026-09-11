@@ -106,7 +106,16 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
-      const result = await llmDetectionService.auditProject(projectId);
+      const geminiApiKey =
+        (req.body?.geminiApiKey as string) ||
+        (req.headers['x-gemini-key'] as string) ||
+        (typeof req.query?.geminiApiKey === 'string' ? req.query.geminiApiKey : undefined);
+      const openaiApiKey =
+        (req.body?.openaiApiKey as string) ||
+        (req.headers['x-openai-key'] as string) ||
+        (typeof req.query?.openaiApiKey === 'string' ? req.query.openaiApiKey : undefined);
+
+      const result = await llmDetectionService.auditProject(projectId, geminiApiKey, openaiApiKey);
 
       // Persist or update the risk score and primary driver in DB
       await prisma.projectRisk.upsert({
@@ -158,7 +167,14 @@ router.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
-      const result = await llmDetectionService.auditProject(projectId);
+      const geminiApiKey =
+        (req.headers['x-gemini-key'] as string) ||
+        (typeof req.query?.geminiApiKey === 'string' ? req.query.geminiApiKey : undefined);
+      const openaiApiKey =
+        (req.headers['x-openai-key'] as string) ||
+        (typeof req.query?.openaiApiKey === 'string' ? req.query.openaiApiKey : undefined);
+
+      const result = await llmDetectionService.auditProject(projectId, geminiApiKey, openaiApiKey);
       success(res, result);
     } catch (err) {
       next(err);

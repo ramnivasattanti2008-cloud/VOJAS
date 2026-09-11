@@ -531,7 +531,16 @@ router.get('/:id/reports', async (req: Request, res: Response, next: NextFunctio
 router.post('/:id/ai-audit', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const audit = await llmDetectionService.auditProject(id);
+    const geminiApiKey =
+      (req.body?.geminiApiKey as string) ||
+      (req.headers['x-gemini-key'] as string) ||
+      (typeof req.query?.geminiApiKey === 'string' ? req.query.geminiApiKey : undefined);
+    const openaiApiKey =
+      (req.body?.openaiApiKey as string) ||
+      (req.headers['x-openai-key'] as string) ||
+      (typeof req.query?.openaiApiKey === 'string' ? req.query.openaiApiKey : undefined);
+
+    const audit = await llmDetectionService.auditProject(id, geminiApiKey, openaiApiKey);
 
     // Update risk record in DB with latest live forensic data
     await prisma.projectRisk.upsert({
@@ -578,7 +587,14 @@ router.post('/:id/ai-audit', async (req: Request, res: Response, next: NextFunct
 router.get('/:id/ai-audit', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const audit = await llmDetectionService.auditProject(id);
+    const geminiApiKey =
+      (req.headers['x-gemini-key'] as string) ||
+      (typeof req.query?.geminiApiKey === 'string' ? req.query.geminiApiKey : undefined);
+    const openaiApiKey =
+      (req.headers['x-openai-key'] as string) ||
+      (typeof req.query?.openaiApiKey === 'string' ? req.query.openaiApiKey : undefined);
+
+    const audit = await llmDetectionService.auditProject(id, geminiApiKey, openaiApiKey);
     success(res, audit);
   } catch (err) {
     next(err);

@@ -80,7 +80,11 @@ export class LLMDetectionService {
   /**
    * Run full forensic LLM audit on a project by ID
    */
-  async auditProject(projectId: string): Promise<ForensicAuditResult> {
+  async auditProject(
+    projectId: string,
+    explicitGeminiKey?: string,
+    explicitOpenAiKey?: string
+  ): Promise<ForensicAuditResult> {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
@@ -120,9 +124,15 @@ export class LLMDetectionService {
     const isUnsanctioned = project.status === 'UNSANCTIONED' || project.status === 'PROPOSED';
     const hasContractor = Boolean(project.contractor && project.contractor.trim().length > 0);
 
-    // Check for Cloud LLM Keys
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
+    // Check for Cloud LLM Keys (explicit caller-provided key or environment variable)
+    const geminiKey =
+      explicitGeminiKey && explicitGeminiKey.trim().length > 0
+        ? explicitGeminiKey.trim()
+        : process.env.GEMINI_API_KEY;
+    const openaiKey =
+      explicitOpenAiKey && explicitOpenAiKey.trim().length > 0
+        ? explicitOpenAiKey.trim()
+        : process.env.OPENAI_API_KEY;
 
     if (geminiKey && geminiKey.trim().length > 0) {
       try {
