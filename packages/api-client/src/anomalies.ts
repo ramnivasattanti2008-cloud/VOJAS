@@ -11,13 +11,13 @@ export function createAnomalyApi(client: ApiClient) {
       page?: number;
       limit?: number;
     }) {
-      return client.get<PaginatedResponse<Anomaly>>('/api/v1/anomalies', params);
+      return client.get<PaginatedResponse<Anomaly>>('/anomalies', params);
     },
     stats() {
-      return client.get<AnomalyStats>('/api/v1/anomalies/stats');
+      return client.get<AnomalyStats>('/anomalies/stats');
     },
     get(id: string) {
-      return client.get<Anomaly>(`/api/v1/anomalies/${id}`);
+      return client.get<Anomaly>(`/anomalies/${id}`);
     },
     create(payload: {
       title: string;
@@ -27,16 +27,16 @@ export function createAnomalyApi(client: ApiClient) {
       projectId?: string;
       ruleCode?: string;
     }) {
-      return client.post<Anomaly>('/api/v1/anomalies', payload);
+      return client.post<Anomaly>('/anomalies', payload);
     },
     acknowledge(id: string) {
-      return client.post<Anomaly>(`/api/v1/anomalies/${id}/acknowledge`);
+      return client.post<Anomaly>(`/anomalies/${id}/acknowledge`);
     },
     resolve(id: string, resolution: string) {
-      return client.post<Anomaly>(`/api/v1/anomalies/${id}/resolve`, { resolution });
+      return client.post<Anomaly>(`/anomalies/${id}/resolve`, { resolution });
     },
     escalate(id: string, authority?: string, notes?: string) {
-      return client.post<Anomaly>(`/api/v1/anomalies/${id}/escalate`, { authority, notes });
+      return client.post<Anomaly>(`/anomalies/${id}/escalate`, { authority, notes });
     },
   };
 }

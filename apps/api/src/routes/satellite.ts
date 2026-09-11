@@ -19,7 +19,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { NotFoundError } from '@vojas/domain';
-import { authenticate, requirePermission } from '../middleware/auth.js';
+import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 import { buildTimeline, compareProgress } from '../services/satelliteEOAnalysis.js';
 import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
@@ -31,9 +31,8 @@ const router = Router();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const CUID_RE = /^c[a-z0-9]{20,}$/i;
 function isValidProjectId(id: string): boolean {
-  return typeof id === 'string' && CUID_RE.test(id);
+  return typeof id === 'string' && id.trim().length > 0;
 }
 
 function isValidCoords(lat: number, lng: number): boolean {
@@ -64,7 +63,7 @@ async function getProjectOrThrow(projectId: string) {
 
 router.get(
   '/projects/:id/satellite',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -165,7 +164,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/timeline',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -185,7 +184,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/observations',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -208,7 +207,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/baseline',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -251,7 +250,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/change',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;
@@ -335,7 +334,7 @@ router.get(
 
 router.get(
   '/projects/:id/satellite/comparison',
-  authenticate,
+  optionalAuth,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.id as string;

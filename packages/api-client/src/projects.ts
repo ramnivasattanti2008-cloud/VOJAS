@@ -1,6 +1,6 @@
+import type { ProjectSector, ProjectStatus } from '@vojas/shared';
 import type { ApiClient } from './client.js';
 import type { PaginatedResponse } from './types.js';
-import type { ProjectStatus, ProjectSector } from '@vojas/shared';
 
 // ── Public-safe types ──────────────────────────────────────────────────────────
 
@@ -82,6 +82,32 @@ export interface PublicProjectListItem {
   sourceWorkId?: string | null;
   createdAt: string;
   updatedAt: string;
+  mp?: PublicProjectMP | null;
+}
+
+export interface PublicProjectMP {
+  id: string;
+  name: string;
+  house: string;
+  constituency: string;
+  state: string;
+  party?: string | null;
+  term: string;
+}
+
+export interface PublicCitizenReportItem {
+  id: string;
+  reportReference: string;
+  title: string;
+  description: string;
+  category: string;
+  severity: string;
+  status: string;
+  submittedAt: string;
+  incidentDate?: string | null;
+  locationDesc?: string | null;
+  mediaCount?: number;
+  claimsCount?: number;
 }
 
 export interface PublicProjectDetail extends PublicProjectListItem {
@@ -417,6 +443,11 @@ export function createProjectsApi(client: ApiClient) {
       },
       getById(id: string) {
         return client.get<PublicProjectDetail>(`/projects/public/${id}`);
+      },
+      getReports(id: string) {
+        return client.get<{ projectId: string; total: number; reports: PublicCitizenReportItem[] }>(
+          `/projects/public/${id}/reports`
+        );
       },
       getTimeline(id: string, params?: { page?: number; limit?: number }) {
         return client.get<PaginatedResponse<PublicProjectEvent>>(`/projects/public/${id}/timeline`, params);

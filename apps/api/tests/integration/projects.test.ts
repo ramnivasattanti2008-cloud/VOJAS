@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createUserWithRole } from '../helpers/fixtures';
 
 const BASE = '/api/v1';
 
@@ -13,27 +14,10 @@ runIfDb('Projects API', () => {
   let projectId: string;
 
   beforeAll(async () => {
-    // Create officer
-    const officerRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: `proj-officer-${Date.now()}@example.com`,
-        password: 'OfficerPass123!',
-        name: 'Project Officer',
-        role: 'OFFICER',
-      });
-    officerToken = officerRes.body.data.accessToken;
-
-    // Create admin
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: `proj-admin-${Date.now()}@example.com`,
-        password: 'AdminPass123!',
-        name: 'Project Admin',
-        role: 'ADMIN',
-      });
-    adminToken = adminRes.body.data.accessToken;
+    // Privileged fixtures are provisioned directly — /auth/register pins every
+    // self-registered account to CITIZEN.
+    officerToken = (await createUserWithRole('OFFICER', { name: 'Project Officer' })).token;
+    adminToken = (await createUserWithRole('ADMIN', { name: 'Project Admin' })).token;
   });
 
   it('POST /projects creates a project (OFFICER+)', async () => {
@@ -58,8 +42,12 @@ runIfDb('Projects API', () => {
   });
 
   it('GET /projects returns paginated list', async () => {
+    // GET /projects is authenticate-gated (the unauthenticated listing lives at
+    // /projects/public). This request carried no token at all, so it asserted
+    // 200 against a route that can only answer 401.
     const res = await request(app)
       .get(`${BASE}/projects`)
+      .set('Authorization', `Bearer ${officerToken}`)
       .query({ page: 1, limit: 10 });
 
     expect(res.status).toBe(200);

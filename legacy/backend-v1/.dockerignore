@@ -1,0 +1,19 @@
+# Docker ignore — backend
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+.git/
+*.md
+tests/
+coverage/
+.vscode/
+.nyc_output/
+prisma/dev.db
+prisma/dev.db-journal
+uploads/
+!uploads/.gitkeep

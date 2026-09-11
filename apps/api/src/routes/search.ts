@@ -47,7 +47,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     const { q, type, state, district, sector, page, limit } = parsed.data;
     const searchTerm = { contains: q };
     const skip = (page - 1) * limit;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const results: Record<string, any> = {};
 
     const user = (req as any).user;

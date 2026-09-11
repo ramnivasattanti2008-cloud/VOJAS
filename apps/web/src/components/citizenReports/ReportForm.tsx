@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { MapPin, Camera, Calendar, AlertCircle, CheckCircle, Shield, Info } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { MapPin, Camera, Calendar, AlertCircle, CheckCircle, Shield, Info, Building2 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useSubmitReport } from '@/hooks/useCitizenReports';
+import { usePublicProject } from '@/hooks/usePublicProjects';
 import {
   PRIVACY_LABELS,
   REPORT_CATEGORY_LABELS,
@@ -68,7 +70,15 @@ const initialFormData: FormData = {
 };
 
 export function ReportForm() {
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const searchParams = useSearchParams();
+  const initialProjectId = searchParams.get('projectId') ?? '';
+  const { data: linkedProject } = usePublicProject(initialProjectId || undefined);
+
+  const [formData, setFormData] = useState<FormData>(() => ({
+    ...initialFormData,
+    projectId: initialProjectId,
+    unknownProject: !initialProjectId,
+  }));
   const [submitted, setSubmitted] = useState(false);
   const [reportReference, setReportReference] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -397,6 +407,17 @@ export function ReportForm() {
             <h2 className="text-lg font-semibold text-slate-900">Is this related to a specific project?</h2>
           </CardHeader>
           <CardBody className="space-y-4">
+            {linkedProject && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-blue-600 shrink-0" />
+                  <p className="font-semibold">{linkedProject.name}</p>
+                </div>
+                <p className="text-xs text-blue-700 mt-1 ml-6">
+                  {[linkedProject.district, linkedProject.state].filter(Boolean).join(', ')} · Sector: {linkedProject.sector.replace(/_/g, ' ')}
+                </p>
+              </div>
+            )}
             <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
               <input
                 type="checkbox"
@@ -409,7 +430,7 @@ export function ReportForm() {
             {!formData.unknownProject && (
               <Input
                 label="Project ID (if known)"
-                placeholder="e.g., MPLAD/PROJ/2024/1234"
+                placeholder="e.g., showcase-fin-1"
                 value={formData.projectId}
                 onChange={(e) => handleChange('projectId', e.target.value)}
                 hint="You can find this on project notices or documents"

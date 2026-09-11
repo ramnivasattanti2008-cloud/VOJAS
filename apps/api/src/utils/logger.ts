@@ -48,23 +48,23 @@ function format(
 
 export const logger = {
   info(msg: string, meta?: Record<string, unknown>) {
-    // eslint-disable-next-line no-console
+     
     console.log(format('INFO', msg, meta));
   },
 
   warn(msg: string, meta?: Record<string, unknown>) {
-    // eslint-disable-next-line no-console
+     
     console.warn(format('WARN', msg, meta));
   },
 
   error(msg: string, meta?: Record<string, unknown>) {
-    // eslint-disable-next-line no-console
+     
     console.error(format('ERROR', msg, meta));
   },
 
   debug(msg: string, meta?: Record<string, unknown>) {
     if (isProd) return;
-    // eslint-disable-next-line no-console
+     
     console.debug(format('DEBUG', msg, meta));
   },
 

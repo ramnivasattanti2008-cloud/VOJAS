@@ -1,5 +1,5 @@
+import { ProjectSector, ProjectStatus } from '@vojas/shared';
 import { z } from 'zod';
-import { ProjectStatus, ProjectSector } from '@vojas/shared';
 import { coordinateSchema } from './common.js';
 
 export const createProjectSchema = z

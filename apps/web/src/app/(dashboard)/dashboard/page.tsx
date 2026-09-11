@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
+import { createProjectsApi } from '@vojas/api-client';
+import { apiClient } from '@/lib/api';
 import {
   ChevronRight, ChevronLeft, Search, Filter,
   Map, Table2, Calendar, X,
@@ -47,6 +50,8 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'warni
   [ProjectStatus.CANCELLED]: { label: 'Cancelled', variant: 'danger' },
   [ProjectStatus.UNSANCTIONED]: { label: 'Unsanctioned', variant: 'danger' },
 };
+
+const projectsApi = createProjectsApi(apiClient);
 
 type DrillDownLevel = 'india' | 'state' | 'district';
 type ViewMode = 'map' | 'table' | 'timeline';
@@ -423,7 +428,10 @@ export default function CommandCenterPage() {
   // Build filter params based on drill-down
   const filterParams = useMemo(() => {
     const params: any = {
-      limit: 1000,
+      // projectFiltersSchema caps limit at 100 (packages/domain/src/validation/projectSchemas.ts) —
+      // requesting more silently 400'd every dashboard load, rendering all-zero stats with no
+      // visible error. Dashboard aggregates are necessarily a bounded sample, not the full count.
+      limit: 100,
       ...(sectorFilter && { sector: sectorFilter }),
       ...(statusFilter && { status: statusFilter }),
       ...(searchQuery && { search: searchQuery }),
@@ -439,9 +447,19 @@ export default function CommandCenterPage() {
     return params;
   }, [drillDownLevel, selectedState, selectedDistrict, sectorFilter, statusFilter, searchQuery]);
 
-  // Fetch projects
+  // Fetch projects (bounded sample — projectFiltersSchema caps limit at 100 —
+  // used for the map/state drill-down, which needs individual rows)
   const { data: projectsData, isLoading } = useProjects(filterParams);
   const projects = projectsData?.data ?? [];
+
+  // Real, server-computed totals across ALL projects (not just the capped
+  // sample above) for the top-line stat cards — same aggregation the public
+  // landing page uses, via prisma.count()/aggregate(), not a client-side
+  // reduce over a partial page.
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ['projects', 'summary'],
+    queryFn: () => projectsApi.public.getSummary(),
+  });
 
   // Calculate state-wise aggregation
   const stateDataMap = useMemo<Record<string, StateData>>(() => {
@@ -732,13 +750,13 @@ export default function CommandCenterPage() {
                 {/* Stats Overlay */}
                 <div className="absolute top-4 right-4 z-10">
                   <StatsOverlay
-                    totalProjects={totals.totalProjects}
-                    completed={totals.completed}
-                    inProgress={totals.inProgress}
-                    delayed={totals.delayed}
-                    totalSanctioned={totals.totalSanctioned}
-                    totalSpent={totals.totalSpent}
-                    isLoading={isLoading}
+                    totalProjects={summary?.totalProjects ?? totals.totalProjects}
+                    completed={summary?.completedProjects ?? totals.completed}
+                    inProgress={summary?.inProgressProjects ?? totals.inProgress}
+                    delayed={summary?.delayedProjects ?? totals.delayed}
+                    totalSanctioned={summary?.totalSanctioned ?? totals.totalSanctioned}
+                    totalSpent={summary?.totalSpent ?? totals.totalSpent}
+                    isLoading={summaryLoading && isLoading}
                   />
                 </div>
 

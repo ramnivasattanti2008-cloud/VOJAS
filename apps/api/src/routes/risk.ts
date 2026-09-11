@@ -20,15 +20,17 @@ import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import {
   RiskAnalysisOrchestrator,
+  ProjectIntelligenceService,
   NotFoundError,
   ValidationError,
 } from '@vojas/domain';
-import { AuditAction, PERMISSIONS, getPermissionsForRole } from '@vojas/shared';
+import { AuditAction, PERMISSIONS, UserRole, getPermissionsForRole, buildUserContext, canAccessProject } from '@vojas/shared';
 import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
 
 const router = Router();
 const orchestrator = new RiskAnalysisOrchestrator(prisma);
+const intelligenceService = new ProjectIntelligenceService(prisma);
 
 // ──────────────────────────────────────────────────────────────────
 // PROJECT-LEVEL RISK ENDPOINTS
@@ -194,6 +196,53 @@ router.get(
           createdAt: e.createdAt,
         })),
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /projects/:id/intelligence
+ * Phase 3: Cross-Signal Intelligence — unified project intelligence view.
+ * Composes risk engine output, active anomalies, unified evidence
+ * (role-filtered), and open investigation linkage into one explainable
+ * response. Authenticated only — this is a government/investigator
+ * surface (citizen reports, evidence access levels, and investigation
+ * case state are not safe to expose publicly).
+ */
+router.get(
+  '/projects/:id/intelligence',
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = req.params.id as string;
+
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { id: true, constituency: true },
+      });
+      if (!project) throw new NotFoundError('Project');
+
+      const user = req.user!;
+      const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+      const userCtx = buildUserContext(user.role, user.userId, perms as any);
+      if (!canAccessProject(userCtx, project as any)) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'You do not have access to this project' },
+        });
+      }
+
+      const intelligence = await intelligenceService.getProjectIntelligence(projectId, {
+        userId: user.userId,
+        role: user.role,
+        mpHasOversight: user.role === UserRole.MP,
+      });
+
+      if (!intelligence) throw new NotFoundError('Project');
+
+      success(res, intelligence);
     } catch (err) {
       next(err);
     }

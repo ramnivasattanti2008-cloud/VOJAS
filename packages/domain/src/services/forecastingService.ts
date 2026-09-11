@@ -8,7 +8,7 @@
  * NEVER present a forecast as proof of wrongdoing.
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import { calculateTrend } from './analyticsEngine.js';
 
 export type ForecastType = 'DELAY' | 'COST' | 'PROGRESS' | 'RISK' | 'COMPLETION';

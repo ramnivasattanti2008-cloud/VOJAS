@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import nextDynamic from 'next/dynamic';
-import { ArrowLeft, MapPin, AlertCircle, FileText, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2 } from 'lucide-react';
+import { ArrowLeft, MapPin, AlertCircle, FileText, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
@@ -44,7 +44,7 @@ const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
   { key: 'documents', label: 'Documents', icon: Layers },
   { key: 'satellite', label: 'Satellite', icon: MapPin },
   { key: 'change', label: 'Change Analysis', icon: BarChart2 },
-  { key: 'risk', label: 'Risk', icon: ShieldAlert },
+  { key: 'risk', label: 'Intelligence', icon: ShieldAlert },
 ];
 
 export default function ProjectDetailPage() {
@@ -160,7 +160,7 @@ export default function ProjectDetailPage() {
             userRole={user?.role}
           />
         )}
-        {activeTab === 'risk' && <RiskTab project={project} />}
+        {activeTab === 'risk' && <IntelligenceTab projectId={id} />}
       </div>
     </div>
   );
@@ -308,30 +308,202 @@ function FinancialTabSummary({ project }: { project: any }) {
   );
 }
 
-function RiskTab({ project }: { project: any }) {
-  const items = [
-    { label: 'Risk Level', value: project.riskLevel ?? '—' },
-    { label: 'Anomalies Detected', value: project.anomalyCount ?? 0 },
-    { label: 'Reports Filed', value: project.reportCount ?? 0 },
-  ];
+const SIGNAL_STATUS_STYLE: Record<string, { dot: string; badge: 'success' | 'warning' | 'danger' | 'neutral' }> = {
+  LOW: { dot: 'bg-green-500', badge: 'success' },
+  MEDIUM: { dot: 'bg-amber-500', badge: 'warning' },
+  HIGH: { dot: 'bg-red-500', badge: 'danger' },
+  UNAVAILABLE: { dot: 'bg-slate-300', badge: 'neutral' },
+};
+
+const OVERALL_STATUS_LABEL: Record<string, string> = {
+  LOW: 'No significant concerns',
+  MEDIUM: 'Some signals require attention',
+  HIGH: 'Multiple signals require investigation',
+  UNAVAILABLE: 'Insufficient data',
+};
+
+function IntelligenceTab({ projectId }: { projectId: string }) {
+  const { data: intel, isLoading, error } = useQuery({
+    queryKey: ['projects', projectId, 'intelligence'],
+    queryFn: () => projectsApi.getIntelligence(projectId),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16 text-slate-400 gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading intelligence...
+      </div>
+    );
+  }
+
+  if (error || !intel) {
+    return (
+      <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+        {error instanceof Error ? error.message : 'Unable to load project intelligence.'}
+      </div>
+    );
+  }
+
+  const overall = SIGNAL_STATUS_STYLE[intel.overallStatus] ?? SIGNAL_STATUS_STYLE.UNAVAILABLE;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {items.map((item) => (
-        <Card key={item.label}>
-          <CardBody>
-            <p className="text-xs text-slate-500">{item.label}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{item.value}</p>
-          </CardBody>
-        </Card>
-      ))}
-      <Card className="md:col-span-3">
-        <CardBody className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
-          <p className="text-sm text-slate-600">
-            Detailed anomaly breakdown and risk analysis will be available once detection runs.
-          </p>
+    <div className="space-y-6">
+      {/* Overall status */}
+      <Card>
+        <CardBody className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <span className={cn('w-3 h-3 rounded-full', overall.dot)} aria-hidden="true" />
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                {OVERALL_STATUS_LABEL[intel.overallStatus] ?? intel.overallStatus}
+              </p>
+              {intel.risk && (
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Risk score {intel.risk.score}/100 ({intel.risk.level}) · {intel.risk.confidence} confidence
+                  {intel.risk.primaryDriver ? ` · primary driver: ${intel.risk.primaryDriver}` : ''}
+                </p>
+              )}
+            </div>
+          </div>
+          {intel.openInvestigation && (
+            <Badge variant="warning">
+              Open investigation: {intel.openInvestigation.status.replace(/_/g, ' ')}
+            </Badge>
+          )}
         </CardBody>
       </Card>
+
+      {/* Signal cards */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 mb-3">Signal Overview</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {intel.signalCards.map((card) => {
+            const style = SIGNAL_STATUS_STYLE[card.status] ?? SIGNAL_STATUS_STYLE.UNAVAILABLE;
+            return (
+              <Card key={card.key}>
+                <CardBody>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-slate-500">{card.label}</p>
+                    <Badge variant={style.badge}>{card.status}</Badge>
+                  </div>
+                  <p className="text-sm text-slate-700 leading-relaxed">{card.summary}</p>
+                  {card.freshness.status !== 'UNAVAILABLE' && card.freshness.ageDays !== null && (
+                    <p className="text-xs text-slate-400 mt-2">
+                      {card.freshness.ageDays === 0 ? 'Current' : `${card.freshness.ageDays} day(s) old`}
+                      {card.freshness.status === 'STALE' && ' · stale'}
+                    </p>
+                  )}
+                </CardBody>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Why flagged */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-sm font-semibold text-slate-900">Why This Matters</h3>
+        </CardHeader>
+        <CardBody className="space-y-1">
+          {intel.whyFlagged.map((line, i) => (
+            <p key={i} className={cn('text-sm', line === '' ? 'h-2' : 'text-slate-600')}>
+              {line}
+            </p>
+          ))}
+        </CardBody>
+      </Card>
+
+      {/* Cross-signal findings */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900 mb-3">
+          Cross-Signal Findings {intel.crossSignalFindings.length > 0 && `(${intel.crossSignalFindings.length})`}
+        </h3>
+        {intel.crossSignalFindings.length === 0 ? (
+          <Card>
+            <CardBody className="py-8 text-center text-slate-400 text-sm">
+              No active cross-signal findings for this project.
+            </CardBody>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {intel.crossSignalFindings.map((f) => (
+              <Card key={f.id}>
+                <CardBody>
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="font-semibold text-slate-800 text-sm">{f.title}</h4>
+                    <Badge variant={f.severity === 'CRITICAL' || f.severity === 'HIGH' ? 'danger' : f.severity === 'MEDIUM' ? 'warning' : 'info'}>
+                      {f.severity}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-600 mt-2 leading-relaxed">{f.description}</p>
+                  {f.recommendedAction && (
+                    <p className="text-xs text-vojas-700 mt-2 font-medium">Next: {f.recommendedAction}</p>
+                  )}
+                  <p className="text-xs text-slate-400 mt-2">
+                    {f.contributingSignalCount} contributing signal(s) · {f.confidence} confidence · {formatDate(f.detectedAt)}
+                  </p>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recommended actions */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-sm font-semibold text-slate-900">Recommended Next Actions</h3>
+        </CardHeader>
+        <CardBody>
+          <ul className="space-y-2">
+            {intel.recommendedActions.map((a, i) => (
+              <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+                <ArrowRight className="h-3.5 w-3.5 text-vojas-500 shrink-0 mt-1" aria-hidden="true" />
+                {a}
+              </li>
+            ))}
+          </ul>
+        </CardBody>
+      </Card>
+
+      {/* Evidence summary */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-sm font-semibold text-slate-900">
+            Evidence ({intel.evidenceSummary.total})
+          </h3>
+        </CardHeader>
+        <CardBody>
+          {intel.evidenceSummary.total === 0 ? (
+            <p className="text-sm text-slate-400">No evidence recorded yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(intel.evidenceSummary.byType).map(([type, count]) => (
+                <Badge key={type} variant="neutral">
+                  {type.replace(/_/g, ' ')}: {count}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {intel.activeAnomalies.length > 0 && (
+        <Card>
+          <CardHeader>
+            <h3 className="text-sm font-semibold text-slate-900">Active Anomalies ({intel.activeAnomalies.length})</h3>
+          </CardHeader>
+          <CardBody className="space-y-2">
+            {intel.activeAnomalies.map((a) => (
+              <div key={a.id} className="flex items-start gap-2 text-sm">
+                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="text-slate-600">{a.description}</p>
+              </div>
+            ))}
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }

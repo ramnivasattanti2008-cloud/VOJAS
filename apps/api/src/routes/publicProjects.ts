@@ -46,6 +46,17 @@ const PUBLIC_PROJECT_SELECT = {
   sourceWorkId: true,
   createdAt: true,
   updatedAt: true,
+  mp: {
+    select: {
+      id: true,
+      name: true,
+      house: true,
+      constituency: true,
+      state: true,
+      party: true,
+      term: true,
+    },
+  },
 } as const;
 
 /**
@@ -418,6 +429,60 @@ router.get('/:id/evidence', async (req: Request, res: Response, next: NextFuncti
       projectId,
       total: publicEvidence.length,
       items: publicEvidence,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id/reports — public-safe citizen reports for a project.
+ * Strips confidential reporter identity (name, email, phone, IP) and returns
+ * verified civic reports with title, category, status, severity, and description.
+ */
+router.get('/:id/reports', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.id as string;
+    const exists = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+    if (!exists) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    const reports = await prisma.report.findMany({
+      where: { projectId },
+      orderBy: { submittedAt: 'desc' },
+      select: {
+        id: true,
+        reportReference: true,
+        title: true,
+        description: true,
+        category: true,
+        severity: true,
+        status: true,
+        submittedAt: true,
+        incidentDate: true,
+        locationDesc: true,
+        _count: { select: { media: true, claims: true } },
+      },
+    });
+
+    success(res, {
+      projectId,
+      total: reports.length,
+      reports: reports.map((r) => ({
+        id: r.id,
+        reportReference: r.reportReference,
+        title: r.title,
+        description: r.description,
+        category: r.category,
+        severity: r.severity,
+        status: r.status,
+        submittedAt: r.submittedAt.toISOString(),
+        incidentDate: r.incidentDate?.toISOString() ?? null,
+        locationDesc: r.locationDesc,
+        mediaCount: r._count.media,
+        claimsCount: r._count.claims,
+      })),
     });
   } catch (err) {
     next(err);

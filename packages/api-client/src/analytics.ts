@@ -170,7 +170,7 @@ export function createAnalyticsApi(client: ApiClient) {
   return {
     // ── Project Analytics ────────────────────────────────────────────────
     getProjectAnalytics(projectId: string): Promise<ProjectAnalytics> {
-      return client.get(`/api/v1/analytics/projects/${projectId}/analytics`);
+      return client.get(`/analytics/projects/${projectId}/analytics`);
     },
 
     // ── Aggregated Metrics ────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export function createAnalyticsApi(client: ApiClient) {
       sector?: string;
       districtId?: string;
     }): Promise<AggregatedMetrics> {
-      return client.get('/api/v1/analytics/aggregated', params);
+      return client.get('/analytics/aggregated', params);
     },
 
     // ── Benchmarks ───────────────────────────────────────────────────────
@@ -189,13 +189,13 @@ export function createAnalyticsApi(client: ApiClient) {
       metricType: string,
       peerCriteria?: Record<string, unknown>
     ): Promise<BenchmarkDistribution> {
-      return client.get('/api/v1/analytics/benchmarks/' + metricType, {
+      return client.get('/analytics/benchmarks/' + metricType, {
         peerCriteria: peerCriteria ? JSON.stringify(peerCriteria) : undefined,
       });
     },
 
     getProjectBenchmark(projectId: string, metricType: string): Promise<ProjectBenchmark> {
-      return client.get(`/api/v1/analytics/projects/${projectId}/benchmark/${metricType}`);
+      return client.get(`/analytics/projects/${projectId}/benchmark/${metricType}`);
     },
 
     // ── Patterns & Hotspots ──────────────────────────────────────────────
@@ -204,7 +204,7 @@ export function createAnalyticsApi(client: ApiClient) {
       state?: string;
       districtId?: string;
     }): Promise<{ patterns: CrossSignalPattern[] }> {
-      return client.get('/api/v1/analytics/cross-project-patterns', params);
+      return client.get('/analytics/cross-project-patterns', params);
     },
 
     getHotspots(params?: {
@@ -212,22 +212,22 @@ export function createAnalyticsApi(client: ApiClient) {
       minFindings?: number;
       limit?: number;
     }): Promise<{ hotspots: Hotspot[] }> {
-      return client.get('/api/v1/analytics/hotspot', params);
+      return client.get('/analytics/hotspot', params);
     },
 
     // ── Forecasting ──────────────────────────────────────────────────────
     getDelayForecast(projectId: string, horizonDays?: number): Promise<DelayForecast> {
-      return client.get(`/api/v1/analytics/projects/${projectId}/forecast/delay`, {
+      return client.get(`/analytics/projects/${projectId}/forecast/delay`, {
         horizonDays,
       });
     },
 
     getCostForecast(projectId: string): Promise<CostForecast> {
-      return client.get(`/api/v1/analytics/projects/${projectId}/forecast/cost`);
+      return client.get(`/analytics/projects/${projectId}/forecast/cost`);
     },
 
     getRiskForecast(projectId: string): Promise<RiskForecast> {
-      return client.get(`/api/v1/analytics/projects/${projectId}/forecast/risk`);
+      return client.get(`/analytics/projects/${projectId}/forecast/risk`);
     },
 
     // ── Scenarios ────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ export function createAnalyticsApi(client: ApiClient) {
         horizonDays?: number;
       }
     ): Promise<ScenarioResult> {
-      return client.post(`/api/v1/analytics/projects/${projectId}/scenario`, params);
+      return client.post(`/analytics/projects/${projectId}/scenario`, params);
     },
 
     getComparativeScenarios(params: {
@@ -249,7 +249,7 @@ export function createAnalyticsApi(client: ApiClient) {
       scenarioType: string;
       changeRate: number;
     }): Promise<{ scenarios: ScenarioResult[] }> {
-      return client.get('/api/v1/analytics/scenarios/comparative', params);
+      return client.get('/analytics/scenarios/comparative', params);
     },
 
     // ── Snapshots ────────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ export function createAnalyticsApi(client: ApiClient) {
       limit: number;
       totalPages: number;
     }> {
-      return client.get('/api/v1/analytics/snapshots', params);
+      return client.get('/analytics/snapshots', params);
     },
 
     createSnapshot(data: {
@@ -285,7 +285,7 @@ export function createAnalyticsApi(client: ApiClient) {
       metrics: any;
       computedAt: string;
     }> {
-      return client.post('/api/v1/analytics/snapshots', data);
+      return client.post('/analytics/snapshots', data);
     },
 
     // ── Insights ─────────────────────────────────────────────────────────
@@ -313,7 +313,7 @@ export function createAnalyticsApi(client: ApiClient) {
       limit: number;
       totalPages: number;
     }> {
-      return client.get('/api/v1/analytics/insights', params);
+      return client.get('/analytics/insights', params);
     },
 
     // ── Model Versions ───────────────────────────────────────────────────
@@ -330,7 +330,7 @@ export function createAnalyticsApi(client: ApiClient) {
         updatedAt: string;
       }>;
     }> {
-      return client.get('/api/v1/analytics/models', { active: active !== undefined ? String(active) : undefined });
+      return client.get('/analytics/models', { active: active !== undefined ? String(active) : undefined });
     },
   };
 }

@@ -18,14 +18,16 @@
  * STATUS: QUEUED → PROCESSING → COMPLETED | FAILED
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import type { Prisma } from '@vojas/db';
 import { SignalGenerator } from './signalGenerator.js';
 import { CorrelationEngine } from './correlationEngine.js';
-import { RiskScorer, ProjectRiskResult } from './riskScorer.js';
+import type { ProjectRiskResult } from './riskScorer.js';
+import { RiskScorer } from './riskScorer.js';
 import { DataQualityGate } from './dataQualityGate.js';
 import { AIExplainer } from './aiExplainer.js';
-import { RiskRuleEngine, ProjectDataSnapshot } from './ruleEngine.js';
+import type { ProjectDataSnapshot} from './ruleEngine.js';
+import { RiskRuleEngine, registerCoreRules } from './ruleEngine.js';
 import type {
   RiskSignal,
   CorrelatedFinding,
@@ -85,6 +87,11 @@ export class RiskAnalysisOrchestrator {
     this.dataQualityGate = new DataQualityGate(prisma);
     this.aiExplainer = new AIExplainer('rule-engine-v1.0', 'explain-v1.0');
     this.ruleEngine = new RiskRuleEngine(prisma);
+    // Registers the rule-code -> handler map (ProgressSatelliteMismatchRule,
+    // FinancialPhysicalMismatchRule, ProjectDelayRule). Previously never
+    // called anywhere, which meant every RiskRule row silently fell through
+    // to "not implemented" in evaluateRule(). Registration is idempotent.
+    registerCoreRules();
   }
 
   /**
@@ -190,12 +197,11 @@ export class RiskAnalysisOrchestrator {
         algorithmVersion: ALGORITHM_VERSION,
       }));
 
-      // 9. Persist if requested
-      let persistedSignalIds: string[] = [];
-      let persistedFindingIds: string[] = [];
+      // 9. Persist if requested. ProjectRiskResult does not carry the inserted
+      // ids, so they are not bound to variables — only the writes matter here.
       if (persist) {
-        persistedSignalIds = await this.signalGenerator.persistSignals(signals);
-        persistedFindingIds = await this.persistFindings(riskFindings, projectId);
+        await this.signalGenerator.persistSignals(signals);
+        await this.persistFindings(riskFindings, projectId);
         await this.persistProjectRisk(projectId, riskResult);
         await this.persistRiskEvents(projectId, riskFindings, riskResult);
       }
@@ -280,6 +286,14 @@ export class RiskAnalysisOrchestrator {
     const anomalies = await this.prisma.anomaly.findMany({
       where: { projectId, status: { notIn: ['RESOLVED', 'DISMISSED'] } },
       take: 50,
+    });
+
+    // Latest field verification, most recently scheduled first (whether or
+    // not it has been completed — an overdue/never-completed inspection is
+    // itself relevant to freshness).
+    const latestFieldVerification = await this.prisma.fieldVerification.findFirst({
+      where: { projectId },
+      orderBy: [{ completedDate: 'desc' }, { scheduledDate: 'desc' }],
     });
 
     return {
@@ -370,6 +384,14 @@ export class RiskAnalysisOrchestrator {
         status: a.status,
         description: a.description,
       })),
+      latestFieldVerification: latestFieldVerification
+        ? {
+            id: latestFieldVerification.id,
+            scheduledDate: latestFieldVerification.scheduledDate,
+            completedDate: latestFieldVerification.completedDate,
+            result: latestFieldVerification.result,
+          }
+        : null,
     };
   }
 

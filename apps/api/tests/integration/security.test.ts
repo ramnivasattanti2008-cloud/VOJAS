@@ -11,10 +11,22 @@
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import app from '../../src/app';
+import { createUserWithRole, type TestRole } from '../helpers/fixtures';
 
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+/**
+ * Privileged fixtures cannot come from /auth/register: public self-registration
+ * is hard-wired to CITIZEN so a request body cannot escalate its own role (see
+ * routes/auth.ts). The account is provisioned directly and then logged in, so
+ * the token is genuinely issued and RBAC is still exercised for real.
+ */
+async function tokenForRole(role: TestRole, email: string, password: string) {
+  const user = await createUserWithRole(role, { email, password });
+  return user.token;
+}
 
 async function register(email: string, password = 'StrongPass123!', role = 'CITIZEN') {
   const res = await request(app)
@@ -53,14 +65,12 @@ runIfDb('Auth Security', () => {
     citizenEmail = genEmail();
     officerEmail = genEmail();
 
-    const adminRes = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = adminRes.body.data?.accessToken ?? '';
+    adminToken = await tokenForRole('ADMIN', adminEmail, 'AdminPass123!');
 
     const citizenRes = await register(citizenEmail, 'CitizenPass123!', 'CITIZEN');
     citizenToken = citizenRes.body.data?.accessToken ?? '';
 
-    const officerRes = await register(officerEmail, 'OfficerPass123!', 'OFFICER');
-    officerToken = officerRes.body.data?.accessToken ?? '';
+    officerToken = await tokenForRole('OFFICER', officerEmail, 'OfficerPass123!');
   });
 
   // ── Login success ──────────────────────────────────────────────────────────
@@ -179,6 +189,28 @@ runIfDb('Auth Security', () => {
     expect(user.passwordHash).toBeUndefined();
     expect(user.password).toBeUndefined();
   });
+
+  it('POST /auth/register ignores a privileged role in the request body', async () => {
+    // Privilege escalation guard: routes/auth.ts pins every self-registered
+    // account to CITIZEN. Until this was asserted, several suites passed
+    // role: 'ADMIN' to /auth/register and silently tested a CITIZEN token.
+    for (const role of ['ADMIN', 'OFFICER', 'ANALYST', 'REVIEWER']) {
+      const email = genEmail();
+      const res = await register(email, 'StrongPass123!', role);
+      expect(res.status).toBe(201);
+      const user = res.body.data?.user ?? res.body.data;
+      expect(user.role).toBe('CITIZEN');
+    }
+  });
+
+  it('a self-registered account cannot reach an admin-gated route', async () => {
+    const email = genEmail();
+    const res = await register(email, 'StrongPass123!', 'ADMIN');
+    const token = res.body.data?.accessToken ?? '';
+    expect(token).not.toBe('');
+    const adminRes = await request(app).get('/api/v1/admin/users').set(authHeader(token));
+    expect(adminRes.status).toBe(403);
+  });
 });
 
 // ── RBAC Tests ─────────────────────────────────────────────────────────────────
@@ -195,17 +227,14 @@ runIfDb('RBAC Enforcement', () => {
     const officerEmail = genEmail();
     const analystEmail = genEmail();
 
-    const a = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = a.body.data?.accessToken ?? '';
+    adminToken = await tokenForRole('ADMIN', adminEmail, 'AdminPass123!');
 
     const c = await register(citizenEmail, 'CitizenPass123!', 'CITIZEN');
     citizenToken = c.body.data?.accessToken ?? '';
 
-    const o = await register(officerEmail, 'OfficerPass123!', 'OFFICER');
-    officerToken = o.body.data?.accessToken ?? '';
+    officerToken = await tokenForRole('OFFICER', officerEmail, 'OfficerPass123!');
 
-    const an = await register(analystEmail, 'AnalystPass123!', 'ANALYST');
-    analystToken = an.body.data?.accessToken ?? '';
+    analystToken = await tokenForRole('ANALYST', analystEmail, 'AnalystPass123!');
   });
 
   // ── Admin-only routes ───────────────────────────────────────────────────
@@ -255,10 +284,24 @@ runIfDb('RBAC Enforcement', () => {
   });
 
   it('POST /projects allows ADMIN', async () => {
+    // This assertion used to POST /admin/users with no body and expect 200,
+    // which tested neither its own name nor anything coherent — an empty body
+    // is a 400. It now exercises what it claims: ADMIN may create a project.
     const res = await request(app)
-      .post('/api/v1/admin/users')
-      .set(authHeader(adminToken));
-    expect(res.status).toBe(200); // Admin can access admin routes
+      .post('/api/v1/projects')
+      .set(authHeader(adminToken))
+      .send({
+        name: 'Security Suite Project',
+        status: 'IN_PROGRESS',
+        sector: 'TRANSPORT',
+        district: 'Bengaluru',
+        state: 'Karnataka',
+        approvedAmount: 1000000,
+        source: 'MANUAL',
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.name).toBe('Security Suite Project');
   });
 
   // ── Audit routes ───────────────────────────────────────────────────────
@@ -355,8 +398,7 @@ runIfDb('IDOR Protection', () => {
     const u2 = await register(user2Email, 'UserTwoPass123!', 'CITIZEN');
     user2Token = u2.body.data?.accessToken ?? '';
 
-    const a = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = a.body.data?.accessToken ?? '';
+    adminToken = await tokenForRole('ADMIN', adminEmail, 'AdminPass123!');
   });
 
   // ── User profile access ───────────────────────────────────────────────
@@ -424,8 +466,7 @@ runIfDb('Input Validation', () => {
 
   beforeAll(async () => {
     const adminEmail = genEmail();
-    const a = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = a.body.data?.accessToken ?? '';
+    adminToken = await tokenForRole('ADMIN', adminEmail, 'AdminPass123!');
   });
 
   // ── Malformed IDs ───────────────────────────────────────────────────
@@ -594,7 +635,10 @@ describe('Security Headers', () => {
 
 // ── Public Endpoint Tests ───────────────────────────────────────────────────────
 
-describe('Public Endpoints (no auth required)', () => {
+// These endpoints are served entirely from in-process state — the inline health
+// route and the static SECTOR_CONFIGS table — plus request-body validation. They
+// assert reachability without auth and must hold with no database at all.
+describe('Public Endpoints (no auth required, no database)', () => {
   it('GET /health requires no auth', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
@@ -612,6 +656,25 @@ describe('Public Endpoints (no auth required)', () => {
     expect(res.body.success).toBe(true);
   });
 
+  it('POST /api/v1/reports/validate requires no auth', async () => {
+    const res = await request(app)
+      .post('/api/v1/reports/validate')
+      .send({
+        title: 'Test',
+        description: 'Test description',
+        category: 'CONSTRUCTION_QUALITY',
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+});
+
+// The rest of the public surface reads or writes the database. Gated on
+// DATABASE_URL_TEST like every other DB-backed suite in this directory: without
+// a test database these returned 500 and reported as failures, which hid
+// whether the endpoints were genuinely public or genuinely broken.
+runIfDb('Public Endpoints (no auth required, database-backed)', () => {
   it('GET /api/v1/sectors/overview requires no auth', async () => {
     const res = await request(app).get('/api/v1/sectors/overview');
     expect(res.status).toBe(200);
@@ -656,18 +719,6 @@ describe('Public Endpoints (no auth required)', () => {
     expect(res.body.success).toBe(true);
   });
 
-  it('POST /api/v1/reports/validate requires no auth', async () => {
-    const res = await request(app)
-      .post('/api/v1/reports/validate')
-      .send({
-        title: 'Test',
-        description: 'Test description',
-        category: 'CONSTRUCTION_QUALITY',
-      });
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-  });
-
   it('GET /api/v1/reports/track/:ref requires no auth (public tracking)', async () => {
     const res = await request(app)
       .get('/api/v1/reports/track/NONEXISTENT-REF-0000');
@@ -684,8 +735,7 @@ runIfDb('Error Message Safety', () => {
 
   beforeAll(async () => {
     const adminEmail = genEmail();
-    const a = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = a.body.data?.accessToken ?? '';
+    adminToken = await tokenForRole('ADMIN', adminEmail, 'AdminPass123!');
   });
 
   it('GET /projects/:id with invalid ID does not leak SQL errors', async () => {

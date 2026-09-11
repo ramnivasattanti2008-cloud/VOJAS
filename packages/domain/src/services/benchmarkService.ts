@@ -2,7 +2,7 @@
  * M16: Benchmark Service
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import { percentile, benchmarkPercentile } from './analyticsEngine.js';
 
 export type MetricType = 'RISK_SCORE' | 'FINANCIAL_UTILIZATION' | 'DELAY_DAYS' | 'EXPENDITURE_VELOCITY' | 'PROGRESS_VELOCITY';

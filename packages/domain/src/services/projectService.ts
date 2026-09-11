@@ -1,13 +1,14 @@
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
+import type {
+  ProjectFilters,
+  CreateProjectInput,
+  UpdateProjectInput,
+  AddLocationInput} from '../validation/projectSchemas.js';
 import {
   createProjectSchema,
   updateProjectSchema,
   projectFiltersSchema,
-  addLocationSchema,
-  ProjectFilters,
-  CreateProjectInput,
-  UpdateProjectInput,
-  AddLocationInput,
+  addLocationSchema
 } from '../validation/projectSchemas.js';
 import { NotFoundError, ValidationError, ForbiddenError } from '../errors/index.js';
 import { UserRole } from '@vojas/shared';

@@ -106,6 +106,7 @@ const officerItems: NavItem[] = [
   { label: 'Verification Command', href: '/officer', icon: ShieldAlert },
   { label: 'Verification Queue', href: '/officer/verification', icon: ScanSearch },
   { label: 'Case Workspace', href: '/officer/cases', icon: FileText },
+  { label: 'Investigations', href: '/officer/investigations', icon: FileSearch },
   { label: 'Evidence Center', href: '/officer/evidence', icon: FileArchive },
   { label: 'Field Mode', href: '/officer/field', icon: MapPin },
   { label: 'Map', href: '/officer/map', icon: Map },

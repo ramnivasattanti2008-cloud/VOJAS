@@ -1,22 +1,22 @@
-import { ProviderStatus } from './types.js';
-import {
+import type { ProviderStatus } from './types.js';
+import type {
   SatelliteProvider,
   SatelliteFilters,
   SatelliteScene,
 } from './satelliteProvider.js';
-import {
+import type {
   GovernmentDataProvider,
   GovernmentProjectRecord,
 } from './governmentDataProvider.js';
-import { MapsProvider, GeocodeResult } from './mapsProvider.js';
-import {
+import type { MapsProvider, GeocodeResult } from './mapsProvider.js';
+import type {
   AIProvider,
   AIDocumentAnalysis,
   AIAnomalyExplanation,
   AIDocumentType,
 } from './aiProvider.js';
-import { DocumentProvider, DocumentUploadResult } from './documentProvider.js';
-import { StorageProvider, StorageObject } from './storageProvider.js';
+import type { DocumentProvider, DocumentUploadResult } from './documentProvider.js';
+import type { StorageProvider, StorageObject } from './storageProvider.js';
 
 const NOT_CONFIGURED_MESSAGE =
   'Provider not configured. Set the corresponding env var to enable.';

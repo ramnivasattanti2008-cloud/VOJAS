@@ -10,9 +10,10 @@
  */
 import express from 'express';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { globalErrorHandler } from '../../src/middleware/errorHandler';
 import riskRoutes from '../../src/routes/risk';
+import { createUserWithRole } from '../helpers/fixtures';
 
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
@@ -112,9 +113,18 @@ describe('M8 Risk Endpoints — Auth Enforcement', () => {
 
 runIfDb('M8 Risk Endpoints — DB-backed shape tests', () => {
   // These tests require a real DB. They run only when DATABASE_URL_TEST is set.
+  // They used to authenticate with an env var that is set nowhere in the repo,
+  // so the header was always `Bearer ` and both assertions could only ever see
+  // a 401. A real ADMIN token is issued instead.
+  let adminToken: string;
+
+  beforeAll(async () => {
+    adminToken = (await createUserWithRole('ADMIN', { name: 'Risk Admin' })).token;
+  });
+
   it('GET /risk/summary returns expected shape', async () => {
     const res = await request(makeApp()).get('/api/v1/risk/summary')
-      .set('Authorization', `Bearer ${process.env.TEST_TOKEN ?? ''}`);
+      .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
       totalProjects: expect.any(Number),
@@ -128,7 +138,7 @@ runIfDb('M8 Risk Endpoints — DB-backed shape tests', () => {
 
   it('GET /risk/findings returns findings array with project info', async () => {
     const res = await request(makeApp()).get('/api/v1/risk/findings')
-      .set('Authorization', `Bearer ${process.env.TEST_TOKEN ?? ''}`);
+      .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
       findings: expect.any(Array),

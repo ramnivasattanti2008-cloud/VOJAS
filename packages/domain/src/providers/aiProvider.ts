@@ -1,4 +1,4 @@
-import { ProviderStatus } from './types.js';
+import type { ProviderStatus } from './types.js';
 
 export type AIDocumentType =
   | 'INVOICE'

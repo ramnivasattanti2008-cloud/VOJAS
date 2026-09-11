@@ -15,12 +15,35 @@ import type { JWTPayload } from '../auth/jwt.js';
 const router = Router();
 const auditService = new AuditService(prisma);
 
-/** Cookie options for the httpOnly JWT cookie. */
-const COOKIE_OPTIONS = {
+/**
+ * Cookie options for the httpOnly access-token cookie. maxAge matches the
+ * access token's own 15-minute JWT expiry — a stale cookie living longer
+ * than the token it carries would let a middleware presence-check treat an
+ * expired session as "authenticated" long after the token itself is dead.
+ */
+const ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  maxAge: 15 * 60 * 1000, // 15 minutes — matches signAccessToken's expiry
+  path: '/',
+};
+
+/**
+ * Cookie options for the httpOnly refresh-token cookie. Previously the
+ * refresh token was only ever returned in the JSON response body and never
+ * persisted anywhere the browser would resend it automatically — the
+ * frontend's silent refresh() call posts with no body, so
+ * POST /auth/refresh always 400'd with "Refresh token is required" and a
+ * page reload silently logged every user out. Setting it as its own
+ * cookie lets that route's existing `req.cookies?.refreshToken` fallback
+ * actually receive a token.
+ */
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days — matches signRefreshToken's expiry
   path: '/',
 };
 
@@ -77,8 +100,9 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
       sessionId: session.id,
     });
 
-    // Set httpOnly cookie (primary) + return token in body (legacy fallback)
-    res.cookie('vojas_token', accessToken, COOKIE_OPTIONS);
+    // Set httpOnly cookies (primary) + return tokens in body (legacy fallback)
+    res.cookie('vojas_token', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
 
     // Audit log
     await auditService.logEvent({
@@ -176,8 +200,9 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
       sessionId: session.id,
     });
 
-    // Set httpOnly cookie (primary) + return token in body (legacy fallback)
-    res.cookie('vojas_token', accessToken, COOKIE_OPTIONS);
+    // Set httpOnly cookies (primary) + return tokens in body (legacy fallback)
+    res.cookie('vojas_token', accessToken, ACCESS_COOKIE_OPTIONS);
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
 
     // Audit log
     await auditService.logEvent({
@@ -252,7 +277,7 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
     });
 
     // Keep httpOnly cookie in sync with new token
-    res.cookie('vojas_token', accessToken, COOKIE_OPTIONS);
+    res.cookie('vojas_token', accessToken, ACCESS_COOKIE_OPTIONS);
 
     await auditService.logEvent({
       actorId: session.user.id,
@@ -289,8 +314,9 @@ router.post('/logout', authenticate, async (req: Request, res: Response, next: N
 
     await prisma.session.deleteMany({ where: { id: user.sessionId } });
 
-    // Clear the httpOnly cookie
+    // Clear both httpOnly cookies
     res.clearCookie('vojas_token', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/' });
 
     res.status(204).send();
   } catch (err) {

@@ -48,3 +48,11 @@ export function usePublicProjectEvidence(id: string | null | undefined, enabled:
     enabled: !!id && enabled,
   });
 }
+
+export function usePublicProjectReports(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ['public-projects', id, 'reports'],
+    queryFn: () => projectsApi.public.getReports(id!),
+    enabled: !!id,
+  });
+}

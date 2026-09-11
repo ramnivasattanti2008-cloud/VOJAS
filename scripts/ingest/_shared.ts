@@ -14,7 +14,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 // Resolve paths relative to THIS file's location, not the caller's cwd.
-// This way the scripts work whether invoked from project root, backend/, or elsewhere.
+// This way the scripts work regardless of which directory they're invoked from.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 export const INGEST_DIR = __dirname;
@@ -347,10 +347,49 @@ export async function downloadWithRetry(
 // ─── Database init helper ───────────────────────────────────────────────────
 
 /**
- * Prisma client is in backend/, but ingest scripts may run from project root.
- * Use a relative path to backend prisma client.
+ * Shared Prisma client, built by packages/db. Run `pnpm run build:packages`
+ * (or `pnpm run db:generate` at minimum) before running any ingest script.
  */
 export async function getPrisma() {
-  const { prisma } = await import("../../backend/src/config/database.js");
+  const { prisma } = await import("@vojas/db");
   return prisma;
+}
+
+const INGEST_SYSTEM_USER_EMAIL = "ingest-system@vojas.internal";
+
+/**
+ * Project.createdById is a required foreign key to User. Ingested rows have
+ * no human author, so attribute them to a dedicated, non-interactive system
+ * account rather than a real admin/test user. Idempotent: safe to call from
+ * every ingest script.
+ *
+ * The password hash is a bcrypt hash of a random value nobody has ever
+ * typed — this account can never authenticate. It exists purely as an
+ * honest createdById target ("the ingestion pipeline created this"), not a
+ * usable login.
+ */
+export async function getOrCreateSystemUser(
+  prisma: Awaited<ReturnType<typeof getPrisma>>,
+): Promise<string> {
+  const existing = await prisma.user.findUnique({
+    where: { email: INGEST_SYSTEM_USER_EMAIL },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const bcrypt = await import("bcryptjs");
+  const { randomBytes } = await import("node:crypto");
+  const unusablePasswordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
+
+  const user = await prisma.user.create({
+    data: {
+      email: INGEST_SYSTEM_USER_EMAIL,
+      name: "VOJAS Data Ingestion System",
+      passwordHash: unusablePasswordHash,
+      role: "ADMIN",
+      isActive: true,
+    },
+    select: { id: true },
+  });
+  return user.id;
 }

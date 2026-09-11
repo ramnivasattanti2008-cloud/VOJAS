@@ -1,4 +1,4 @@
-import { ProviderStatus } from './types.js';
+import type { ProviderStatus } from './types.js';
 
 export interface GeocodeResult {
   latitude: number;

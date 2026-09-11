@@ -1,3 +1,10 @@
+// This boundary needs a client component: the "Go back" button carries an
+// onClick and reaches for window.history. As a server component it threw
+// "Event handlers cannot be passed to Client Component props" on every render
+// of a (dashboard) page, because Next prepares the not-found boundary for the
+// segment even when the page itself resolves.
+'use client';
+
 import Link from 'next/link';
 
 export default function NotFound() {

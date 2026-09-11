@@ -83,9 +83,17 @@ export function AuthProvider({ children, apiClient, onAuthError }: AuthProviderP
 
   const refresh = useCallback(async () => {
     try {
-      const res: AuthResponse = await authApi.refresh();
-      setUser(res.user);
-      setAccessToken(res.tokens.accessToken);
+      // POST /auth/refresh only issues a new access token for the existing
+      // session — it does not return `user`. Register the fresh token
+      // synchronously (setAccessTokenGetter takes effect immediately,
+      // unlike the accessToken React-state update below which only lands
+      // after the next render) so the getProfile() call below actually
+      // authenticates, then restore the real user from GET /auth/me.
+      const res = await authApi.refresh();
+      setAccessTokenGetter(() => res.accessToken);
+      const profile = await authApi.getProfile();
+      setUser(profile);
+      setAccessToken(res.accessToken);
     } catch {
       setUser(null);
       setAccessToken(null);
@@ -103,7 +111,7 @@ export function AuthProvider({ children, apiClient, onAuthError }: AuthProviderP
       try {
         const res: AuthResponse = await authApi.login({ email, password });
         setUser(res.user);
-        setAccessToken(res.tokens.accessToken);
+        setAccessToken(res.accessToken);
       } finally {
         setIsLoading(false);
       }
@@ -117,7 +125,7 @@ export function AuthProvider({ children, apiClient, onAuthError }: AuthProviderP
       try {
         const res: AuthResponse = await authApi.register({ name, email, password });
         setUser(res.user);
-        setAccessToken(res.tokens.accessToken);
+        setAccessToken(res.accessToken);
       } finally {
         setIsLoading(false);
       }

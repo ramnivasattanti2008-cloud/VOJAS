@@ -1,4 +1,4 @@
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import { NotFoundError, ValidationError } from '../errors/index.js';
 import { z } from 'zod';
 import { DataSourceStatus } from '@vojas/shared';

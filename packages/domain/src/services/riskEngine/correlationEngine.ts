@@ -11,7 +11,7 @@
  * underlying incomplete observation should NOT count as two independent signals.
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import type {
   RiskSignal,
   CorrelatedFinding,
@@ -280,6 +280,7 @@ export class CorrelationEngine {
       'CITIZEN_OFFICIAL_DISCREPANCY': 'CITIZEN_DISCREPANCY',
       'CONTRACTOR_PATTERN': 'CONTRACTOR_PATTERN',
       'ENVIRONMENTAL_RISK': 'ENVIRONMENTAL_CONCERN',
+      'INSPECTION_FRESHNESS': 'INSPECTION_OVERDUE',
     };
     return map[signalType] || 'GENERAL';
   }
@@ -347,6 +348,9 @@ export class CorrelationEngine {
     }
     if (patternType === 'DELAY') {
       return 'REQUEST_PROGRESS_REVIEW: Verify current project status and timeline.';
+    }
+    if (patternType === 'INSPECTION_OVERDUE') {
+      return 'REQUEST_FIELD_VERIFICATION: Schedule a new field inspection — the last one is past the expected interval.';
     }
     return 'REQUEST_VERIFICATION: Schedule human review of the flagged concern.';
   }

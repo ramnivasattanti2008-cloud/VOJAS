@@ -7,7 +7,12 @@ import {
   findProjectsNear,
 } from '../src';
 
-describe('Database connection', () => {
+// Matches the guard convention used by every apps/api integration suite: the
+// DB-dependent suite skips cleanly when no test database is configured instead
+// of failing on an unreachable localhost:5432.
+const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
+
+runIfDb('Database connection', () => {
   beforeAll(async () => {
     await connectDb();
   });

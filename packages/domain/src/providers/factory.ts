@@ -7,12 +7,12 @@
  * 2. Implement the interface
  * 3. Update factory to detect and return it
  */
-import { SatelliteProvider } from './satelliteProvider.js';
-import { GovernmentDataProvider } from './governmentDataProvider.js';
-import { MapsProvider } from './mapsProvider.js';
-import { AIProvider } from './aiProvider.js';
-import { DocumentProvider } from './documentProvider.js';
-import { StorageProvider } from './storageProvider.js';
+import type { SatelliteProvider } from './satelliteProvider.js';
+import type { GovernmentDataProvider } from './governmentDataProvider.js';
+import type { MapsProvider } from './mapsProvider.js';
+import type { AIProvider } from './aiProvider.js';
+import type { DocumentProvider } from './documentProvider.js';
+import type { StorageProvider } from './storageProvider.js';
 import {
   NullSatelliteProvider,
   NullGovernmentDataProvider,

@@ -23,6 +23,7 @@ import {
   AuditService,
   NotFoundError,
   ValidationError,
+  RiskAnalysisOrchestrator,
 } from '@vojas/domain';
 import { ReportTriageService } from '../services/reportTriageService.js';
 import {
@@ -38,6 +39,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { success, created, error } from '../utils/apiResponse.js';
 import { MediaValidationService } from '../services/mediaValidationService.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -46,6 +48,7 @@ const router = Router();
 const auditService = new AuditService(prisma);
 const triageService = new ReportTriageService(prisma);
 const mediaService = new MediaValidationService();
+const riskOrchestrator = new RiskAnalysisOrchestrator(prisma);
 
 // ─── Storage Setup ────────────────────────────────────────────────────────────
 
@@ -281,6 +284,11 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
           description: `Citizen report submitted: "${report.title}" (${report.category}).`,
           confidence: null,
         },
+      });
+
+      // Automatically re-run project risk analysis in the background to incorporate the new report
+      riskOrchestrator.analyze(report.projectId, { persist: true, forceNewRun: true }).catch((err) => {
+        logger.warn(`Background risk analysis after report failed for ${report.projectId}: ${err}`);
       });
     }
 

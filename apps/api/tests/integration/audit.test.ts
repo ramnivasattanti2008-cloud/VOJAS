@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createUserWithRole } from '../helpers/fixtures';
 
 const BASE = '/api/v1';
 
@@ -9,13 +10,9 @@ const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
 runIfDb('Audit Logging', () => {
   it('project creation creates an audit log entry', async () => {
-    const adminEmail = `audit-admin-${Date.now()}@example.com`;
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: adminEmail, password: 'AdminPass123!', name: 'Audit Admin', role: 'ADMIN' });
-
-    const token = adminRes.body.data.accessToken;
-    const userId = adminRes.body.data.user.id;
+    // Provisioned directly: /auth/register pins new accounts to CITIZEN, so a
+    // self-registered "admin" could not create a project at all.
+    const { token, userId } = await createUserWithRole('ADMIN', { name: 'Audit Admin' });
 
     await request(app)
       .post(`${BASE}/projects`)
@@ -52,17 +49,9 @@ runIfDb('Audit Logging', () => {
       .send({ email, password: 'TestPass123!' });
 
     // Get admin token to read audit log
-    const adminEmail = `audit-admin-login-${Date.now()}@example.com`;
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: adminEmail,
-        password: 'AdminPass123!',
-        name: 'Audit Admin',
-        role: 'ADMIN',
-      });
-
-    const adminToken = adminRes.body.data.accessToken;
+    // createUserWithRole logs in through the real route, so this also produces
+    // the AUTH_LOGIN event the assertion below looks for.
+    const { token: adminToken } = await createUserWithRole('ADMIN', { name: 'Audit Admin' });
 
     // Check audit log for AUTH_LOGIN
     const auditRes = await request(app)
@@ -74,17 +63,22 @@ runIfDb('Audit Logging', () => {
     expect(auditRes.body.data.data.some((e: any) => e.action === 'AUTH_LOGIN')).toBe(true);
   });
 
-  it('GET /audit requires ADMIN or AUDIT_READ permission (403 for OFFICER)', async () => {
-    const officerRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: `audit-officer-${Date.now()}@example.com`,
-        password: 'OfficerPass123!',
-        name: 'Audit Officer',
-        role: 'OFFICER',
-      });
+  it('GET /audit is allowed for OFFICER, which holds audit.read', async () => {
+    // ROLE_PERMISSIONS grants OFFICER audit.read, and the route is gated on
+    // that permission, so 200 is the correct answer. This assertion expected
+    // 403 and only ever passed because the "officer" was a self-registered
+    // account that /auth/register had silently pinned to CITIZEN.
+    const { token } = await createUserWithRole('OFFICER', { name: 'Audit Officer' });
 
-    const token = officerRes.body.data.accessToken;
+    const res = await request(app)
+      .get(`${BASE}/audit`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it('GET /audit is refused for CITIZEN, which does not hold audit.read', async () => {
+    const { token } = await createUserWithRole('CITIZEN', { name: 'Audit Citizen' });
 
     const res = await request(app)
       .get(`${BASE}/audit`)

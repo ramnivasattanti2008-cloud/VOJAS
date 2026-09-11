@@ -6,32 +6,23 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createUserWithRole } from '../helpers/fixtures';
 
 const BASE = '/api/v1';
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
+// Privileged roles cannot be self-registered — /auth/register pins every new
+// account to CITIZEN. These fixtures provision the account and log in for real.
 async function getAdminToken(): Promise<string> {
-  const email = `admin-test-${Date.now()}@example.com`;
-  const res = await request(app)
-    .post(`${BASE}/auth/register`)
-    .send({ email, password: 'AdminPass123!', name: 'Admin', role: 'ADMIN' });
-  return res.body.data.accessToken;
+  return (await createUserWithRole('ADMIN')).token;
 }
 
 async function getOfficerToken(): Promise<string> {
-  const email = `officer-test-${Date.now()}@example.com`;
-  const res = await request(app)
-    .post(`${BASE}/auth/register`)
-    .send({ email, password: 'OfficerPass123!', name: 'Officer', role: 'OFFICER' });
-  return res.body.data.accessToken;
+  return (await createUserWithRole('OFFICER')).token;
 }
 
 async function getCitizenToken(): Promise<string> {
-  const email = `citizen-test-${Date.now()}@example.com`;
-  const res = await request(app)
-    .post(`${BASE}/auth/register`)
-    .send({ email, password: 'CitizenPass123!', name: 'Citizen', role: 'CITIZEN' });
-  return res.body.data.accessToken;
+  return (await createUserWithRole('CITIZEN')).token;
 }
 
 runIfDb('Admin — RBAC Enforcement', () => {

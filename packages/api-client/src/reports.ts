@@ -11,10 +11,10 @@ export function createReportApi(client: ApiClient) {
       page?: number;
       limit?: number;
     }) {
-      return client.get<PaginatedResponse<Report>>('/api/v1/reports', params);
+      return client.get<PaginatedResponse<Report>>('/reports', params);
     },
     get(id: string) {
-      return client.get<Report>(`/api/v1/reports/${id}`);
+      return client.get<Report>(`/reports/${id}`);
     },
     submit(payload: {
       title: string;
@@ -30,13 +30,13 @@ export function createReportApi(client: ApiClient) {
       reporterPhone?: string;
       isAnonymous?: boolean;
     }) {
-      return client.post<Report>('/api/v1/reports', payload);
+      return client.post<Report>('/reports', payload);
     },
     assign(id: string, assignedToId: string) {
-      return client.post<Report>(`/api/v1/reports/${id}/assign`, { assignedToId });
+      return client.post<Report>(`/reports/${id}/assign`, { assignedToId });
     },
     resolve(id: string, resolution: string) {
-      return client.post<Report>(`/api/v1/reports/${id}/resolve`, { resolution });
+      return client.post<Report>(`/reports/${id}/resolve`, { resolution });
     },
   };
 }

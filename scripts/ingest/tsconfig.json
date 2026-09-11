@@ -11,10 +11,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": false,
-    "baseUrl": "../..",
-    "paths": {
-      "@prisma/client": ["backend/node_modules/@prisma/client"]
-    }
+    "baseUrl": "../.."
   },
   "include": ["./*.ts"],
   "exclude": ["data", "node_modules"]

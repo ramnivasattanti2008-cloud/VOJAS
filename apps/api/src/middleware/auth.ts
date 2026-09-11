@@ -1,10 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
+import { prisma } from '@vojas/db';
 import { verifyAccessToken } from '../auth/jwt.js';
 import { UnauthorizedError, ForbiddenError } from '@vojas/domain';
 import type { JWTPayload } from '../auth/jwt.js';
+import type {
+  Permission} from '@vojas/shared';
 import {
   UserRole,
-  Permission,
   PERMISSIONS,
   ROLE_PERMISSIONS,
   hasPermission,
@@ -23,6 +25,23 @@ declare global {
 
 export const requireAuth = authenticate;
 
+
+/**
+ * A correctly signed access token is not sufficient on its own.
+ * POST /auth/logout deletes the session row, but nothing used to consult it, so
+ * a "logged out" access token kept working until its own 15-minute expiry —
+ * logout was cosmetic. Both middlewares below now confirm the session is still
+ * present and unexpired before trusting the token's claims.
+ */
+async function sessionIsLive(sessionId: string): Promise<boolean> {
+  if (!sessionId) return false;
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    select: { expiresAt: true },
+  });
+  return Boolean(session && session.expiresAt.getTime() > Date.now());
+}
+
 export function authenticate(req: Request, _res: Response, next: NextFunction) {
   // Prefer httpOnly cookie; fall back to Authorization header (legacy/Bearer).
   const cookieToken = (req as unknown as { cookies?: Record<string, string> }).cookies?.vojas_token;
@@ -32,15 +51,26 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
   if (!token) {
     return next(new UnauthorizedError('No authorization token provided'));
   }
+
+  let payload: JWTPayload;
   try {
-    const payload = verifyAccessToken(token);
-    req.user = payload;
-    // Compute permissions from role
-    req.userPermissions = ROLE_PERMISSIONS[payload.role] ?? [];
-    next();
+    payload = verifyAccessToken(token);
   } catch {
-    next(new UnauthorizedError('Invalid or expired token'));
+    return next(new UnauthorizedError('Invalid or expired token'));
   }
+
+  sessionIsLive(payload.sessionId)
+    .then((live) => {
+      if (!live) {
+        next(new UnauthorizedError('Session is no longer valid'));
+        return;
+      }
+      req.user = payload;
+      // Compute permissions from role
+      req.userPermissions = ROLE_PERMISSIONS[payload.role] ?? [];
+      next();
+    })
+    .catch(next);
 }
 
 export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
@@ -48,14 +78,29 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
   const token = cookieToken || bearerToken;
-  if (token) {
-    try {
-      const payload = verifyAccessToken(token);
-      req.user = payload;
-      req.userPermissions = ROLE_PERMISSIONS[payload.role] ?? [];
-    } catch { /* ignore invalid token for optional auth */ }
+  if (!token) {
+    next();
+    return;
   }
-  next();
+
+  let payload: JWTPayload;
+  try {
+    payload = verifyAccessToken(token);
+  } catch {
+    // An unusable token on an optional-auth route just means anonymous.
+    next();
+    return;
+  }
+
+  sessionIsLive(payload.sessionId)
+    .then((live) => {
+      if (live) {
+        req.user = payload;
+        req.userPermissions = ROLE_PERMISSIONS[payload.role] ?? [];
+      }
+      next();
+    })
+    .catch(() => next());
 }
 
 /**
@@ -68,7 +113,11 @@ export function requireRole(...roles: string[]) {
       return next(new UnauthorizedError('Authentication required'));
     }
     if (!roles.includes(req.user.role)) {
-      return next(new UnauthorizedError(`Insufficient permissions. Required: ${roles.join(' or ')}`));
+      // An authenticated caller whose role is wrong is forbidden, not
+      // unauthenticated. Returning 401 here told clients to re-authenticate to
+      // fix a problem that re-authenticating cannot fix, and it disagreed with
+      // requirePermission() one function below, which already answers 403.
+      return next(new ForbiddenError(`Insufficient permissions. Required: ${roles.join(' or ')}`));
     }
     next();
   };

@@ -11,9 +11,9 @@
  *   - Honor "no evidence" labels honestly
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import type { DataQualityAssessment } from './types.js';
-import { ProjectDataSnapshot } from './ruleEngine.js';
+import type { ProjectDataSnapshot } from './ruleEngine.js';
 
 export class DataQualityGate {
   private prisma: PrismaClient;

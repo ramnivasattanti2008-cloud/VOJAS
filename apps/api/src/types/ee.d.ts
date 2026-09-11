@@ -5,7 +5,7 @@
  */
 
 declare module 'ee' {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const ee: any;
   export = ee;
 }

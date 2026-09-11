@@ -1,5 +1,5 @@
 // M16: Scenario Service
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 
 export type ScenarioType = 'PROGRESS_RATE' | 'EXPENDITURE_CHANGE' | 'MILESTONE_DELAY' | 'ACCELERATION' | 'COST_ESCALATION';
 

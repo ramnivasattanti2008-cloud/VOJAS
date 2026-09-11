@@ -44,6 +44,20 @@ export function PublicProjectCard({ project }: { project: PublicProjectListItem 
         )}
       </div>
 
+      {project.mp && (
+        <div className="mt-2.5 flex items-center justify-between text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-slate-400 text-[11px]">MP:</span>
+            <span className="font-medium text-slate-700 truncate">{project.mp.name}</span>
+          </div>
+          {project.mp.party && (
+            <span className="text-[10px] font-semibold text-vojas-700 bg-vojas-50 px-1.5 py-0.5 rounded border border-vojas-200 shrink-0">
+              {project.mp.party}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
         <div>
           <p className="text-slate-400">Sanctioned</p>

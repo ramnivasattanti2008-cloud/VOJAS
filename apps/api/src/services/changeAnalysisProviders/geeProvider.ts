@@ -24,7 +24,7 @@ import {
 } from './changeAnalysisProvider.js';
 
 // EE uses `export =` syntax — eslint-disable needed
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 let ee: any = null;
 let eeInitialized = false;
 

@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import dynamic from 'next/dynamic';
-import { MapPin, Layers, AlertTriangle, Search, X } from 'lucide-react';
-import { Card, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card, CardBody } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useProjects } from '@/hooks/useProjects';
-import { formatCurrency } from '@/lib/utils';
-import { ProjectStatus } from '@vojas/shared';
 import type { ProjectSector } from '@vojas/shared';
+import { Layers, MapPin, Search, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useCallback, useMemo, useState } from 'react';
 
 const InteractiveGisMap = dynamic(
   () => import('@/components/map/InteractiveGisMap').then((m) => m.InteractiveGisMap),

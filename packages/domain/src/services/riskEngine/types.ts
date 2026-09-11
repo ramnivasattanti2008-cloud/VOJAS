@@ -26,7 +26,8 @@ export type SignalTypeEnum =
   | 'DOCUMENT_INCONSISTENCY'
   | 'CITIZEN_OFFICIAL_DISCREPANCY'
   | 'CONTRACTOR_PATTERN'
-  | 'ENVIRONMENTAL_RISK';
+  | 'ENVIRONMENTAL_RISK'
+  | 'INSPECTION_FRESHNESS';
 
 // ── Source Types ────────────────────────────────────────────────
 export type SourceType =

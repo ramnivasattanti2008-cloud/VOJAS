@@ -7,7 +7,7 @@
  * Prediction ≠ Proof. Every insight is probabilistic and requires human verification.
  */
 
-import { PrismaClient, ProjectStatus } from '@vojas/db';
+import type { PrismaClient, ProjectStatus } from '@vojas/db';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

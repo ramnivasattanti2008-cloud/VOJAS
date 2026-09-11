@@ -59,7 +59,24 @@ CREATE TYPE "AuditAction" AS ENUM (
   'ANOMALY_DETECTED', 'ANOMALY_ACKNOWLEDGED', 'ANOMALY_RESOLVED',
   'ANOMALY_ESCALATED', 'DOCUMENT_UPLOADED', 'DOCUMENT_VERIFIED',
   'DOCUMENT_REJECTED', 'SATELLITE_ANALYSIS_RUN', 'FINANCIAL_UPDATE',
-  'VERIFICATION_COMPLETED', 'SYSTEM_CONFIG_CHANGED'
+  'VERIFICATION_COMPLETED', 'SYSTEM_CONFIG_CHANGED',
+  -- The following were added to schema.prisma via `prisma db push` in earlier
+  -- sessions without this migration file being kept in sync (pre-existing
+  -- drift, not introduced here). Listed in the same order as the live DB's
+  -- enum_range() so a fresh `prisma migrate deploy` matches current reality.
+  'ANOMALY_CREATED', 'ANOMALY_DISMISSED',
+  'REPORT_SUBMITTED', 'REPORT_ASSIGNED', 'REPORT_RESOLVED',
+  'REPORT_MODERATED', 'REPORT_STATUS_CHANGED', 'REPORT_PROJECT_LINKED',
+  'REPORT_CLAIMS_EXTRACTED', 'REPORT_MEDIA_UPLOADED', 'REPORT_IDENTITY_ACCESSED',
+  'VENDOR_REGISTERED', 'NOTIFICATION_SENT',
+  'RISK_FINDING_DETECTED', 'RISK_FINDING_ACKNOWLEDGED', 'RISK_FINDING_RESOLVED',
+  'RISK_FINDING_DISMISSED', 'RISK_FINDING_ESCALATED',
+  'RISK_SIGNAL_GENERATED', 'RISK_RULE_TRIGGERED', 'RISK_SCORE_UPDATED',
+  -- Phase 1: Investigation Workflow (added in this migration)
+  'ANOMALY_NOTE_ADDED', 'ANOMALY_INFO_REQUESTED', 'ANOMALY_INSPECTION_REQUESTED',
+  'ANOMALY_CONTRACTOR_RESPONSE_REQUESTED', 'ANOMALY_VERIFIED', 'ANOMALY_REOPENED',
+  'ANOMALY_EVIDENCE_LINKED', 'FIELD_VERIFICATION_SCHEDULED',
+  'FIELD_VERIFICATION_COMPLETED', 'CONTRACTOR_UPDATE_REVIEWED'
 );
 
 -- ────────────────────────────────────────────────────────────
@@ -144,6 +161,9 @@ CREATE TABLE "mps" (
   CONSTRAINT "mps_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "mps_state_id_fkey" FOREIGN KEY ("state_id") REFERENCES "states"("id") ON DELETE SET NULL
 );
+
+-- Ingest idempotency key for MP upserts (scripts/ingest/vonter.ts et al.).
+CREATE UNIQUE INDEX "mps_name_constituency_term_key" ON "mps" ("name", "constituency", "term");
 
 -- LGD Locations
 CREATE TABLE "lgd_locations" (

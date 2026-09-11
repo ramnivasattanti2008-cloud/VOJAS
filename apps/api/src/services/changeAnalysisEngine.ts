@@ -18,7 +18,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import type { Prisma } from '@vojas/db';
 import { logger } from '../utils/logger.js';
 import { geeProvider } from './changeAnalysisProviders/geeProvider.js';

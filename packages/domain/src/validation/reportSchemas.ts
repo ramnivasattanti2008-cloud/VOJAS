@@ -23,7 +23,12 @@ export const reportListSchema = z.object({
   projectId: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(200).default(20),
-});
+})
+  // Reject unsupported query parameters instead of letting zod strip them.
+  // Stripping meant GET /reports?latitude=999 answered 200 with an unfiltered
+  // list: the caller believes it filtered, and on a transparency API a silently
+  // ignored filter reads as "there is nothing there".
+  .strict();
 
 export const reportSubmitSchema = z.object({
   title: z.string().min(1).max(300),

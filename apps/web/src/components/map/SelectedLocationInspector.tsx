@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -246,26 +246,39 @@ export const SelectedLocationInspector: React.FC<SelectedLocationInspectorProps>
 
         <div className="flex items-center gap-2">
           {entity.type === 'project' && (
-            <Link href={`/projects/${entity.id}`} className="flex-1">
+            <>
+              <Link href={`/explore/${entity.id}`} className="flex-1">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs transition-colors"
+                >
+                  <span>Full Dossier</span>
+                  <ExternalLink className="w-3 h-3" />
+                </button>
+              </Link>
+              <Link href={`/report?projectId=${entity.id}`} className="flex-1">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg border border-amber-500/40 bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 font-mono text-xs transition-colors"
+                >
+                  <ShieldAlert className="w-3 h-3 text-amber-400" />
+                  <span>Report Issue</span>
+                </button>
+              </Link>
+            </>
+          )}
+
+          {entity.type !== 'project' && (
+            <Link href={`/officer/investigations?caseId=${entity.id}`} className="w-full">
               <button
                 type="button"
-                className="w-full flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs transition-colors"
+                className="w-full flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg border border-red-500/40 bg-red-950/30 hover:bg-red-900/40 text-red-300 font-mono text-xs transition-colors"
               >
-                <span>Full Dossier</span>
-                <ExternalLink className="w-3 h-3" />
+                <ShieldAlert className="w-3 h-3 text-red-400" />
+                <span>Investigate</span>
               </button>
             </Link>
           )}
-
-          <Link href={`/officer/investigations?caseId=${entity.id}`} className="flex-1">
-            <button
-              type="button"
-              className="w-full flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg border border-red-500/40 bg-red-950/30 hover:bg-red-900/40 text-red-300 font-mono text-xs transition-colors"
-            >
-              <ShieldAlert className="w-3 h-3 text-red-400" />
-              <span>Investigate</span>
-            </button>
-          </Link>
         </div>
       </div>
     </div>

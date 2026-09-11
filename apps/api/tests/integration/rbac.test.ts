@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createUserWithRole } from '../helpers/fixtures';
 
 const BASE = '/api/v1';
 
@@ -9,13 +10,9 @@ const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
 runIfDb('RBAC — User Management', () => {
   it('ADMIN can access GET /users', async () => {
-    // Register admin
-    const adminEmail = `admin-rbac-${Date.now()}@example.com`;
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: adminEmail, password: 'AdminPass123!', name: 'Admin', role: 'ADMIN' });
-
-    const token = adminRes.body.data.accessToken;
+    // Provisioned directly: /auth/register pins new accounts to CITIZEN, so a
+    // self-registered "admin" would silently be a citizen.
+    const { token } = await createUserWithRole('ADMIN', { name: 'Admin' });
 
     const res = await request(app)
       .get(`${BASE}/users`)
@@ -43,12 +40,7 @@ runIfDb('RBAC — User Management', () => {
 
 runIfDb('RBAC — Project Management', () => {
   it('OFFICER can create a project', async () => {
-    const officerEmail = `officer-rbac-${Date.now()}@example.com`;
-    const officerRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: officerEmail, password: 'OfficerPass123!', name: 'Officer', role: 'OFFICER' });
-
-    const token = officerRes.body.data.accessToken;
+    const { token } = await createUserWithRole('OFFICER', { name: 'Officer' });
 
     const res = await request(app)
       .post(`${BASE}/projects`)

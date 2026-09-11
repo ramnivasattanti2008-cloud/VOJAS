@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { AuditService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
+import { AuditService, EvidenceService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
 import { AuditAction, PERMISSIONS, ROLE_PERMISSIONS, getPermissionsForRole, getProjectVisibilityFilter, canAccessProject, buildUserContext } from '@vojas/shared';
 import {
   createProjectSchema,
@@ -13,6 +13,7 @@ import { success, created } from '../utils/apiResponse.js';
 
 const router = Router();
 const auditService = new AuditService(prisma);
+const evidenceService = new EvidenceService(prisma);
 
 /**
  * GET /projects — authenticated with permission-based scoping
@@ -192,6 +193,50 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
     }
 
     success(res, project);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/:id/evidence — authenticated, role-gated unified evidence
+ * feed. Fulfils the existing api-client contract
+ * (packages/api-client/src/projects.ts getEvidence()). Aggregates across
+ * every real evidence-bearing table (Document, SatelliteObservation,
+ * SatelliteAnalysis, FieldVerification, ContractorUpdate, ReportMedia,
+ * ProjectEvent, RiskFinding) — no duplicate storage — and filters by the
+ * caller's role. Uses the same project-level access gate as GET /:id.
+ */
+router.get('/:id/evidence', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const project = await prisma.project.findUnique({
+      where: { id },
+      select: { id: true, constituency: true },
+    });
+    if (!project) {
+      throw new NotFoundError('Project');
+    }
+
+    const user = req.user!;
+    const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+    const userCtx = buildUserContext(user.role, user.userId, perms as any);
+    if (!canAccessProject(userCtx, project as any)) {
+      throw new ForbiddenError('You do not have access to this project');
+    }
+
+    const allEvidence = await evidenceService.getProjectEvidence(id);
+    const visibleEvidence = evidenceService.filterForViewer(allEvidence, {
+      userId: user.userId,
+      role: user.role,
+      mpHasOversight: user.role === UserRole.MP,
+    });
+
+    success(res, {
+      projectId: id,
+      total: visibleEvidence.length,
+      items: visibleEvidence,
+    });
   } catch (err) {
     next(err);
   }

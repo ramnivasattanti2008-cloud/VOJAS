@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import {
   ArrowLeft,
   MapPin,
@@ -12,8 +13,16 @@ import {
   Satellite,
   Loader2,
   ShieldAlert,
+  UserCheck,
+  MessageSquare,
 } from 'lucide-react';
-import { usePublicProject, usePublicProjectTimeline, usePublicProjectRisk } from '@/hooks/usePublicProjects';
+import {
+  usePublicProject,
+  usePublicProjectTimeline,
+  usePublicProjectRisk,
+  usePublicProjectEvidence,
+  usePublicProjectReports,
+} from '@/hooks/usePublicProjects';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -22,6 +31,18 @@ import { SourcePanel } from '@/components/transparency/SourcePanel';
 import { PublicMoneyView } from '@/components/transparency/PublicMoneyView';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import type { PublicProjectDetail } from '@vojas/api-client';
+
+const SatelliteTab = dynamic(
+  () => import('@/components/satellite/SatelliteTab').then((m) => m.SatelliteTab),
+  {
+    loading: () => (
+      <div className="h-64 flex items-center justify-center bg-slate-50 rounded-xl text-slate-400 text-sm">
+        <Loader2 className="h-5 w-5 animate-spin mr-2 text-vojas-500" /> Loading Satellite Telemetry…
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 type Tab = 'overview' | 'financial' | 'timeline' | 'risk' | 'satellite';
 
@@ -147,9 +168,16 @@ export function ExploreDetailClient() {
 
       {activeTab === 'overview' && <OverviewTab project={project} />}
       {activeTab === 'financial' && <FinancialTab project={project} />}
-      {activeTab === 'timeline' && <TimelineTab projectId={id} />}
+      {activeTab === 'timeline' && <TimelineTab projectId={id} active={activeTab === 'timeline'} />}
       {activeTab === 'risk' && <RiskTab projectId={id} active={activeTab === 'risk'} />}
-      {activeTab === 'satellite' && <SatelliteTab projectId={id} />}
+      {activeTab === 'satellite' && (
+        <SatelliteTab
+          projectId={id}
+          lat={project.latitude ?? 12.9716}
+          lng={project.longitude ?? 77.5946}
+          projectName={project.name}
+        />
+      )}
 
       <SourcePanel lastUpdated={project.updatedAt} className="mt-8" />
     </div>
@@ -187,6 +215,30 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
         </CardBody>
       </Card>
 
+      {project.mp && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-vojas-600" />
+                Member of Parliament (MP)
+              </h2>
+              {project.mp.party && (
+                <Badge variant="primary">{project.mp.party}</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <DetailField label="Representative" value={project.mp.name} />
+              <DetailField label="Constituency" value={project.mp.constituency} />
+              <DetailField label="House" value={project.mp.house === 'LOK_SABHA' ? 'Lok Sabha' : 'Rajya Sabha'} />
+              <DetailField label="Tenure" value={project.mp.term || '17th Lok Sabha'} />
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {project.description && (
         <Card>
           <CardHeader>
@@ -198,27 +250,7 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <h2 className="text-base font-semibold text-slate-800">Citizen Reports</h2>
-        </CardHeader>
-        <CardBody>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-2xl font-bold text-slate-800">{project.reportCount}</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {project.reportCount === 1 ? 'report submitted' : 'reports submitted'} about this project
-              </p>
-            </div>
-            <Link href={`/report?projectId=${project.id}`}>
-              <Button variant="secondary" size="sm">Submit a Report</Button>
-            </Link>
-          </div>
-          <p className="mt-3 text-xs text-slate-400 leading-relaxed border-t border-slate-100 pt-3">
-            Reporter identities are protected. Individual report details are not disclosed publicly.
-          </p>
-        </CardBody>
-      </Card>
+      <CitizenReportsSection project={project} />
     </div>
   );
 }
@@ -251,42 +283,96 @@ function FinancialTab({ project }: { project: PublicProjectDetail }) {
   );
 }
 
-function TimelineTab({ projectId }: { projectId: string }) {
+const EVIDENCE_TYPE_LABEL: Record<string, string> = {
+  DOCUMENT: 'Document',
+  SATELLITE_OBSERVATION: 'Satellite observation',
+  SATELLITE_ANALYSIS: 'Satellite change analysis',
+  INSPECTION: 'Field inspection',
+  CITIZEN_MEDIA: 'Citizen-submitted media',
+  CONTRACTOR_SUBMISSION: 'Contractor submission',
+  AI_FINDING: 'AI-assisted finding',
+  PROJECT_EVENT: 'Project event',
+};
+
+function TimelineTab({ projectId, active }: { projectId: string; active: boolean }) {
   const { data, isLoading } = usePublicProjectTimeline(projectId);
   const events = data?.data ?? [];
+  const { data: evidenceFeed, isLoading: evidenceLoading } = usePublicProjectEvidence(projectId, active);
+  const evidenceItems = evidenceFeed?.items ?? [];
 
   return (
-    <Card>
-      <CardHeader>
-        <h2 className="text-base font-semibold text-slate-800">Evidence &amp; Timeline</h2>
-      </CardHeader>
-      <CardBody>
-        {isLoading ? (
-          <div className="text-center py-8 text-slate-400 text-sm">Loading…</div>
-        ) : events.length === 0 ? (
-          <div className="text-center py-8 text-slate-400 text-sm">
-            No recorded events available for this project yet.
-          </div>
-        ) : (
-          <ol className="space-y-4">
-            {events.map((e) => (
-              <li key={e.id} className="border-l-2 border-slate-200 pl-4 relative">
-                <span className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-vojas-500" />
-                <p className="text-sm font-medium text-slate-700">{e.description}</p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {formatDate(e.eventDate)} · {e.eventType.replace(/_/g, ' ')} · Source: {e.source}
-                  {e.sourceUrl && (
-                    <a href={e.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-1 text-vojas-600 hover:underline">
-                      view source
-                    </a>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <h2 className="text-base font-semibold text-slate-800">Evidence &amp; Timeline</h2>
+        </CardHeader>
+        <CardBody>
+          {isLoading ? (
+            <div className="text-center py-8 text-slate-400 text-sm">Loading…</div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-sm">
+              No recorded events available for this project yet.
+            </div>
+          ) : (
+            <ol className="space-y-4">
+              {events.map((e) => (
+                <li key={e.id} className="border-l-2 border-slate-200 pl-4 relative">
+                  <span className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-vojas-500" />
+                  <p className="text-sm font-medium text-slate-700">{e.description}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {formatDate(e.eventDate)} · {e.eventType.replace(/_/g, ' ')} · Source: {e.source}
+                    {e.sourceUrl && (
+                      <a href={e.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-1 text-vojas-600 hover:underline">
+                        view source
+                      </a>
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h2 className="text-base font-semibold text-slate-800">Unified Evidence Feed</h2>
+        </CardHeader>
+        <CardBody>
+          {evidenceLoading ? (
+            <div className="text-center py-8 text-slate-400 text-sm">Loading…</div>
+          ) : evidenceItems.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-sm">
+              No public evidence recorded for this project yet.
+            </div>
+          ) : (
+            <ol className="space-y-4">
+              {evidenceItems.map((item) => (
+                <li key={item.id} className="border-l-2 border-slate-200 pl-4 relative">
+                  <span className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-vojas-500" />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-slate-700">{item.title}</p>
+                    <Badge variant="neutral">{EVIDENCE_TYPE_LABEL[item.evidenceType] ?? item.evidenceType}</Badge>
+                  </div>
+                  {item.description && (
+                    <p className="text-xs text-slate-500 mt-1">{item.description}</p>
                   )}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </CardBody>
-    </Card>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {formatDate(item.capturedAt)}
+                    {item.confidence && ` · Confidence: ${item.confidence}`}
+                    {item.url && (
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" className="ml-1 text-vojas-600 hover:underline">
+                        view source
+                      </a>
+                    )}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardBody>
+      </Card>
+    </div>
   );
 }
 
@@ -334,27 +420,85 @@ function RiskTab({ projectId, active }: { projectId: string; active: boolean }) 
   );
 }
 
-function SatelliteTab({ projectId }: { projectId: string }) {
+function CitizenReportsSection({ project }: { project: PublicProjectDetail }) {
+  const { data, isLoading } = usePublicProjectReports(project.id);
+  const reports = data?.reports ?? [];
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-800">Satellite Observations</h2>
-          <span className="text-xs text-slate-400 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">AI-INTERPRETED</span>
+          <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-vojas-600" />
+            Citizen Oversight &amp; Reports
+          </h2>
+          <Link href={`/report?projectId=${project.id}`}>
+            <Button variant="primary" size="sm">Submit a Report</Button>
+          </Link>
         </div>
       </CardHeader>
-      <CardBody>
-        <div className="text-center py-10">
-          <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
-            <Satellite className="h-6 w-6 text-slate-300" />
+      <CardBody className="space-y-4">
+        <div className="flex items-center justify-between bg-slate-50 rounded-xl p-4 border border-slate-100">
+          <div>
+            <p className="text-2xl font-bold text-slate-900">{project.reportCount}</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {project.reportCount === 1 ? 'verified citizen submission' : 'verified citizen submissions'}
+            </p>
           </div>
-          <p className="text-sm font-medium text-slate-700 mb-1">Satellite source unavailable</p>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            VOJAS uses Copernicus Sentinel-2 imagery via CDSE for satellite change analysis. This
-            source is not currently configured, so no satellite comparison is shown for this
-            project. This is stated explicitly rather than estimated.
+          <p className="text-xs text-slate-400 max-w-xs text-right">
+            Geotagged citizen evidence directly updates project anomaly detection and statutory audits.
           </p>
         </div>
+
+        {isLoading ? (
+          <div className="text-center py-6 text-slate-400 text-sm flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-vojas-500" />
+            Loading project citizen reports…
+          </div>
+        ) : reports.length === 0 ? (
+          <div className="text-center py-6 text-slate-400 text-sm">
+            <p className="font-medium text-slate-600">No public discrepancy reports logged yet</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Citizens and community inspectors can submit on-site photographs and progress notes above.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 pt-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Submitted Discrepancies ({reports.length})
+            </h3>
+            {reports.map((r) => (
+              <div
+                key={r.id}
+                className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all space-y-2"
+              >
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-vojas-700 bg-vojas-50 px-2 py-0.5 rounded border border-vojas-200">
+                      {r.reportReference}
+                    </span>
+                    <Badge variant="neutral">{r.category.replace(/_/g, ' ')}</Badge>
+                  </div>
+                  <span className="text-[11px] text-slate-400">
+                    Logged {formatDate(r.submittedAt)}
+                  </span>
+                </div>
+                <h4 className="text-sm font-semibold text-slate-800">{r.title}</h4>
+                <p className="text-xs text-slate-600 leading-relaxed">{r.description}</p>
+                {r.locationDesc && (
+                  <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-slate-400" />
+                    Observed location: {r.locationDesc}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-100 pt-3">
+          Whistleblower identities are cryptographically protected. Personally identifiable contact details are kept strictly confidential.
+        </p>
       </CardBody>
     </Card>
   );

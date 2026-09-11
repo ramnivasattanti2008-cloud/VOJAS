@@ -1,12 +1,21 @@
 const https = require('https');
 
+// Set RENDER_API_KEY in your shell before running this script.
+// This file previously hardcoded a live Render API token, which must be
+// treated as compromised — rotate/revoke it in the Render dashboard.
+const TOKEN = process.env.RENDER_API_KEY;
+if (!TOKEN) {
+  console.error('ERROR: Set RENDER_API_KEY environment variable before running this script.');
+  process.exit(1);
+}
+
 function api(path) {
   return new Promise((resolve, reject) => {
     const opts = {
       hostname: 'api.render.com',
       path,
       method: 'GET',
-      headers: { Authorization: 'Bearer rnd_rlVLrdFr0moSx29zgBek4BxdIBpR' }
+      headers: { Authorization: `Bearer ${TOKEN}` }
     };
     https.get(opts, res => {
       let d = '';

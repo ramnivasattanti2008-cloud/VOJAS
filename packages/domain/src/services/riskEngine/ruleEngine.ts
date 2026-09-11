@@ -20,7 +20,7 @@
  *   - Limitations section explains what could explain the anomaly
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import type {
   RiskSignal,
   RiskRule,
@@ -226,6 +226,13 @@ export interface ProjectDataSnapshot {
     methodology: string;
     limitations: string | null;
   }> | null;
+  // Latest field verification (for inspection-freshness signal)
+  latestFieldVerification: {
+    id: string;
+    scheduledDate: Date | null;
+    completedDate: Date | null;
+    result: string;
+  } | null;
   // Anomaly records
   anomalies: Array<{
     id: string;
@@ -259,8 +266,9 @@ export abstract class BaseRuleHandler implements RuleHandler {
 
   abstract evaluate(data: ProjectDataSnapshot, projectId: string): Promise<RuleEvaluationResult>;
 
-  async computeEvidence(nodeId: string, projectData: ProjectDataSnapshot): Promise<EvidenceNode | null> {
-    // Override in specific rules
+  async computeEvidence(_nodeId: string, _projectData: ProjectDataSnapshot): Promise<EvidenceNode | null> {
+    // Overridden by the rules that actually build evidence; the parameters are
+    // part of the RuleHandler contract, so they stay in the signature.
     return null;
   }
 

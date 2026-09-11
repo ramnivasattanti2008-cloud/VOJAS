@@ -4,10 +4,10 @@ import type { Vendor, PaginatedResponse } from './types.js';
 export function createVendorApi(client: ApiClient) {
   return {
     list(params?: { search?: string; state?: string; status?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<Vendor>>('/api/v1/vendors', params);
+      return client.get<PaginatedResponse<Vendor>>('/vendors', params);
     },
     get(id: string) {
-      return client.get<Vendor>(`/api/v1/vendors/${id}`);
+      return client.get<Vendor>(`/vendors/${id}`);
     },
     create(payload: {
       name: string;
@@ -19,7 +19,7 @@ export function createVendorApi(client: ApiClient) {
       contactEmail?: string;
       contactPhone?: string;
     }) {
-      return client.post<Vendor>('/api/v1/vendors', payload);
+      return client.post<Vendor>('/vendors', payload);
     },
   };
 }

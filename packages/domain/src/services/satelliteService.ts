@@ -1,4 +1,4 @@
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import { NotFoundError, ValidationError } from '../errors/index.js';
 import { satelliteFiltersSchema } from '../validation/satelliteSchemas.js';
 

@@ -24,7 +24,6 @@ import {
   DATA_DIR,
   croreToRupees,
   downloadWithRetry,
-  ensureDir,
   fileExists,
   inferSector,
   normalizeStateName,
@@ -33,6 +32,7 @@ import {
   slugify,
   Progress,
   getPrisma,
+  getOrCreateSystemUser,
 } from "./_shared.js";
 import path from "node:path";
 
@@ -115,6 +115,10 @@ async function main() {
   const dataRows = totalRows - 1;
   console.log(`   rows: ${dataRows.toLocaleString()}`);
 
+  // Project.createdById is required; attribute ingested rows to a dedicated
+  // non-interactive system account rather than a real user.
+  const systemUserId = await getOrCreateSystemUser(prisma);
+
   // ── Ingest ──
   const progress = new Progress("   ingest");
   let processed = 0;
@@ -137,7 +141,7 @@ async function main() {
     if (!expBuffer.length) return;
     // Bulk look up which sourceTxnIds already exist
     const ids = expBuffer.map((e) => e.sourceTxnId);
-    const existing = await prisma.expenditure.findMany({
+    const existing = await prisma.financialObservation.findMany({
       where: { source: SOURCE, sourceTxnId: { in: ids } },
       select: { sourceTxnId: true, id: true },
     });
@@ -147,14 +151,13 @@ async function main() {
 
     if (toCreate.length > 0) {
       try {
-        // SQLite: createMany does NOT support skipDuplicates; on partial dup fail, fall back
-        await prisma.expenditure.createMany({ data: toCreate });
+        await prisma.financialObservation.createMany({ data: toCreate });
         expendituresCreated += toCreate.length;
       } catch (err: any) {
         // Partial dup-failure (P2002) — insert one-by-one
         for (const e of toCreate) {
           try {
-            await prisma.expenditure.create({ data: e });
+            await prisma.financialObservation.create({ data: e });
             expendituresCreated++;
           } catch (e2: any) {
             skipped++;
@@ -168,7 +171,7 @@ async function main() {
 
     for (const e of toUpdate) {
       try {
-        await prisma.expenditure.update({
+        await prisma.financialObservation.update({
           where: { id: existingIds.get(e.sourceTxnId)! },
           data: e,
         });
@@ -195,7 +198,9 @@ async function main() {
     const paymentStatus = (row[iStatus] || "").trim();
     const amount = croreToRupees(row[iAmount]);
 
-    if (!mpName || !state || !amount) {
+    // A financial observation without a real date would need a fabricated
+    // one to satisfy the required `date` column — skip instead.
+    if (!mpName || !state || !amount || !expDate) {
       skipped++;
       continue;
     }
@@ -226,47 +231,7 @@ async function main() {
       mpsCreated++;
     }
 
-    // ── Project (one per unique work per MP) ──
-    const projKey = `${lineNum}`; // use line number as sourceWorkId for simplicity
-    let projectId = projectCache.get(projKey);
-    if (!projectId) {
-      const sector = inferSector(workDesc);
-      const existing = await prisma.project.findFirst({
-        where: { source: SOURCE, sourceWorkId: projKey },
-      });
-      if (existing) {
-        projectId = existing.id;
-        projectsUpdated++;
-      } else {
-        const created = await prisma.project.create({
-          data: {
-            source: SOURCE,
-            sourceWorkId: projKey,
-            name: workDesc.slice(0, 200),
-            description: workDesc,
-            status: "IN_PROGRESS" as any,
-            sector: sector as any,
-            district: district || state,
-            constituency: constituency || null,
-            state: normalizeStateName(state),
-            approvedAmount: amount,
-            spentAmount: amount,
-            mpId,
-            mpName,
-            house: "LOK_SABHA" as any,
-            term: "EIGHTEENTH" as any,
-            implementingAgency: agency || null,
-            startDate: expDate,
-            recommendedDate: expDate,
-          },
-        });
-        projectId = created.id;
-        projectsCreated++;
-      }
-      projectCache.set(projKey, projectId);
-    }
-
-    // ── Vendor ──
+    // ── Vendor (looked up before Project so we can link Project.vendorId) ──
     let vendorId: string | null = null;
     if (vendorName) {
       const { normalizeVendorName } = await import("./_shared.js");
@@ -283,8 +248,8 @@ async function main() {
             await prisma.vendor.update({
               where: { id: existing.id },
               data: {
-                totalPaid: existing.totalPaid + amount,
-                projectCount: existing.projectCount + 1,
+                totalValue: existing.totalValue + amount,
+                totalContracts: existing.totalContracts + 1,
               },
             });
           } else {
@@ -294,8 +259,9 @@ async function main() {
                 nameNormalized: norm,
                 state: normalizeStateName(state),
                 district: district || null,
-                totalPaid: amount,
-                projectCount: 1,
+                totalValue: amount,
+                totalContracts: 1,
+                source: SOURCE,
               },
             });
             vendorId = created.id;
@@ -306,25 +272,70 @@ async function main() {
       }
     }
 
+    // ── Project (one per unique work per MP) ──
+    const projKey = `${lineNum}`; // use line number as sourceWorkId for simplicity
+    let projectId = projectCache.get(projKey);
+    if (!projectId) {
+      const sector = inferSector(workDesc);
+      const existing = await prisma.project.findFirst({
+        where: { source: SOURCE, sourceWorkId: projKey },
+      });
+      if (existing) {
+        projectId = existing.id;
+        projectsUpdated++;
+      } else {
+        const created = await prisma.project.create({
+          data: {
+            source: SOURCE,
+            sourceWorkId: projKey,
+            // Full raw row preserved for provenance — mpName/house/term are
+            // recoverable via the mpId relation; implementingAgency is
+            // detail not surfaced as its own column.
+            sourceRef: JSON.stringify({ mpName, agency, vendorName, district, constituency, state }),
+            name: workDesc.slice(0, 200),
+            description: workDesc,
+            status: "IN_PROGRESS" as any,
+            sector: sector as any,
+            district: district || state,
+            constituency: constituency || null,
+            state: normalizeStateName(state),
+            approvedAmount: amount,
+            spentAmount: amount,
+            mpId,
+            vendorId,
+            createdById: systemUserId,
+            contractor: agency || null,
+            startDate: expDate,
+          },
+        });
+        projectId = created.id;
+        projectsCreated++;
+      }
+      projectCache.set(projKey, projectId);
+    }
+
     // ── Expenditure ──
     expBuffer.push({
       source: SOURCE,
       sourceTxnId: String(lineNum),
       projectId,
+      date: expDate,
+      type: "EXPENDITURE",
       amount,
-      category: "OTHER" as any,
+      category: "OTHER",
       description: workDesc.slice(0, 500),
+      // Not vendorId: FinancialObservation.vendorId is a FK to Contractor,
+      // a distinct model from Vendor (which vendorId above points to) —
+      // setting it would violate the foreign key. The vendor name is real
+      // data preserved as plain text instead.
       vendor: vendorName || null,
-      vendorId,
       paidOn: expDate,
-      expenditureDate: expDate,
-      paymentStatus: paymentStatus || null,
       // Only mark PAID if the date is in the past — future dates are AUTHORIZED at most
       status: paymentStatus.toLowerCase().includes("success") && expDate <= new Date()
-        ? ("PAID" as any)
+        ? "PAID"
         : paymentStatus.toLowerCase().includes("success")
-        ? ("AUTHORIZED" as any)
-        : ("PENDING" as any),
+        ? "AUTHORIZED"
+        : "PENDING",
     });
 
     processed++;

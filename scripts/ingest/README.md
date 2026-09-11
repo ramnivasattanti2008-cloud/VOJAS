@@ -14,14 +14,14 @@ Idempotent scripts for loading real MPLADS data into VOJAS.
 ## Order of operations
 
 ```
-1. npm run ingest:lgd         # LGD master reference (canonical names, LGD codes)
-2. npm run ingest:vonter      # Recommendations (Rajya Sabha + Vonter state/district)
-3. npm run ingest:opencity    # Historical 15th–17th Lok Sabha (2009–2024)
-4. npm run ingest:dataful     # 18th Lok Sabha with vendor data (2024–2026)
-5. npm run ingest:normalize   # Post-ingest: LGD matching, vendor aggregates
+1. pnpm run ingest:lgd         # LGD master reference (canonical names, LGD codes)
+2. pnpm run ingest:vonter      # Recommendations (Rajya Sabha + Vonter state/district)
+3. pnpm run ingest:opencity    # Historical 15th–17th Lok Sabha (2009–2024)
+4. pnpm run ingest:dataful     # 18th Lok Sabha with vendor data (2024–2026)
+5. pnpm run ingest:normalize   # Post-ingest: LGD matching, vendor aggregates
 ```
 
-> **Important:** Run `npm run db:push` before the first ingest to create the new tables (`MP`, `Vendor`, `LGDLocation`, new `Project`/`Expenditure` fields).
+> **Important:** Run `pnpm run db:push` before the first ingest to create the new tables (`MP`, `Vendor`, `LGDLocation`, new `Project`/`Expenditure` fields).
 
 ## Idempotency
 
@@ -39,8 +39,8 @@ Re-running will update existing rows, not duplicate.
 Every script accepts `--dry-run` to print stats without writing to the DB:
 
 ```bash
-npm run ingest:vonter -- --dry-run
-npm run ingest:dataful -- --dry-run
+pnpm run ingest:vonter -- --dry-run
+pnpm run ingest:dataful -- --dry-run
 ```
 
 ## Manual data download
@@ -67,12 +67,12 @@ If network is unavailable, place the CSV files manually:
 
 ## Troubleshooting
 
-### `npm run ingest:opencity` returns 502
+### `pnpm run ingest:opencity` returns 502
 The opencity.in server is flaky. Try again later, or download manually:
 1. Visit https://data.opencity.in/dataset/lok-sabha-mp-local-area-development-funds-details
 2. Download each CSV and save to `scripts/ingest/data/opencity-{term}-lok-sabha.csv`
 
-### `npm run ingest:dataful` returns 404
+### `pnpm run ingest:dataful` returns 404
 dataful.in may require browser session. Download manually:
 1. Visit https://dataful.in/datasets/22565/
 2. Click Download → CSV
@@ -90,4 +90,4 @@ Low match rate = LGD names differ from source names. The `normalizeDistrictName(
 1. Create `scripts/ingest/{source}.ts`
 2. Import `{ batch, parseCSV, ... }` from `_shared.ts`
 3. Use upserts on `(source, sourceWorkId)` for Projects
-4. Add to `ingest:all` in `backend/package.json`
+4. Add an `ingest:{source}` script to the root `package.json` and to `ingest:all`

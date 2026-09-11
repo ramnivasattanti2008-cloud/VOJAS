@@ -22,18 +22,15 @@ import {
   categoryToSector,
   fileExists,
   inferHouseFromValue,
-  mapIdaApproval,
   mapStatus,
   normalizeStateName,
   parseCSV,
-  parseIndianDate,
   rupeesToFloat,
   slugify,
-  toLokSabhaTerm,
   Progress,
 } from "./_shared.js";
 import path from "node:path";
-import { getPrisma } from "./_shared.js";
+import { getPrisma, getOrCreateSystemUser } from "./_shared.js";
 
 const SOURCE = "VONTER";
 const CSV_PATH = path.join(DATA_DIR, "MPLADS.csv");
@@ -75,6 +72,10 @@ async function main() {
   }
 
   // ── Pass 2: ingest ──
+  // Project.createdById is required; attribute ingested rows to a dedicated
+  // non-interactive system account rather than a real user.
+  const systemUserId = await getOrCreateSystemUser(prisma);
+
   const progress = new Progress("   ingest");
   let processed = 0;
   let created = 0;
@@ -219,12 +220,14 @@ async function main() {
       mpCache.set(mpKey, mpId);
     }
 
-    const recDate = parseIndianDate(recommendedDate);
-    const termFromDate = recDate ? toLokSabhaTerm(recDate.getFullYear()) : "EIGHTEENTH";
-
     rowsBuffer.push({
       source: SOURCE,
       sourceWorkId: String(lineNum),
+      // Full raw row preserved here for provenance — including fields
+      // (mpName, house, implementingAgency, idaApproval, recommendedDate)
+      // that don't have a dedicated Project column. mpName/house/term are
+      // recoverable via the mpId relation; the rest is source-attribution
+      // detail, not queried directly elsewhere.
       sourceRef: JSON.stringify({
         mpName, workDesc, category, state, constituency,
         ida, city, ward, block, village,
@@ -248,12 +251,7 @@ async function main() {
       approvedAmount: rupeesToFloat(allocationAmount),
       spentAmount: 0,
       mpId,
-      mpName: mpName.trim(),
-      house: inferHouseFromValue(house) as any,
-      term: termFromDate as any,
-      implementingAgency: (ida || "").trim() || null,
-      idaApproval: mapIdaApproval(idaApproval) as any,
-      recommendedDate: recDate,
+      createdById: systemUserId,
       contractor: null,
       startDate: null,
       expectedEndDate: null,
@@ -277,17 +275,16 @@ async function main() {
   console.log(`   skipped:       ${skipped.toLocaleString()}`);
   console.log(`   errors:        ${errors.toLocaleString()}`);
 
-  // Summary by house
-  const byHouse = await prisma.project.groupBy({
-    by: ["house"],
-    where: { source: SOURCE },
-    _count: true,
-    _sum: { approvedAmount: true },
-  });
+  // Summary by house — Project has no `house` column; house lives on the
+  // related MP. Two real counts via the relation filter, not a fabricated
+  // split.
+  const [lokSabhaCount, rajyaSabhaCount] = await Promise.all([
+    prisma.project.count({ where: { source: SOURCE, mp: { house: "LOK_SABHA" } } }),
+    prisma.project.count({ where: { source: SOURCE, mp: { house: "RAJYA_SABHA" } } }),
+  ]);
   console.log(`\n   By house:`);
-  for (const r of byHouse) {
-    console.log(`     ${r.house ?? "null"}: ${r._count.toLocaleString()} projects, ₹${(r._sum.approvedAmount ?? 0).toLocaleString()}`);
-  }
+  console.log(`     LOK_SABHA: ${lokSabhaCount.toLocaleString()} projects`);
+  console.log(`     RAJYA_SABHA: ${rajyaSabhaCount.toLocaleString()} projects`);
 
   // Summary by state (top 10)
   const byState = await prisma.project.groupBy({

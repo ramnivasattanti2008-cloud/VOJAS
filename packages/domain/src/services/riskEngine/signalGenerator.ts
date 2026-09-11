@@ -10,9 +10,9 @@
  *   - No signal is created without at least one evidence reference
  */
 
-import { PrismaClient } from '@vojas/db';
+import type { PrismaClient } from '@vojas/db';
 import type { RiskSignal, SignalTypeEnum, SignalSeverity, SignalConfidence, SourceType } from './types.js';
-import { ProjectDataSnapshot } from './ruleEngine.js';
+import type { ProjectDataSnapshot } from './ruleEngine.js';
 
 export class SignalGenerator {
   private prisma: PrismaClient;
@@ -56,6 +56,10 @@ export class SignalGenerator {
     // 7. GEOGRAPHIC_INCONSISTENCY signals
     const geoSignals = this.generateGeographicSignals(projectData, now);
     signals.push(...geoSignals);
+
+    // 8. INSPECTION_FRESHNESS signals
+    const inspectionSignals = this.generateInspectionFreshnessSignals(projectData, now);
+    signals.push(...inspectionSignals);
 
     return signals;
   }
@@ -335,6 +339,55 @@ export class SignalGenerator {
         algorithmVersion: 'rule-engine-v1.0',
       });
     }
+
+    return signals;
+  }
+
+  /**
+   * INSPECTION_FRESHNESS: the project's most recent field verification is
+   * older than the expected verification interval (90 days), for a project
+   * that is still actively in progress.
+   *
+   * Deliberately does NOT emit a signal when no field verification exists
+   * at all — an inspection that was never scheduled is a coverage gap, not
+   * evidence of anomalous behavior, and must not be scored as a negative
+   * signal (see DataQualityGate/CLAUDE.md anti-fabrication rule).
+   */
+  private generateInspectionFreshnessSignals(data: ProjectDataSnapshot, now: Date): RiskSignal[] {
+    const signals: RiskSignal[] = [];
+    const { project, latestFieldVerification } = data;
+    const MAX_INSPECTION_AGE_DAYS = 90;
+
+    if (project.status !== 'IN_PROGRESS') return signals;
+    if (!latestFieldVerification) return signals;
+
+    const referenceDate = latestFieldVerification.completedDate ?? latestFieldVerification.scheduledDate;
+    if (!referenceDate) return signals;
+
+    const ageDays = Math.floor((now.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (ageDays <= MAX_INSPECTION_AGE_DAYS) return signals;
+
+    const wasCompleted = !!latestFieldVerification.completedDate;
+    signals.push({
+      id: `signal-${project.id}-inspection-${now.getTime()}`,
+      projectId: project.id,
+      signalType: 'INSPECTION_FRESHNESS',
+      sourceType: 'field_verification',
+      sourceId: latestFieldVerification.id,
+      detectedAt: now,
+      observationDate: referenceDate,
+      severity: ageDays > 180 ? 'HIGH' : 'MEDIUM',
+      confidence: 'HIGH',
+      value: ageDays,
+      expectedValue: MAX_INSPECTION_AGE_DAYS,
+      deviation: ageDays - MAX_INSPECTION_AGE_DAYS,
+      explanation: wasCompleted
+        ? `Last field verification was completed ${ageDays} days ago (expected verification interval: ${MAX_INSPECTION_AGE_DAYS} days).`
+        : `Last scheduled field verification (${ageDays} days ago) was never marked completed.`,
+      evidenceReferences: [latestFieldVerification.id],
+      metadata: { ageDays, wasCompleted, result: latestFieldVerification.result },
+      algorithmVersion: 'rule-engine-v1.0',
+    });
 
     return signals;
   }

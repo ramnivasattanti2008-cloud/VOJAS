@@ -19,7 +19,6 @@ import {
   DATA_DIR,
   croreToRupees,
   downloadWithRetry,
-  ensureDir,
   fileExists,
   inferSector,
   normalizeStateName,
@@ -29,6 +28,7 @@ import {
   slugify,
   Progress,
   getPrisma,
+  getOrCreateSystemUser,
 } from "./_shared.js";
 import path from "node:path";
 
@@ -74,6 +74,7 @@ function pickColumn(cols: string[], names: string[]): number {
 async function ingestTerm(
   prisma: any,
   source: typeof SOURCES[number],
+  systemUserId: string,
 ): Promise<{ rows: number; projects: number; expenditures: number; vendors: number; mps: number; skipped: number }> {
   const localPath = path.join(DATA_DIR, source.file);
   console.log(`\n📦 ${source.term} (${source.years})`);
@@ -153,24 +154,24 @@ async function ingestTerm(
   async function flush() {
     if (!expBuffer.length) return;
     // Bulk lookup existing txnIds
-    const ids = expBuffer.map((e) => e.sourceTxnId);
-    const existing = await prisma.expenditure.findMany({
+    const ids = expBuffer.map((e: any) => e.sourceTxnId);
+    const existing = await prisma.financialObservation.findMany({
       where: { source: "OPENCITY", sourceTxnId: { in: ids } },
       select: { sourceTxnId: true, id: true },
     });
-    const existingIds = new Map(existing.map((e) => [e.sourceTxnId, e.id]));
-    const toCreate = expBuffer.filter((e) => !existingIds.has(e.sourceTxnId));
-    const toUpdate = expBuffer.filter((e) => existingIds.has(e.sourceTxnId));
+    const existingIds = new Map(existing.map((e: any) => [e.sourceTxnId, e.id]));
+    const toCreate = expBuffer.filter((e: any) => !existingIds.has(e.sourceTxnId));
+    const toUpdate = expBuffer.filter((e: any) => existingIds.has(e.sourceTxnId));
 
     if (toCreate.length > 0) {
       try {
-        await prisma.expenditure.createMany({ data: toCreate });
+        await prisma.financialObservation.createMany({ data: toCreate });
         expendituresCreated += toCreate.length;
       } catch (err: any) {
         // Partial dup fail — per-row fallback
         for (const e of toCreate) {
           try {
-            await prisma.expenditure.create({ data: e });
+            await prisma.financialObservation.create({ data: e });
             expendituresCreated++;
           } catch (e2: any) {
             skipped++;
@@ -181,7 +182,7 @@ async function ingestTerm(
 
     for (const e of toUpdate) {
       try {
-        await prisma.expenditure.update({
+        await prisma.financialObservation.update({
           where: { id: existingIds.get(e.sourceTxnId)! },
           data: e,
         });
@@ -213,6 +214,9 @@ async function ingestTerm(
     const isCrore = cols.find((c) => c.includes("amount"))?.includes("crore") ?? false;
     const amount = isCrore ? croreToRupees(rawAmount) : rupeesToFloat(rawAmount);
     if (!amount) { skipped++; continue; }
+    // A financial observation without a real date would need a fabricated
+    // one to satisfy the required `date` column — skip instead.
+    if (!expDate) { skipped++; continue; }
 
     // MP
     const mpKey = `${slugify(mpName)}|${slugify(constituency)}|${source.term}`;
@@ -235,9 +239,47 @@ async function ingestTerm(
           term: source.term as any,
         },
       });
-      mpId = mp.id;
-      mpCache.set(mpKey, mpId);
+      mpId = mp.id as string;
+      mpCache.set(mpKey, mpId!);
       mpsCreated++;
+    }
+
+    // Vendor (looked up before Project so we can link Project.vendorId)
+    let vendorId: string | null = null;
+    if (vendorName) {
+      const { normalizeVendorName } = await import("./_shared.js");
+      const norm = normalizeVendorName(vendorName);
+      if (norm) {
+        const vKey = `${norm}|${normalizeStateName(state)}`;
+        vendorId = vendorCache.get(vKey) || null;
+        if (!vendorId) {
+          const found = await prisma.vendor.findFirst({
+            where: { nameNormalized: norm, state: normalizeStateName(state) },
+          });
+          if (found) {
+            vendorId = found.id;
+            await prisma.vendor.update({
+              where: { id: found.id },
+              data: { totalValue: found.totalValue + amount, totalContracts: found.totalContracts + 1 },
+            });
+          } else {
+            const v = await prisma.vendor.create({
+              data: {
+                name: vendorName,
+                nameNormalized: norm,
+                state: normalizeStateName(state),
+                district: district || null,
+                totalValue: amount,
+                totalContracts: 1,
+                source: "OPENCITY",
+              },
+            });
+            vendorId = v.id;
+            vendorsCreated++;
+          }
+          vendorCache.set(vKey, vendorId!);
+        }
+      }
     }
 
     // Project
@@ -254,6 +296,9 @@ async function ingestTerm(
         data: {
           source: "OPENCITY",
           sourceWorkId: `${source.term}-${projKey}`,
+          // Full raw row preserved for provenance — mpName/house/term are
+          // recoverable via the mpId relation.
+          sourceRef: JSON.stringify({ mpName, vendorName, district, constituency, state, term: source.term }),
           name: (workDesc || "Untitled work").slice(0, 200),
           description: workDesc,
           status: amount > 0 ? ("IN_PROGRESS" as any) : ("PROPOSED" as any),
@@ -264,9 +309,8 @@ async function ingestTerm(
           approvedAmount: amount,
           spentAmount: amount,
           mpId,
-          mpName,
-          house: "LOK_SABHA" as any,
-          term: source.term as any,
+          vendorId,
+          createdById: systemUserId,
           startDate: expDate,
         },
       });
@@ -274,55 +318,20 @@ async function ingestTerm(
       projectsCreated++;
     }
 
-    // Vendor
-    let vendorId: string | null = null;
-    if (vendorName) {
-      const { normalizeVendorName } = await import("./_shared.js");
-      const norm = normalizeVendorName(vendorName);
-      if (norm) {
-        const vKey = `${norm}|${normalizeStateName(state)}`;
-        vendorId = vendorCache.get(vKey) || null;
-        if (!vendorId) {
-          const found = await prisma.vendor.findFirst({
-            where: { nameNormalized: norm, state: normalizeStateName(state) },
-          });
-          if (found) {
-            vendorId = found.id;
-            await prisma.vendor.update({
-              where: { id: found.id },
-              data: { totalPaid: found.totalPaid + amount, projectCount: found.projectCount + 1 },
-            });
-          } else {
-            const v = await prisma.vendor.create({
-              data: {
-                name: vendorName,
-                nameNormalized: norm,
-                state: normalizeStateName(state),
-                district: district || null,
-                totalPaid: amount,
-                projectCount: 1,
-              },
-            });
-            vendorId = v.id;
-            vendorsCreated++;
-          }
-          vendorCache.set(vKey, vendorId);
-        }
-      }
-    }
-
     expBuffer.push({
       source: "OPENCITY",
       sourceTxnId: `${source.term}-${lineNum}`,
       projectId,
+      date: expDate,
+      type: "EXPENDITURE",
       amount,
-      category: "OTHER" as any,
+      category: "OTHER",
       description: workDesc.slice(0, 500),
+      // Not vendorId: FinancialObservation.vendorId is a FK to Contractor,
+      // a distinct model from Vendor (which vendorId above points to).
       vendor: vendorName || null,
-      vendorId,
       paidOn: expDate,
-      expenditureDate: expDate,
-      status: amount > 0 ? ("PAID" as any) : ("PENDING" as any),
+      status: amount > 0 ? "PAID" : "PENDING",
     });
 
     processed++;
@@ -346,6 +355,9 @@ async function ingestTerm(
 async function main() {
   console.log(`📥 Ingest: opencity.in (15th, 16th, 17th Lok Sabha) → Project + Vendor + Expenditure`);
   const prisma = await getPrisma();
+  // Project.createdById is required; attribute ingested rows to a dedicated
+  // non-interactive system account rather than a real user.
+  const systemUserId = DRY_RUN ? "" : await getOrCreateSystemUser(prisma);
   let totalRows = 0;
   let totalProjects = 0;
   let totalExp = 0;
@@ -354,7 +366,7 @@ async function main() {
   let totalSkipped = 0;
 
   for (const s of SOURCES) {
-    const r = await ingestTerm(prisma, s);
+    const r = await ingestTerm(prisma, s, systemUserId);
     totalRows += r.rows;
     totalProjects += r.projects;
     totalExp += r.expenditures;
