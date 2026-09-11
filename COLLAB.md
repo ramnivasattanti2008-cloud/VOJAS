@@ -12,8 +12,22 @@
 
 ## Live Status Board
 
-- **Active Agent Right Now**: `Antigravity` (Completed public map & budget tracker performance fixes) ➔ Handoff to `Claude`
+- **Active Agent Right Now**: `Claude` (Phase 1 ESLint gate closed, analytics filter bugs fixed) ➔ open question for `Antigravity` below
 - **⚠️ IMPORTANT — read before you push anything**: `origin/master` was restored to real history via `git push --force-with-lease`. Never force-push over master.
+- **🔴 SECURITY — blocking review on uncommitted work in `apps/api/src/routes/citizenReports.ts`**:
+  The new unauthenticated `POST /reports/track/:reportReference/update` lets anyone
+  holding a report reference (a) set `status` to an arbitrary string via
+  `newStatus as ReportStatus` — no enum validation, so a corruption report can be
+  driven to `DISMISSED`/`RESOLVED` by an attacker, and (b) read back the **full**
+  Prisma `Report` row in the response, including `reporterName` / `reporterEmail` /
+  `reporterPhone`, which deanonymises `ANONYMOUS` and `CONFIDENTIAL` whistleblowers.
+  Express routes under `apps/api` are Claude's domain per the protocol. Claude did
+  not edit the file because the work is still uncommitted — please hand it over or
+  commit it so it can be fixed. Suggested fix: drop `newStatus` from the public
+  endpoint entirely (status transitions are an officer action), validate with the
+  `ReportStatus` zod enum rather than a cast, return only the safe public projection
+  already used by `GET /track/:reportReference`, and put the route behind the
+  report-submit rate limiter.
 - **Commits in this cycle**:
   - Claude: `ed7ae8a`, `ea45851`, `07c41e8`, `0314f4a`, `54a4a10`
   - Antigravity: `426bd74` (Map suite), `bad9ea8` (CORS, 60k row query optimization, mapped project query, and budget tracker fixes), `13254dd` (Import formatting). All pushed to `origin/master`.
@@ -27,9 +41,31 @@
   - `pnpm -r --no-bail typecheck` passed across all 6 workspace packages with 0 errors.
   - 156 domain tests in `packages/domain` passed (8/8 test files, 156/156 tests).
   - Both `/budget` and `/explore/map` return HTTP 200 in ~200-300ms warm.
+- **Done by Claude this cycle** (`93e2829`, plus fixes swept into `2bbd051`):
+  1. **Phase 1 ESLint gate is closed** — `pnpm lint` now reports **0 errors** (was 1).
+     The error was a genuine syntax break in `scripts/analyze-and-score-all-60k.ts`:
+     a v3→v4 edit had been applied twice, leaving an unclosed `if`, duplicate object
+     keys, and dead reassignments. `tsc` never caught it because `scripts/` is not in
+     any workspace tsconfig — only ESLint parses it. Engine version is now a single
+     `ALGORITHM_VERSION` constant so one run cannot stamp two provenance values.
+  2. **Test suite fully green** — `security.test.ts` was failing on a `beforeAll` hook
+     timeout: `testTimeout` was raised to 30s but `hookTimeout` still used Vitest's
+     10s default, and the fixture hook does three bcrypt-backed user creations.
+     Set `hookTimeout: 30000`. 20/20 suites pass, no test was weakened.
+  3. **Silently-ignored request parameters fixed** (the recurring bug class in
+     `CLAUDE.md`) — `/analytics/cross-project-patterns` dropped `districtId`;
+     `/analytics/hotspot` advertised threshold params the engine has no concept of
+     and hardcoded NATIONAL/India/RISK; `/analytics/insights` accepted
+     `entityType`/`entityId` that `AnalyticsInsight` has no columns for (removed
+     rather than migrated around); change-analysis enqueue returned a hardcoded
+     `QUEUED`; `PATCH /risk/findings/:id/status` discarded reviewer notes, which now
+     land on the `riskEvent` audit entry as documented. Also removed an `as any`.
+  4. Verified: 6/6 typecheck, 0 lint errors, 20/20 test suites, `@vojas/web` build.
 - **Next for Claude**:
-  - Triage the remaining ~70-file backlog (`packages/domain/src/providers/*`, `riskEngine/`, `scripts/ingest/*`).
-  - Address the 429 lint warnings.
+  - Resolve the security item above once the citizen-report work is committed.
+  - 399 lint **warnings** remain (349 unused vars, 26 `react-hooks/exhaustive-deps`,
+    28 type-import style). None block the gate. The unused-var ones in route handlers
+    are worth reading individually — that is how the bugs in item 3 surfaced.
   - Check deployment status on Vercel/Render.
 
 ---
