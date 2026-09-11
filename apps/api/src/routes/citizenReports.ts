@@ -250,54 +250,63 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const accessToken = crypto.randomBytes(32).toString('hex');
     const accessTokenExp = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 1 year
 
-    const report = await prisma.report.create({
-      data: {
-        reportReference,
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        privacyLevel: data.privacyLevel,
-        severity: 'MEDIUM',
-        status: ReportStatus.RECEIVED,
-        triageStatus: ReportTriageStatus.PENDING,
-        locationDesc: data.locationDesc ?? null,
-        latitude: data.latitude ?? null,
-        longitude: data.longitude ?? null,
-        locationAccuracyM: data.locationAccuracyM ?? null,
-        incidentDate: data.incidentDate ? new Date(data.incidentDate) : null,
-        projectId: data.projectId ?? null,
-        reporterName: data.isAnonymous ? null : (data.reporterName ?? null),
-        reporterEmail: data.isAnonymous ? null : (data.reporterEmail ?? null),
-        reporterPhone: data.isAnonymous ? null : (data.reporterPhone ?? null),
-        isAnonymous: data.isAnonymous,
-        source: data.source ?? 'WEB',
-        ipAddress: req.ip ?? null,
-        userAgent: req.headers['user-agent'] ?? null,
-        submittedAt: now,
-        whistleblowerToken: accessToken,
-      },
-    });
+    // These three writes must land together: a report that exists without its
+    // AnonymousReportAccess row leaves an anonymous whistleblower's own access
+    // token unusable (their only way back into a report they didn't register
+    // an email for), and a report without its initial status log breaks the
+    // audit trail's assumption that every report has one. A prior version ran
+    // these as separate awaits, so a crash or DB hiccup between them could
+    // orphan the report in a half-written state.
+    const report = await prisma.$transaction(async (tx) => {
+      const created = await tx.report.create({
+        data: {
+          reportReference,
+          title: data.title,
+          description: data.description,
+          category: data.category,
+          privacyLevel: data.privacyLevel,
+          severity: 'MEDIUM',
+          status: ReportStatus.RECEIVED,
+          triageStatus: ReportTriageStatus.PENDING,
+          locationDesc: data.locationDesc ?? null,
+          latitude: data.latitude ?? null,
+          longitude: data.longitude ?? null,
+          locationAccuracyM: data.locationAccuracyM ?? null,
+          incidentDate: data.incidentDate ? new Date(data.incidentDate) : null,
+          projectId: data.projectId ?? null,
+          reporterName: data.isAnonymous ? null : (data.reporterName ?? null),
+          reporterEmail: data.isAnonymous ? null : (data.reporterEmail ?? null),
+          reporterPhone: data.isAnonymous ? null : (data.reporterPhone ?? null),
+          isAnonymous: data.isAnonymous,
+          source: data.source ?? 'WEB',
+          ipAddress: req.ip ?? null,
+          userAgent: req.headers['user-agent'] ?? null,
+          submittedAt: now,
+          whistleblowerToken: accessToken,
+        },
+      });
 
-    // Create anonymous access record for tracking
-    await prisma.anonymousReportAccess.create({
-      data: {
-        reportId: report.id,
-        accessToken,
-        accessTokenExp,
-        canViewStatus: true,
-        canViewUpdates: true,
-      },
-    });
+      await tx.anonymousReportAccess.create({
+        data: {
+          reportId: created.id,
+          accessToken,
+          accessTokenExp,
+          canViewStatus: true,
+          canViewUpdates: true,
+        },
+      });
 
-    // Create initial status log
-    await prisma.reportStatusLog.create({
-      data: {
-        reportId: report.id,
-        fromStatus: null,
-        toStatus: ReportStatus.RECEIVED,
-        changedById: null,
-        notes: 'Report received via public submission',
-      },
+      await tx.reportStatusLog.create({
+        data: {
+          reportId: created.id,
+          fromStatus: null,
+          toStatus: ReportStatus.RECEIVED,
+          changedById: null,
+          notes: 'Report received via public submission',
+        },
+      });
+
+      return created;
     });
 
     // A project-linked report belongs on that project's unified timeline
