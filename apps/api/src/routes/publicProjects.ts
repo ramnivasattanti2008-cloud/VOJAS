@@ -17,8 +17,10 @@ import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { success } from '../utils/apiResponse.js';
 import { CACHE_TTL, get, set } from '../utils/cache.js';
+import { LLMDetectionService } from '../services/llmDetectionService.js';
 
 const evidenceService = new EvidenceService(prisma);
+const llmDetectionService = new LLMDetectionService(prisma);
 
 const router = Router();
 
@@ -518,6 +520,66 @@ router.get('/:id/reports', async (req: Request, res: Response, next: NextFunctio
         claimsCount: r._count.claims,
       })),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /projects/public/:id/ai-audit — run live on-demand LLM forensic audit
+ */
+router.post('/:id/ai-audit', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const audit = await llmDetectionService.auditProject(id);
+
+    // Update risk record in DB with latest live forensic data
+    await prisma.projectRisk.upsert({
+      where: { projectId: id },
+      create: {
+        projectId: id,
+        riskScore: audit.riskScore,
+        riskLevel: audit.riskLevel,
+        confidence: audit.confidenceScore >= 80 ? 'HIGH' : audit.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
+        primaryDriver: audit.verdictTitle,
+        drivers: audit.statutoryRedFlags.map((rf) => ({
+          name: rf.rule,
+          contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
+          evidence: rf.evidence,
+          solution: rf.violation,
+        })),
+        algorithmVersion: audit.modelUsed,
+      },
+      update: {
+        riskScore: audit.riskScore,
+        riskLevel: audit.riskLevel,
+        confidence: audit.confidenceScore >= 80 ? 'HIGH' : audit.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
+        primaryDriver: audit.verdictTitle,
+        drivers: audit.statutoryRedFlags.map((rf) => ({
+          name: rf.rule,
+          contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
+          evidence: rf.evidence,
+          solution: rf.violation,
+        })),
+        algorithmVersion: audit.modelUsed,
+        updatedAt: new Date(),
+      },
+    });
+
+    success(res, audit);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id/ai-audit — fetch live LLM forensic audit
+ */
+router.get('/:id/ai-audit', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const audit = await llmDetectionService.auditProject(id);
+    success(res, audit);
   } catch (err) {
     next(err);
   }

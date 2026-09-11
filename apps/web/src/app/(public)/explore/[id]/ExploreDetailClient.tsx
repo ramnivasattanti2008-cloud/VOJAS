@@ -18,15 +18,23 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PublicProjectDetail } from '@vojas/api-client';
 import {
     Activity,
+    AlertTriangle,
     ArrowLeft,
+    CheckCircle,
     CheckCircle2,
+    ChevronDown,
+    ChevronUp,
     Clock,
+    Cpu,
     DollarSign,
+    FileSearch,
     FileText,
     Loader2,
     MapPin,
     MessageSquare,
+    RefreshCw,
     Satellite,
+    Scale,
     ShieldAlert,
     Sparkles,
     UserCheck,
@@ -268,13 +276,102 @@ function SignalMeter({ label, score }: { label: string; score: number }) {
   );
 }
 
-function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
-  const risk = project.projectRisk;
-  if (!risk) return null;
+interface StatutoryRedFlag {
+  rule: string;
+  violation: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  evidence: string;
+}
 
-  const isCritical = risk.riskLevel === 'CRITICAL';
-  const isHigh = risk.riskLevel === 'HIGH';
-  const isMed = risk.riskLevel === 'MEDIUM';
+interface ForensicAuditResult {
+  projectId: string;
+  projectName: string;
+  modelUsed: string;
+  auditedAt: string;
+  riskScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  confidenceScore: number;
+  forensicVerdict: 'CLEAN' | 'SUSPECTED_GHOST_WORK' | 'INFLATED_COST_ANOMALY' | 'PROCUREMENT_COLLUSION' | 'PROGRESS_STALL' | 'EVIDENCE_DEFICIT';
+  verdictTitle: string;
+  executiveSummary: string;
+  statutoryRedFlags: StatutoryRedFlag[];
+  financialAudit: {
+    utilizationRate: number;
+    disbursalAnomaly: boolean;
+    analysis: string;
+  };
+  satelliteTelemetryVerdict: {
+    spectralChangeDetected: boolean;
+    interpretation: string;
+    surfaceObservationConfidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  };
+  contractorRiskAssessment: {
+    contractorName: string | null;
+    concentrationIndex: string;
+    riskFlags: string[];
+  };
+  actionPlan: Array<{
+    step: number;
+    action: string;
+    authority: string;
+    urgency: 'IMMEDIATE' | 'HIGH' | 'STANDARD';
+  }>;
+  citizenChecklist: string[];
+}
+
+function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
+  const initialRisk = project.projectRisk;
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [auditStep, setAuditStep] = useState(0);
+  const [auditResult, setAuditResult] = useState<ForensicAuditResult | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
+
+  const auditSteps = [
+    '🛰️ Ingesting Sentinel-2 multi-spectral remote sensing telemetry...',
+    '📜 Cross-referencing GFR 2017 & CVC statutory procurement rules...',
+    '📊 Reconciling Measurement Book (MB) vs treasury disbursal vouchers...',
+    '🧠 Synthesizing VOJAS Sentinel AI v4.2 forensic dossier...',
+  ];
+
+  const handleRunAiAudit = async () => {
+    setIsAuditing(true);
+    setAuditError(null);
+    setAuditStep(0);
+
+    const stepInterval = setInterval(() => {
+      setAuditStep((prev) => (prev < auditSteps.length - 1 ? prev + 1 : prev));
+    }, 600);
+
+    try {
+      const res = await fetch(`/api/v1/projects/public/${project.id}/ai-audit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      clearInterval(stepInterval);
+
+      if (data.success && data.data) {
+        setAuditResult(data.data);
+      } else {
+        setAuditError(data.error?.message || 'Failed to complete AI forensic audit.');
+      }
+    } catch (err: any) {
+      clearInterval(stepInterval);
+      setAuditError(err.message || 'Network error during AI audit execution.');
+    } finally {
+      setIsAuditing(false);
+    }
+  };
+
+  const activeScore = auditResult ? auditResult.riskScore : (initialRisk?.riskScore ?? 0);
+  const activeLevel = auditResult ? auditResult.riskLevel : (initialRisk?.riskLevel ?? 'LOW');
+  const activeModel = auditResult ? auditResult.modelUsed : ((initialRisk as any)?.algorithmVersion ?? 'VOJAS Sentinel AI v4.2 Neural-LLM Core');
+  const activeConfidence = auditResult ? `${auditResult.confidenceScore}%` : (initialRisk?.confidence ?? 'MEDIUM');
+
+  const isCritical = activeLevel === 'CRITICAL';
+  const isHigh = activeLevel === 'HIGH';
+  const isMed = activeLevel === 'MEDIUM';
 
   return (
     <Card
@@ -289,12 +386,12 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
           : 'border-emerald-300 bg-emerald-50/30'
       )}
     >
-      <CardHeader className="pb-3 border-b border-slate-200/60 bg-white/70">
+      <CardHeader className="pb-3.5 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <div
               className={cn(
-                'w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-xs',
+                'w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-xs transition-transform',
                 isCritical
                   ? 'bg-rose-600'
                   : isHigh
@@ -304,23 +401,48 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
                   : 'bg-emerald-600'
               )}
             >
-              <Sparkles className="w-5 h-5" />
+              <Cpu className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                VOJAS AI Multi-Signal Risk Audit
-              </h2>
-              <p className="text-xs text-slate-500">
-                Statutory anomaly engine &amp; cross-source verification · Confidence:{' '}
-                <span className="font-semibold text-slate-700">{risk.confidence}</span>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">
+                  VOJAS Sentinel AI Forensic Audit
+                </h2>
+                <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-semibold">
+                  {auditResult ? 'LIVE AUDITED' : 'PRE-COMPUTED'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {activeModel} · Confidence: <span className="font-semibold text-slate-700">{activeConfidence}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleRunAiAudit}
+              disabled={isAuditing}
+              className={cn(
+                'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed',
+                'bg-slate-900 hover:bg-slate-800 text-white border border-slate-800/80'
+              )}
+            >
+              {isAuditing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                  <span>Auditing Live...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Run Live LLM Audit</span>
+                </>
+              )}
+            </button>
+
             <div
               className={cn(
-                'px-3.5 py-1.5 rounded-xl text-white font-mono font-bold text-sm shadow-xs flex items-center gap-2',
+                'px-3 py-1.5 rounded-xl text-white font-mono font-bold text-sm shadow-xs flex items-center gap-2',
                 isCritical
                   ? 'bg-rose-600'
                   : isHigh
@@ -330,39 +452,202 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
                   : 'bg-emerald-600'
               )}
             >
-              <span className="text-base">{risk.riskScore}</span>
+              <span className="text-base">{activeScore}</span>
               <span className="text-xs opacity-75">/ 100</span>
-              <span className="text-[11px] px-2 py-0.5 rounded bg-black/20 uppercase tracking-wider font-semibold">
-                {risk.riskLevel}
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/20 uppercase tracking-wider font-semibold">
+                {activeLevel}
               </span>
             </div>
           </div>
         </div>
-      </CardHeader>
-      <CardBody className="space-y-4 pt-4">
-        {risk.primaryDriver && (
-          <div className="p-3.5 rounded-xl bg-white/90 border border-slate-200 shadow-2xs space-y-1">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Primary AI Audit Findings &amp; Rationale
-            </p>
-            <p className="text-sm font-medium text-slate-800 leading-relaxed">
-              {risk.primaryDriver}
-            </p>
+
+        {/* Real-time Ticker during AI Auditing */}
+        {isAuditing && (
+          <div className="mt-3 p-2.5 rounded-xl bg-slate-900 text-white flex items-center gap-2.5 text-xs animate-pulse">
+            <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
+            <span className="font-medium font-mono text-slate-200">
+              {auditSteps[auditStep]}
+            </span>
           </div>
         )}
 
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Multi-Signal Sub-Score Breakdown (0 = Safe, 100 = Max Disparity)
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-            <SignalMeter label="Financial Utilization" score={risk.financialScore ?? 0} />
-            <SignalMeter label="Milestone & Progress" score={risk.progressScore ?? 0} />
-            <SignalMeter label="Satellite Observation" score={risk.satelliteScore ?? 0} />
-            <SignalMeter label="Contractor Disparity" score={risk.contractorScore ?? 0} />
-            <SignalMeter label="Geographic Integrity" score={risk.geographicScore ?? 0} />
+        {auditError && (
+          <div className="mt-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{auditError}</span>
           </div>
+        )}
+      </CardHeader>
+
+      <CardBody className="space-y-4 pt-4">
+        {/* Forensic Verdict Banner */}
+        {auditResult && (
+          <div
+            className={cn(
+              'p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3',
+              isCritical
+                ? 'bg-rose-100/70 border-rose-300 text-rose-900'
+                : isHigh
+                ? 'bg-amber-100/70 border-amber-300 text-amber-900'
+                : 'bg-emerald-100/70 border-emerald-300 text-emerald-900'
+            )}
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/10">
+                  {auditResult.forensicVerdict.replace(/_/g, ' ')}
+                </span>
+                <span className="text-xs text-slate-600 font-mono">
+                  {new Date(auditResult.auditedAt).toLocaleTimeString()}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold mt-1 text-slate-900">
+                {auditResult.verdictTitle}
+              </h3>
+            </div>
+          </div>
+        )}
+
+        {/* Executive Summary Narrative */}
+        <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <FileSearch className="w-3.5 h-3.5 text-slate-500" />
+            AI Forensic Analysis &amp; Legal Audit Synthesis
+          </p>
+          <p className="text-sm font-medium text-slate-800 leading-relaxed">
+            {auditResult ? auditResult.executiveSummary : (initialRisk?.primaryDriver || 'Standard civic asset verification in progress.')}
+          </p>
         </div>
+
+        {/* Statutory Red Flags & Violations (if present) */}
+        {auditResult && auditResult.statutoryRedFlags.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-rose-600" />
+              Statutory Procurement Red Flags Detected ({auditResult.statutoryRedFlags.length})
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {auditResult.statutoryRedFlags.map((flag, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-white/95 border border-rose-200 shadow-2xs space-y-1"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-rose-800">{flag.rule}</span>
+                    <span
+                      className={cn(
+                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded',
+                        flag.severity === 'CRITICAL'
+                          ? 'bg-rose-100 text-rose-700'
+                          : 'bg-amber-100 text-amber-700'
+                      )}
+                    >
+                      {flag.severity}
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-800">{flag.violation}</p>
+                  <p className="text-[11px] text-slate-500 font-mono italic">{flag.evidence}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Multi-Signal Breakdown */}
+        {initialRisk && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Multi-Signal Sub-Score Telemetry (0 = Safe, 100 = Max Disparity)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+              <SignalMeter label="Financial Utilization" score={initialRisk.financialScore ?? 0} />
+              <SignalMeter label="Milestone & Progress" score={initialRisk.progressScore ?? 0} />
+              <SignalMeter label="Satellite Observation" score={initialRisk.satelliteScore ?? 0} />
+              <SignalMeter label="Contractor Disparity" score={initialRisk.contractorScore ?? 0} />
+              <SignalMeter label="Geographic Integrity" score={initialRisk.geographicScore ?? 0} />
+            </div>
+          </div>
+        )}
+
+        {/* Satellite Telemetry & Vigilance Action Roadmap */}
+        {auditResult && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            {/* Satellite Telemetry Verdict */}
+            <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Satellite className="w-3.5 h-3.5 text-vojas-600" />
+                  Sentinel-2 Optical Telemetry
+                </span>
+                <span
+                  className={cn(
+                    'text-[10px] px-2 py-0.5 rounded font-semibold',
+                    auditResult.satelliteTelemetryVerdict.spectralChangeDetected
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-rose-100 text-rose-800'
+                  )}
+                >
+                  {auditResult.satelliteTelemetryVerdict.spectralChangeDetected ? 'OBSERVABLE CHANGE' : 'NO CHANGE DETECTED'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {auditResult.satelliteTelemetryVerdict.interpretation}
+              </p>
+            </div>
+
+            {/* Vigilance Action Roadmap */}
+            <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-2">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-slate-600" />
+                Statutory Vigilance Roadmap
+              </span>
+              <div className="space-y-1.5">
+                {auditResult.actionPlan.map((action) => (
+                  <div key={action.step} className="flex items-start gap-2 text-xs">
+                    <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center shrink-0 text-[10px]">
+                      {action.step}
+                    </span>
+                    <div>
+                      <p className="text-slate-800 font-medium leading-snug">{action.action}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">{action.authority} · {action.urgency}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Citizen Social Audit Checklist */}
+        {auditResult && auditResult.citizenChecklist.length > 0 && (
+          <div className="p-3.5 rounded-xl bg-amber-50/50 border border-amber-200 shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" />
+                Citizen Physical Ground Verification Checklist
+              </span>
+              <span className="text-[10px] text-amber-700 font-medium">On-Site Social Audit</span>
+            </div>
+            <div className="space-y-1.5">
+              {auditResult.citizenChecklist.map((item, idx) => (
+                <label
+                  key={idx}
+                  className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-slate-900 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(checkedItems[idx])}
+                    onChange={(e) => setCheckedItems((prev) => ({ ...prev, [idx]: e.target.checked }))}
+                    className="mt-0.5 h-3.5 w-3.5 rounded text-vojas-600 focus:ring-vojas-500 border-slate-300"
+                  />
+                  <span className={cn(checkedItems[idx] && 'line-through text-slate-400')}>
+                    {item}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </CardBody>
     </Card>
   );

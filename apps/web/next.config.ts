@@ -1,5 +1,5 @@
-import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -19,8 +19,17 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '**' }
     ]
   },
+  async rewrites() {
+    const target = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${target}/api/v1/:path*`,
+      },
+    ];
+  },
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
     // Server-side only (available in next.config.ts and server components, NOT exposed to client)
     SENTRY_DSN: process.env.SENTRY_DSN,
   }

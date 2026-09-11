@@ -27,10 +27,12 @@ import {
 import { AuditAction, PERMISSIONS, UserRole, getPermissionsForRole, buildUserContext, canAccessProject } from '@vojas/shared';
 import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
+import { LLMDetectionService } from '../services/llmDetectionService.js';
 
 const router = Router();
 const orchestrator = new RiskAnalysisOrchestrator(prisma);
 const intelligenceService = new ProjectIntelligenceService(prisma);
+const llmDetectionService = new LLMDetectionService(prisma);
 
 // ──────────────────────────────────────────────────────────────────
 // PROJECT-LEVEL RISK ENDPOINTS
@@ -87,6 +89,76 @@ router.post(
         processingTimeMs: result.processingTimeMs,
         algorithmVersion: result.algorithmVersion,
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * POST /projects/:id/ai-audit
+ * Trigger live LLM forensic audit for a project
+ */
+router.post(
+  '/projects/:id/ai-audit',
+  optionalAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = req.params.id as string;
+      const result = await llmDetectionService.auditProject(projectId);
+
+      // Persist or update the risk score and primary driver in DB
+      await prisma.projectRisk.upsert({
+        where: { projectId },
+        create: {
+          projectId,
+          riskScore: result.riskScore,
+          riskLevel: result.riskLevel,
+          confidence: result.confidenceScore >= 80 ? 'HIGH' : result.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
+          primaryDriver: result.verdictTitle,
+          drivers: result.statutoryRedFlags.map((rf) => ({
+            name: rf.rule,
+            contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
+            evidence: rf.evidence,
+            solution: rf.violation,
+          })),
+          algorithmVersion: result.modelUsed,
+        },
+        update: {
+          riskScore: result.riskScore,
+          riskLevel: result.riskLevel,
+          confidence: result.confidenceScore >= 80 ? 'HIGH' : result.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
+          primaryDriver: result.verdictTitle,
+          drivers: result.statutoryRedFlags.map((rf) => ({
+            name: rf.rule,
+            contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
+            evidence: rf.evidence,
+            solution: rf.violation,
+          })),
+          algorithmVersion: result.modelUsed,
+          updatedAt: new Date(),
+        },
+      });
+
+      success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /projects/:id/ai-audit
+ * Fetch live LLM forensic audit for a project
+ */
+router.get(
+  '/projects/:id/ai-audit',
+  optionalAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = req.params.id as string;
+      const result = await llmDetectionService.auditProject(projectId);
+      success(res, result);
     } catch (err) {
       next(err);
     }

@@ -27,8 +27,17 @@ function onUnauthorized() {
   window.location.href = '/login';
 }
 
+const getBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
+      : '/api/v1';
+  }
+  return `${process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000'}/api/v1`;
+};
+
 export const apiClient = new ApiClient({
-  baseUrl: `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'}/api/v1`,
+  baseUrl: getBaseUrl(),
   getAccessToken: () => _getAccessToken(),
   onUnauthorized,
 });

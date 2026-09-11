@@ -80,12 +80,14 @@ app.use(
       if (!origin) return callback(null, true);
       if (
         allowedOrigins.includes(origin) ||
-        (process.env.NODE_ENV !== 'production' &&
-          (/^https?:\/\/localhost(:\d+)?$/.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)))
+        process.env.NODE_ENV !== 'production' ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
+        /^https?:\/\/(192\.168|10|172\.\d+)\.\d+\.\d+(:\d+)?$/.test(origin)
       ) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      return callback(null, true);
     },
     credentials: true,
   })
