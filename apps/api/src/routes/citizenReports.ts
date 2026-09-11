@@ -250,6 +250,22 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const accessToken = crypto.randomBytes(32).toString('hex');
     const accessTokenExp = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 1 year
 
+    // Report.projectId is a real foreign key (onDelete: SetNull). A citizen can
+    // arrive here with a stale or mismatched projectId (an old link, a project
+    // that exists in a different environment's data, a typo) — that must not
+    // destroy an otherwise-valid report with an opaque foreign-key-violation
+    // 500. The project link is optional context, not something worth losing a
+    // corruption report over, so an unresolvable id is dropped rather than
+    // rejected.
+    let projectId: string | null = null;
+    if (data.projectId) {
+      const linkedProject = await prisma.project.findUnique({
+        where: { id: data.projectId },
+        select: { id: true },
+      });
+      projectId = linkedProject?.id ?? null;
+    }
+
     // These three writes must land together: a report that exists without its
     // AnonymousReportAccess row leaves an anonymous whistleblower's own access
     // token unusable (their only way back into a report they didn't register
@@ -273,7 +289,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
           longitude: data.longitude ?? null,
           locationAccuracyM: data.locationAccuracyM ?? null,
           incidentDate: data.incidentDate ? new Date(data.incidentDate) : null,
-          projectId: data.projectId ?? null,
+          projectId,
           reporterName: data.isAnonymous ? null : (data.reporterName ?? null),
           reporterEmail: data.isAnonymous ? null : (data.reporterEmail ?? null),
           reporterPhone: data.isAnonymous ? null : (data.reporterPhone ?? null),

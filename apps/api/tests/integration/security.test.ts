@@ -529,6 +529,25 @@ runIfDb('Input Validation', () => {
     expect(res.body.success).toBe(false);
   });
 
+  it('POST /reports with a nonexistent projectId still succeeds, dropping the link', async () => {
+    // Report.projectId is a real foreign key. Submitting one that does not
+    // resolve (a stale deep link, a project from another environment, a typo)
+    // must not destroy an otherwise-valid citizen report with an opaque
+    // foreign-key-violation error — the project link is optional context, not
+    // something worth losing a corruption report over.
+    const res = await request(app)
+      .post('/api/v1/reports')
+      .send({
+        title: 'Report with a project link that does not exist',
+        description: 'This report references a projectId that is not in the database.',
+        category: 'CONSTRUCTION_QUALITY',
+        projectId: 'nonexistent-project-id-does-not-exist',
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.reportReference).toBeDefined();
+  });
+
   it('GET /reports rejects invalid latitude (>90)', async () => {
     const res = await request(app)
       .get('/api/v1/reports?latitude=999')
