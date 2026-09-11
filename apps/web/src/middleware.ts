@@ -46,14 +46,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Dashboard (and everything else): require auth
-  if (!authed) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
-  }
-
+  // Dashboard (and everything else): auth is enforced client-side by
+  // AuthProvider, not here. The API is currently on a different origin (the
+  // Vercel same-origin rewrite is broken), so its session cookies are scoped
+  // to the API's domain and are NOT visible to this middleware — gating here
+  // would bounce every genuinely logged-in user straight back to /login.
   return NextResponse.next();
 }
 
