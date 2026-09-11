@@ -12,10 +12,10 @@
     }
   },
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "prisma generate --schema=prisma/schema.prisma && tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:generate": "prisma generate",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
