@@ -315,7 +315,7 @@ router.post(
         { sector: effectiveSector, analysisType: effectiveSignal ?? undefined }
       );
 
-      return success(res, { status: 'QUEUED', jobId, message: 'Change analysis job enqueued' });
+      return success(res, { status, jobId, message: 'Change analysis job enqueued' });
     } catch (err) {
       next(err);
     }

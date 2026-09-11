@@ -204,6 +204,7 @@ router.get(
       const patterns = await engine.detectCrossProjectPatterns({
         sector: sector as string | undefined,
         state: state as string | undefined,
+        districtId: districtId as string | undefined,
       });
 
       success(res, { patterns });
@@ -227,11 +228,16 @@ router.get(
   requirePermission('project.read.internal'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { minRiskScore, minFindings, limit } = req.query;
+      const { locationType, locationId, locationName, metric } = req.query;
 
-      const hotspots = await engine.calculateHotspot('NATIONAL', 'all', 'India', 'RISK');
+      const hotspot = await engine.calculateHotspot(
+        (locationType as string | undefined) ?? 'NATIONAL',
+        (locationId as string | undefined) ?? 'all',
+        (locationName as string | undefined) ?? 'India',
+        (metric as string | undefined) ?? 'RISK'
+      );
 
-      success(res, { hotspots });
+      success(res, { hotspot });
     } catch (err) {
       next(err);
     }
@@ -503,7 +509,10 @@ router.get(
   requirePermission('project.read.internal'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { entityType, entityId, severity, page = '1', limit = '20' } = req.query;
+      // No entity filter: AnalyticsInsight stores affected entities in the
+      // affectedEntities JSON blob, not as queryable entityType/entityId
+      // columns, so such a filter cannot be honoured without a schema change.
+      const { severity, page = '1', limit = '20' } = req.query;
 
       const pageNum = parseInt(String(page));
       const limitNum = Math.min(50, parseInt(String(limit)));

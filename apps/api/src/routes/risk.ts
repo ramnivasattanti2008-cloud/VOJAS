@@ -15,6 +15,7 @@
  *   PATCH /findings/:id/status        — Update finding status
  */
 
+import type { Prisma } from '@vojas/db';
 import { prisma } from '@vojas/db';
 import {
     NotFoundError,
@@ -585,7 +586,7 @@ router.patch(
       const finding = await prisma.riskFinding.findUnique({ where: { id: findingId } });
       if (!finding) throw new NotFoundError('RiskFinding');
 
-      const updateData: Record<string, unknown> = { status };
+      const updateData: Prisma.RiskFindingUncheckedUpdateInput = { status };
 
       if (status === 'ACKNOWLEDGED') {
         updateData.acknowledgedById = req.user!.userId;
@@ -599,15 +600,19 @@ router.patch(
 
       const updated = await prisma.riskFinding.update({
         where: { id: findingId },
-        data: updateData as any,
+        data: updateData,
       });
+
+      // RiskFinding has no notes column; reviewer notes belong on the audit
+      // trail entry rather than being silently discarded.
+      const reviewerNotes = typeof notes === 'string' ? notes.trim() : '';
 
       // Create risk event
       await prisma.riskEvent.create({
         data: {
           projectId: finding.projectId,
           eventType: `finding_${status.toLowerCase()}`,
-          description: `Finding status changed to ${status}${resolution ? `: ${resolution}` : ''}`,
+          description: `Finding status changed to ${status}${resolution ? `: ${resolution}` : ''}${reviewerNotes ? ` — Reviewer notes: ${reviewerNotes}` : ''}`,
           severity: finding.severity,
           riskScore: finding.riskScore,
           findingId: finding.id,

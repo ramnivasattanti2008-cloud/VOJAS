@@ -21,7 +21,7 @@ export const analyticsKeys = {
   aggregated: (params: Record<string, string | undefined>) => [...analyticsKeys.all, 'aggregated', params] as const,
   benchmark: (metricType: string) => [...analyticsKeys.all, 'benchmark', metricType] as const,
   patterns: (params?: Record<string, string | undefined>) => [...analyticsKeys.all, 'patterns', params] as const,
-  hotspots: (params?: Record<string, number | undefined>) => [...analyticsKeys.all, 'hotspots', params] as const,
+  hotspot: (params?: Record<string, string | undefined>) => [...analyticsKeys.all, 'hotspot', params] as const,
   forecast: {
     delay: (projectId: string, horizonDays?: number) => [...analyticsKeys.project(projectId), 'forecast', 'delay', horizonDays] as const,
     cost: (projectId: string) => [...analyticsKeys.project(projectId), 'forecast', 'cost'] as const,
@@ -103,14 +103,15 @@ export function useCrossProjectPatterns(params?: {
 
 // ── Hotspots ─────────────────────────────────────────────────────────────────
 
-export function useHotspots(params?: {
-  minRiskScore?: number;
-  minFindings?: number;
-  limit?: number;
+export function useHotspot(params?: {
+  locationType?: string;
+  locationId?: string;
+  locationName?: string;
+  metric?: string;
 }) {
   return useQuery({
-    queryKey: analyticsKeys.hotspots(params),
-    queryFn: () => analyticsApi.getHotspots(params),
+    queryKey: analyticsKeys.hotspot(params),
+    queryFn: () => analyticsApi.getHotspot(params),
     staleTime: 120_000,
   });
 }

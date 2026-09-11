@@ -96,15 +96,12 @@ export interface CrossSignalPattern {
   evidence: string[];
 }
 
-export interface Hotspot {
-  state: string;
-  district: string;
-  latitude: number | null;
-  longitude: number | null;
+export interface HotspotIntensity {
+  intensity: number;
+  severity: string;
   projectCount: number;
   avgRiskScore: number;
-  highRiskCount: number;
-  findingsCount: number;
+  confidence: string;
 }
 
 export interface ScenarioResult {
@@ -207,11 +204,12 @@ export function createAnalyticsApi(client: ApiClient) {
       return client.get('/analytics/cross-project-patterns', params);
     },
 
-    getHotspots(params?: {
-      minRiskScore?: number;
-      minFindings?: number;
-      limit?: number;
-    }): Promise<{ hotspots: Hotspot[] }> {
+    getHotspot(params?: {
+      locationType?: string;
+      locationId?: string;
+      locationName?: string;
+      metric?: string;
+    }): Promise<{ hotspot: HotspotIntensity }> {
       return client.get('/analytics/hotspot', params);
     },
 
@@ -290,22 +288,24 @@ export function createAnalyticsApi(client: ApiClient) {
 
     // ── Insights ─────────────────────────────────────────────────────────
     getInsights(params?: {
-      entityType?: string;
-      entityId?: string;
       severity?: string;
       page?: number;
       limit?: number;
     }): Promise<{
       insights: Array<{
         id: string;
-        entityType: string;
-        entityId: string;
         insightType: string;
         title: string;
+        summary: string;
         description: string;
         severity: string;
         confidence: string;
         dataQuality: string;
+        affectedEntities: unknown;
+        recommendedAction: string | null;
+        validFrom: string;
+        validUntil: string | null;
+        resolved: boolean;
         createdAt: string;
       }>;
       total: number;

@@ -516,6 +516,7 @@ export class AnalyticsEngine {
     minProjects?: number;
     state?: string;
     sector?: string;
+    districtId?: string;
   }): Promise<Array<{
     patternType: string;
     description: string;
@@ -536,6 +537,7 @@ export class AnalyticsEngine {
     const where: Record<string, unknown> = {};
     if (options?.state) where.state = options.state;
     if (options?.sector) where.sector = options.sector;
+    if (options?.districtId) where.districtId = options.districtId;
 
     const minProjects = options?.minProjects ?? 3;
 
