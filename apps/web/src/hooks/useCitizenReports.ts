@@ -42,8 +42,8 @@ export function useTrackReportStatus(reportReference: string | null) {
 export function useUpdateReportByReference() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ reportReference, note, newStatus }: { reportReference: string; note: string; newStatus?: string }) =>
-      reportsApi.updateByReference(reportReference, note, newStatus),
+    mutationFn: ({ reportReference, note }: { reportReference: string; note: string }) =>
+      reportsApi.updateByReference(reportReference, note),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['citizen-reports', 'track', vars.reportReference] });
       qc.invalidateQueries({ queryKey: ['citizen-reports', 'status', vars.reportReference] });

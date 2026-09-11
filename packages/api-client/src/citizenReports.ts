@@ -69,11 +69,12 @@ export function createCitizenReportsApi(client: ApiClient) {
       );
     },
 
-    // Public: Add follow-up note or update to tracked report
-    updateByReference(reportReference: string, note: string, newStatus?: string) {
-      return client.post<{ success: boolean; report: CitizenReport }>(
+    // Public: append a follow-up note to a tracked report. Status is intentionally
+    // not settable here — that is an authenticated officer action.
+    updateByReference(reportReference: string, note: string) {
+      return client.post<{ reportReference: string; status: string; noteRecorded: boolean }>(
         `/reports/track/${reportReference}/update`,
-        { note, newStatus }
+        { note }
       );
     },
 

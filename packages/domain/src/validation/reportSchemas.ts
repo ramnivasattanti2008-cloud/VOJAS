@@ -32,7 +32,7 @@ export const reportListSchema = z.object({
 
 export const reportSubmitSchema = z.object({
   title: z.string().min(1).max(300),
-  description: z.string().min(1).max(5000),
+  description: z.string().min(10).max(5000),
   category: z.enum([
     'CONSTRUCTION_QUALITY',
     'FINANCIAL_IRREGULARITY',

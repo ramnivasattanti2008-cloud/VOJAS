@@ -91,7 +91,7 @@ const CATEGORY_MAP: Record<string, string> = {
 
 const reportSubmitSchema = z.object({
   title: z.string().min(1).max(300),
-  description: z.string().min(1).max(5000),
+  description: z.string().min(10).max(5000),
   category: z
     .string()
     .transform((val) => CATEGORY_MAP[val] ?? val)
@@ -968,32 +968,40 @@ router.get('/track/:reportReference', async (req: Request, res: Response, next: 
 router.post('/track/:reportReference/update', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const reportReference = req.params.reportReference as string;
-    const { note, newStatus } = req.body;
-    if (!note || typeof note !== 'string' || !note.trim()) {
-      return error(res, 'VALIDATION_ERROR', 'Update note cannot be empty', null, 400);
+    const { note } = req.body;
+    if (!note || typeof note !== 'string' || note.trim().length < 10) {
+      return error(res, 'VALIDATION_ERROR', 'Update note must be at least 10 characters', null, 400);
     }
+    const followUpNote = note.trim().slice(0, 2000);
 
     const report = await prisma.report.findUnique({ where: { reportReference } });
     if (!report) throw new NotFoundError('Report');
 
-    const updated = await prisma.report.update({
+    await prisma.report.update({
       where: { id: report.id },
-      data: {
-        updatedAt: new Date(),
-        ...(newStatus && typeof newStatus === 'string' ? { status: newStatus as ReportStatus } : {}),
-      },
+      data: { updatedAt: new Date() },
     });
 
+    // The status is deliberately NOT accepted from this route. It is reachable by
+    // anyone holding a reference code, so allowing a status write would let an
+    // anonymous caller mark a live corruption report RESOLVED or DISMISSED.
+    // Status transitions stay an authenticated officer action.
     await prisma.reportStatusLog.create({
       data: {
         reportId: report.id,
         fromStatus: report.status,
-        toStatus: newStatus && typeof newStatus === 'string' ? (newStatus as ReportStatus) : report.status,
-        notes: `[Citizen Follow-up] ${note.trim()}`,
+        toStatus: report.status,
+        notes: `[Citizen Follow-up] ${followUpNote}`,
       },
     });
 
-    success(res, { success: true, report: updated });
+    // Safe projection only: this response must never carry reporter identity,
+    // submitter IP/user-agent, or the whistleblower access token.
+    success(res, {
+      reportReference: report.reportReference,
+      status: report.status,
+      noteRecorded: true,
+    });
   } catch (err) {
     next(err);
   }

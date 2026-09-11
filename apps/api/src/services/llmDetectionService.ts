@@ -1,19 +1,19 @@
 /**
- * VOJAS Sentinel AI v4.2 — LLM Forensic Detection Engine
- * =======================================================
- * Integrates dual-engine LLM reasoning for deep forensic auditing of public
- * infrastructure projects and citizen discrepancy reports.
+ * VOJAS Sentinel v4.2 — Forensic Screening Engine
+ * ================================================
+ * Produces risk indicators for human verification. Nothing here is proof of fraud.
  *
- * Capabilities:
- *  1. Cloud LLM Mode: Connects to Google Gemini (gemini-2.0-flash) or OpenAI (gpt-4o-mini)
- *     when GEMINI_API_KEY or OPENAI_API_KEY is configured.
- *  2. In-Process Neural-LLM Core: A deterministic, high-precision domain-specialized
- *     expert engine trained on:
- *       - General Financial Rules (GFR 2017 Chapter 6)
- *       - Central Vigilance Commission (CVC) Tender & Cartelization Guidelines
- *       - CPWD Works Manual & Measurement Book (MB) Rules
- *       - Sentinel-2 Multi-temporal Spectral Reflection Physics (NDVI/NDBI/BUI)
- *       - CAG Performance Audit Indicators
+ * Two modes:
+ *  1. Cloud LLM mode — Google Gemini (gemini-2.0-flash) or OpenAI (gpt-4o-mini),
+ *     used only when GEMINI_API_KEY or OPENAI_API_KEY is configured.
+ *  2. In-process fallback — a deterministic RULE-BASED heuristic. It is not a neural
+ *     network, it is not trained, and no model weights are involved; it is a set of
+ *     threshold rules over real database columns, named after the statutory rules it
+ *     screens for (GFR 2017, CVC, CPWD).
+ *
+ * Every figure it reports must trace to a real column. Where a project has no
+ * processed satellite observation, it returns NO_USABLE_OBSERVATION rather than
+ * describing ground conditions it never measured.
  */
 
 import type { PrismaClient } from '@vojas/db';
@@ -52,9 +52,10 @@ export interface ForensicAuditResult {
     analysis: string;
   };
   satelliteTelemetryVerdict: {
-    spectralChangeDetected: boolean;
+    // null means no usable observation exists — distinct from "observed, no change".
+    spectralChangeDetected: boolean | null;
     interpretation: string;
-    surfaceObservationConfidence: 'HIGH' | 'MEDIUM' | 'LOW';
+    surfaceObservationConfidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'NOT_AVAILABLE';
   };
   contractorRiskAssessment: {
     contractorName: string | null;
@@ -69,6 +70,9 @@ export interface ForensicAuditResult {
   }>;
   citizenChecklist: string[];
 }
+
+/** Explicit unavailable state — never replace this with an inferred description of the ground. */
+const SATELLITE_UNAVAILABLE = 'NO_USABLE_OBSERVATION: no processed Sentinel-2 observation is on record for this project.';
 
 export class LLMDetectionService {
   constructor(private prisma: PrismaClient) {}
@@ -88,6 +92,10 @@ export class LLMDetectionService {
         },
         financialObservations: {
           orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
+        satelliteObservations: {
+          orderBy: { observationDate: 'desc' },
           take: 5,
         },
       },
@@ -156,18 +164,38 @@ export class LLMDetectionService {
     let verdictTitle = 'Standard Public Asset Delivery';
     let riskScore = 14;
     let riskLevel: RiskLevel = RiskLevel.LOW;
-    let confidenceScore = 92;
     let spectralChange = isCompleted;
     let disbursalAnomaly = false;
 
+    // Ground every satellite statement in rows that actually exist. A usable
+    // observation is one that was processed and carries a real spectral index;
+    // anything else cannot support a claim about the ground.
+    const allObservations = Array.isArray(project.satelliteObservations) ? project.satelliteObservations : [];
+    const usableObservations = allObservations.filter(
+      (o: { ndvi: number | null; ndbi: number | null; constructionScore: number | null }) =>
+        o.ndvi != null || o.ndbi != null || o.constructionScore != null
+    );
+    const observationCount = usableObservations.length;
+    const observationDates = usableObservations
+      .map((o: { observationDate: Date }) => o.observationDate)
+      .filter(Boolean)
+      .map((d: Date) => new Date(d).toISOString().slice(0, 10))
+      .sort();
+    const observationWindow =
+      observationDates.length > 1
+        ? `${observationDates[0]} and ${observationDates[observationDates.length - 1]}`
+        : observationDates[0] ?? 'an unrecorded date';
+
     const latestChange = project.changeAnalyses?.[0];
+    // A ghost-work signal may only be raised from a real change analysis. It must
+    // never be inferred from project prose: matching on description text would let
+    // seed copy dictate a CRITICAL fraud verdict with no underlying evidence.
     const isGhostBySatellite = Boolean(
-      (latestChange && (
+      latestChange && (
         latestChange.changeClassification === 'NO_DETECTABLE_CHANGE' ||
         latestChange.changePercent === 0 ||
         (latestChange.changeStory && latestChange.changeStory.toUpperCase().includes('GHOST'))
-      ) && spentRatio >= 0.4) ||
-      (project.description && project.description.toLowerCase().includes('barren scrubland'))
+      ) && spentRatio >= 0.4
     );
 
     // Pattern 1: Ghost Project via Satellite Ground-Truth or Missing Telemetry
@@ -178,23 +206,26 @@ export class LLMDetectionService {
         : 'High Ghost-Asset Probability: Zero Physical Telemetry with >80% Fund Absorption';
       riskScore = isGhostBySatellite ? 96 : 88;
       riskLevel = RiskLevel.CRITICAL;
-      confidenceScore = isGhostBySatellite ? 98 : 96;
       disbursalAnomaly = true;
       spectralChange = false;
 
       redFlags.push({
         rule: 'GFR 2017 Rule 139 & CPWD Section 10',
-        violation: 'Fund disbursement executed against phantom milestone without physical earthwork.',
+        violation: 'Fund disbursement recorded without corresponding physical progress. Requires human verification.',
         severity: 'CRITICAL',
-        evidence: latestChange?.changeStory || `Disbursed ₹${(spent / 100000).toFixed(2)} Lakh (${(spentRatio * 100).toFixed(1)}%) with 0% observable ground change in Sentinel-2 passes.`,
+        evidence: latestChange?.changeStory
+          ? latestChange.changeStory
+          : `Disbursed ₹${(spent / 100000).toFixed(2)} Lakh (${(spentRatio * 100).toFixed(1)}% of sanction) with no geospatial coordinates on record, so no surface observation could be attempted. ${SATELLITE_UNAVAILABLE}`,
       });
 
-      redFlags.push({
-        rule: 'Anti-Corruption Bureau (ACB) & CVC Circular 02/05/2022',
-        violation: 'Substantive evidence of ghost asset creation and fraudulent completion certification.',
-        severity: 'CRITICAL',
-        evidence: 'Four consecutive Sentinel-2 passes confirm site remains 100% undisturbed vacant land despite milestone claims.',
-      });
+      if (observationCount > 0) {
+        redFlags.push({
+          rule: 'Anti-Corruption Bureau (ACB) & CVC Circular 02/05/2022',
+          violation: 'Pattern consistent with ghost-asset risk. This is an indicator for investigation, not a finding of fraud.',
+          severity: 'CRITICAL',
+          evidence: `${observationCount} usable satellite observation(s) on record between ${observationWindow}; the latest change analysis reports ${latestChange?.changeClassification ?? 'no detectable change'}.`,
+        });
+      }
 
       actionPlan.push(
         {
@@ -223,7 +254,6 @@ export class LLMDetectionService {
       verdictTitle = 'Statutory Cost Overrun Without Revised Technical Sanction';
       riskScore = 79;
       riskLevel = RiskLevel.HIGH;
-      confidenceScore = 90;
       disbursalAnomaly = true;
 
       redFlags.push({
@@ -254,7 +284,6 @@ export class LLMDetectionService {
       verdictTitle = 'Prolonged Work Stagnation: Low Absorption Ratio';
       riskScore = 62;
       riskLevel = RiskLevel.MEDIUM;
-      confidenceScore = 88;
 
       redFlags.push({
         rule: 'CVC Work Order Clause 2.4 (Time is Essence of Contract)',
@@ -278,7 +307,6 @@ export class LLMDetectionService {
       verdictTitle = 'Pre-Sanction Stage: Awaiting Administrative & Technical Sanction';
       riskScore = 24;
       riskLevel = RiskLevel.LOW;
-      confidenceScore = 85;
 
       actionPlan.push(
         {
@@ -295,7 +323,6 @@ export class LLMDetectionService {
       verdictTitle = 'Optimal Civic Delivery: Fund Absorption Matches Physical Asset';
       riskScore = 11;
       riskLevel = RiskLevel.LOW;
-      confidenceScore = 95;
       spectralChange = hasCoords;
 
       actionPlan.push(
@@ -314,14 +341,27 @@ export class LLMDetectionService {
         rule: 'Citizen Vigilance Mandate (VOJAS Whistleblower Feed)',
         violation: `${citizenReportCount} citizen discrepancy reports registered for this work site.`,
         severity: citizenReportCount > 2 ? 'HIGH' : 'MEDIUM',
-        evidence: `Citizen reports cite construction quality and timeline deviations.`,
+        // Report bodies are not read here, so their content must not be characterised.
+        evidence: `${citizenReportCount} report(s) linked to this project are pending officer triage. Report contents are not summarised by this engine.`,
       });
       if (riskScore < 70) riskScore += 12;
     }
 
+    // Confidence must track how much real evidence backs the verdict rather than
+    // being a fixed per-branch literal.
+    const evidenceSignals = [
+      observationCount > 0,
+      Boolean(latestChange),
+      approved > 0,
+      spent > 0,
+      hasCoords,
+      citizenReportCount > 0,
+    ].filter(Boolean).length;
+    const confidenceScore = Math.min(90, 20 + evidenceSignals * 12);
+
     const executiveSummary =
       verdict === 'SUSPECTED_GHOST_WORK'
-        ? `VOJAS Sentinel AI has flagged Project "${project.name}" for urgent forensic inquiry. Despite an expenditure of ₹${(spent / 100000).toFixed(2)} Lakh (${(spentRatio * 100).toFixed(0)}% absorption), zero spatial coordinates or satellite optical telemetry exist to substantiate physical ground assets. This pattern violates GFR 2017 Rule 139 and indicates severe ghost-work or paper-asset risks.`
+        ? `Project "${project.name}" is flagged for human verification. Expenditure of ₹${(spent / 100000).toFixed(2)} Lakh (${(spentRatio * 100).toFixed(0)}% absorption) is recorded ${observationCount > 0 ? `against ${observationCount} processed satellite observation(s) whose latest change analysis reports ${latestChange?.changeClassification ?? 'no detectable change'}` : `with ${SATELLITE_UNAVAILABLE}`}. This is an indicator consistent with GFR 2017 Rule 139 concerns; it is not a finding of fraud and requires physical inspection to confirm.`
         : verdict === 'INFLATED_COST_ANOMALY'
         ? `Project "${project.name}" exhibits a significant fiscal overrun of ${((spentRatio - 1) * 100).toFixed(1)}% above the sanctioned allocation without a documented Technical Sanction revision on record. Recommended for internal rate analysis against CPWD DSR benchmarks.`
         : verdict === 'PROGRESS_STALL'
@@ -341,7 +381,7 @@ export class LLMDetectionService {
     return {
       projectId: project.id,
       projectName: project.name,
-      modelUsed: 'VOJAS Sentinel AI v4.2 Neural-LLM Core',
+      modelUsed: 'VOJAS Sentinel v4.2 — rule-based heuristic (no ML inference)',
       auditedAt: new Date().toISOString(),
       riskScore,
       riskLevel,
@@ -358,13 +398,19 @@ export class LLMDetectionService {
           : `Fund absorption of ${(spentRatio * 100).toFixed(1)}% is within standard normative variance.`,
       },
       satelliteTelemetryVerdict: {
-        spectralChangeDetected: spectralChange,
-        interpretation: hasCoords
-          ? spectralChange
-            ? 'Sentinel-2 surface reflectance indicates measurable change in NDBI/NDVI matching civil construction activities.'
-            : 'Satellite observation detected no significant earth-moving or structural footprint within 10m spatial resolution.'
-          : 'Geospatial coordinates omitted from administrative record. Direct satellite telemetry verification unavailable.',
-        surfaceObservationConfidence: hasCoords ? 'HIGH' : 'LOW',
+        // Only a real change analysis can report change. With no usable observation
+        // the honest answer is "unknown", not "no change detected".
+        spectralChangeDetected: observationCount > 0 && latestChange ? spectralChange : null,
+        interpretation:
+          observationCount === 0
+            ? hasCoords
+              ? SATELLITE_UNAVAILABLE
+              : `${SATELLITE_UNAVAILABLE} Geospatial coordinates are also absent from the administrative record, so no observation can be requested.`
+            : latestChange
+              ? `Derived from ${observationCount} processed observation(s) between ${observationWindow}. Latest change analysis: ${latestChange.changeClassification ?? 'unclassified'}.`
+              : `${observationCount} processed observation(s) on record between ${observationWindow}, but no change analysis has been run, so no change determination exists.`,
+        surfaceObservationConfidence:
+          observationCount === 0 ? 'NOT_AVAILABLE' : observationCount >= 3 && latestChange ? 'HIGH' : 'MEDIUM',
       },
       contractorRiskAssessment: {
         contractorName: project.contractor || null,
@@ -453,6 +499,19 @@ export class LLMDetectionService {
   private buildPrompt(project: any): string {
     return `
 Analyze the following Indian public works project for fiscal corruption, ghost work, contractor cartelization, and timeline delays.
+
+HARD RULES — this output is shown to citizens and auditors of a public anti-corruption system:
+1. Use ONLY the values supplied under "Project Data" and "Satellite Observations" below. Never invent a
+   figure, date, area, contractor name or spectral index that is not given to you.
+2. "Satellite Observations" may be an empty list. If it is, you have NO ground observation: set
+   spectralChangeDetected to null, surfaceObservationConfidence to "NOT_AVAILABLE", and say plainly that
+   no usable observation exists. Do NOT describe the state of the ground, and do NOT refer to Sentinel-2
+   passes, NDVI or NDBI values you were not given.
+3. A risk score is evidence for human verification, never proof of fraud. Word every verdict and red flag
+   as an indicator requiring inspection, not as an established finding of criminality.
+4. confidenceScore must reflect how much real evidence you were actually given. With little or no
+   evidence, return a low confidence.
+
 Return a structured JSON document matching the ForensicAuditResult schema with fields:
 - projectId: "${project.id}"
 - projectName: "${project.name}"
@@ -464,7 +523,7 @@ Return a structured JSON document matching the ForensicAuditResult schema with f
 - executiveSummary: string
 - statutoryRedFlags: array of { rule: string, violation: string, severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL", evidence: string }
 - financialAudit: { utilizationRate: number, disbursalAnomaly: boolean, analysis: string }
-- satelliteTelemetryVerdict: { spectralChangeDetected: boolean, interpretation: string, surfaceObservationConfidence: "HIGH" | "MEDIUM" | "LOW" }
+- satelliteTelemetryVerdict: { spectralChangeDetected: boolean | null, interpretation: string, surfaceObservationConfidence: "HIGH" | "MEDIUM" | "LOW" | "NOT_AVAILABLE" }
 - contractorRiskAssessment: { contractorName: string, concentrationIndex: string, riskFlags: string[] }
 - actionPlan: array of { step: number, action: string, authority: string, urgency: "IMMEDIATE" | "HIGH" | "STANDARD" }
 - citizenChecklist: array of 5 physical verification questions
@@ -487,6 +546,26 @@ ${JSON.stringify(
     state: project.state,
     constituency: project.constituency,
   },
+  null,
+  2
+)}
+
+Satellite Observations (real rows from the database; an empty list means no usable observation exists):
+${JSON.stringify(
+  (Array.isArray(project.satelliteObservations) ? project.satelliteObservations : [])
+    .filter(
+      (o: { ndvi: number | null; ndbi: number | null; constructionScore: number | null }) =>
+        o.ndvi != null || o.ndbi != null || o.constructionScore != null
+    )
+    .map((o: { observationDate: Date; satellite: string; cloudCover: number; ndvi: number | null; ndbi: number | null; bsi: number | null; constructionScore: number | null }) => ({
+      observationDate: o.observationDate,
+      satellite: o.satellite,
+      cloudCover: o.cloudCover,
+      ndvi: o.ndvi,
+      ndbi: o.ndbi,
+      bsi: o.bsi,
+      constructionScore: o.constructionScore,
+    })),
   null,
   2
 )}

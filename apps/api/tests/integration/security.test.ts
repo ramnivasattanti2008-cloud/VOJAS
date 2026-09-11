@@ -728,6 +728,64 @@ runIfDb('Public Endpoints (no auth required, database-backed)', () => {
   });
 });
 
+// ── Public follow-up endpoint ─────────────────────────────────────────────────
+// This route is reachable by anyone holding a reference code, so it must not be
+// able to move a report's status and must not echo reporter identity back.
+
+runIfDb('Public report follow-up endpoint', () => {
+  let reference: string;
+
+  beforeAll(async () => {
+    const res = await request(app)
+      .post('/api/v1/reports')
+      .send({
+        title: 'Follow-up endpoint security fixture',
+        description: 'Fixture report used to assert the public follow-up route cannot change status.',
+        category: 'CONSTRUCTION_QUALITY',
+        reporterName: 'Fixture Reporter',
+        reporterEmail: 'fixture-reporter@test.example.com',
+      });
+    reference = res.body?.data?.reportReference;
+  });
+
+  it('cannot change report status even when newStatus is supplied', async () => {
+    const before = await request(app).get(`/api/v1/reports/track/${reference}`);
+    const statusBefore = before.body.data.status;
+
+    const res = await request(app)
+      .post(`/api/v1/reports/track/${reference}/update`)
+      .send({ note: 'Attempting to smuggle a status transition through this route.', newStatus: 'DISMISSED' });
+    expect(res.status).toBe(200);
+
+    const after = await request(app).get(`/api/v1/reports/track/${reference}`);
+    expect(after.body.data.status).toBe(statusBefore);
+    expect(after.body.data.status).not.toBe('DISMISSED');
+  });
+
+  it('does not return reporter identity or the whistleblower token', async () => {
+    const res = await request(app)
+      .post(`/api/v1/reports/track/${reference}/update`)
+      .send({ note: 'Adding a legitimate follow-up observation about the site.' });
+    expect(res.status).toBe(200);
+
+    const body = JSON.stringify(res.body);
+    expect(body).not.toMatch(/fixture-reporter@test\.example\.com/);
+    expect(body).not.toMatch(/Fixture Reporter/);
+    expect(res.body.data.reporterEmail).toBeUndefined();
+    expect(res.body.data.reporterName).toBeUndefined();
+    expect(res.body.data.reporterPhone).toBeUndefined();
+    expect(res.body.data.whistleblowerToken).toBeUndefined();
+    expect(res.body.data.ipAddress).toBeUndefined();
+  });
+
+  it('rejects an empty or too-short follow-up note', async () => {
+    const res = await request(app)
+      .post(`/api/v1/reports/track/${reference}/update`)
+      .send({ note: 'short' });
+    expect(res.status).toBe(400);
+  });
+});
+
 // ── Error Message Safety Tests ─────────────────────────────────────────────────
 
 runIfDb('Error Message Safety', () => {

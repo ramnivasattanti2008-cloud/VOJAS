@@ -149,9 +149,16 @@ describe('project schemas', () => {
     }
   });
 
-  it('projectFiltersSchema limits page size to 100', () => {
+  it('projectFiltersSchema caps page size at 100', () => {
+    // Oversized page sizes are clamped rather than rejected: dashboard views
+    // legitimately request limit 200/500, and a 400 there would break them.
+    // The invariant that matters is that the 60k-row table is never asked for
+    // more than 100 records in one page.
     const result = projectFiltersSchema.safeParse({ limit: 200 });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.limit).toBe(100);
+    }
   });
 
   it('addLocationSchema requires projectId', () => {

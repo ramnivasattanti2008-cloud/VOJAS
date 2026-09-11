@@ -217,8 +217,11 @@ app.use('/api/v1/auth/register', authLimiter);
 // well — six page-loads of the public reports list locked a citizen out of
 // reading public reports for an hour. Reads remain covered by generalLimiter.
 const REPORT_SUBMIT_PATHS = new Set(['/', '/submit']);
+// The public follow-up route is writable by anyone holding a reference code, so
+// it needs the same hourly quota as a submission rather than only generalLimiter.
+const REPORT_FOLLOWUP_PATH = /^\/track\/[^/]+\/update\/?$/;
 app.use('/api/v1/reports', (req, res, next) => {
-  if (req.method === 'POST' && REPORT_SUBMIT_PATHS.has(req.path)) {
+  if (req.method === 'POST' && (REPORT_SUBMIT_PATHS.has(req.path) || REPORT_FOLLOWUP_PATH.test(req.path))) {
     reportSubmitLimiter(req, res, next);
     return;
   }
