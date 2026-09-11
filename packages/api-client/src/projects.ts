@@ -97,6 +97,7 @@ export interface PublicProjectFilters {
   minAmount?: number;
   maxAmount?: number;
   search?: string;
+  hasCoordinates?: boolean;
   page?: number;
   limit?: number;
   sortBy?: 'name' | 'approvedAmount' | 'spentAmount' | 'createdAt' | 'status';

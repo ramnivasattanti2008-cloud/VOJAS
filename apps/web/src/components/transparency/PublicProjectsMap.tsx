@@ -93,7 +93,13 @@ export function PublicProjectsMap({ projects, className, focusProjectId }: Publi
           // rather than leaving a silently blank map.
           setError(e.error?.message ?? 'Map failed to load.');
         });
-        map.once('load', () => setMapReady(true));
+        const safetyTimer = setTimeout(() => {
+          if (!destroyed) setMapReady(true);
+        }, 3000);
+        map.once('load', () => {
+          clearTimeout(safetyTimer);
+          setMapReady(true);
+        });
         mapRef.current = map;
       })
       .catch(() => setError('Map could not be loaded.'));

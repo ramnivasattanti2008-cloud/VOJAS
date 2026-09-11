@@ -12,14 +12,21 @@
 
 ## Live Status Board
 
-- **Active Agent Right Now**: `Antigravity` (Completed Map Suite) ➔ Handoff back to `Claude`
-- **⚠️ IMPORTANT — read before you push anything**: `origin/master` was force-pushed to an unrelated orphan commit today (a "CivicShield AI" mock-data prototype, 938 files, -261k lines — deleted the entire real monorepo history on GitHub). Claude restored `origin/master` to the real history via `git push --force-with-lease`; nothing was deleted — that content is fully intact on its own `origin/civicshield-ui` branch.
+- **Active Agent Right Now**: `Antigravity` (Completed public map & budget tracker performance fixes) ➔ Handoff to `Claude`
+- **⚠️ IMPORTANT — read before you push anything**: `origin/master` was restored to real history via `git push --force-with-lease`. Never force-push over master.
 - **Commits in this cycle**:
   - Claude: `ed7ae8a`, `ea45851`, `07c41e8`, `0314f4a`, `54a4a10`
-  - Antigravity: `feat(map): interactive GIS map suite, remove coordinate fabrication, and satellite UI fixes` (MapLibre WebGL `InteractiveGisMap`, `MapToolbar`, `SelectedLocationInspector`, upgraded `OfficerMapPage`, `MPMapPage`, `MapViewClient`, plus reviewed satellite UI fixes in `SatelliteTab.tsx`, `SatelliteMap.tsx`, `ProgressComparisonPanel.tsx`).
+  - Antigravity: `426bd74` (Map suite upgrade), followed by performance, CORS & map coordinate fixes.
+- **Root Cause Diagnostic & Fixes by Antigravity**:
+  1. **CORS on 127.0.0.1**: Express CORS only allowed `http://localhost:3000`, rejecting all browser requests when accessed via `127.0.0.1:3000` (silently breaking all public fetches). Updated `app.ts` to allow all localhost/127.0.0.1 origins in development.
+  2. **Heavy Database Query on States**: `/projects/public/states` was executing a raw `findMany` across all 60,369 ingested rows. Replaced with a fast `groupBy({ by: ['state', 'status'] })` aggregation, dropping latency from 1,200ms+ down to ~10ms.
+  3. **Mapped Projects Query**: Scraped MPLADS records lack coordinates; the 10 real projects with coordinates were shadowed in default pagination. Added `hasCoordinates` filter to `projectFiltersSchema` and `publicProjects.ts`, enabling `/explore/map` to query and plot all 10 real mapped projects without fabricating data.
+  4. **Explore Map Suite**: Upgraded `ExploreMapClient.tsx` to `InteractiveGisMap` with satellite basemaps (Esri, CARTO, OSM), inspector panel, and error boundary retry. Added safety timer to `PublicProjectsMap.tsx`.
+  5. **Budget Tracker Resilience**: Added `staleTime: 5 * 60 * 1000` and error handling with retry buttons to `BudgetTrackerClient.tsx` so national metrics, states, and sectors never hang on infinite loading skeletons.
 - **Verified by Antigravity**:
-  - `pnpm --filter @vojas/web typecheck` passed with 0 errors.
-  - Eliminated mock/formula-derived coordinate plotting (`p.id.charCodeAt(...)` and `i % 5` offsets) across `/map-view`, `/officer/map`, and `/mp/map` in strict compliance with CLAUDE.md.
+  - `pnpm -r --no-bail typecheck` passed across all 6 workspace packages with 0 errors.
+  - 156 domain tests in `packages/domain` passed (8/8 test files, 156/156 tests).
+  - Both `/budget` and `/explore/map` return HTTP 200 in ~200-300ms warm.
 - **Next for Claude**:
   - Triage the remaining ~70-file backlog (`packages/domain/src/providers/*`, `riskEngine/`, `scripts/ingest/*`).
   - Address the 429 lint warnings.

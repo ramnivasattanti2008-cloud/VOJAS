@@ -33,19 +33,37 @@ export function BudgetTrackerClient() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useQuery({
     queryKey: ['public-budget-summary'],
     queryFn: () => projectsApi.public.getSummary(),
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: stateSummaries, isLoading: statesLoading } = useQuery({
+  const {
+    data: stateSummaries,
+    isLoading: statesLoading,
+    isError: statesError,
+    refetch: refetchStates,
+  } = useQuery({
     queryKey: ['public-budget-states'],
     queryFn: () => projectsApi.public.getStateSummaries(),
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: sectorStats, isLoading: sectorsLoading } = useQuery({
+  const {
+    data: sectorStats,
+    isLoading: sectorsLoading,
+    isError: sectorsError,
+    refetch: refetchSectors,
+  } = useQuery({
     queryKey: ['public-budget-sectors'],
     queryFn: () => sectorsApi.getSummary(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const filters = useMemo(
@@ -88,12 +106,16 @@ export function BudgetTrackerClient() {
           label="Total Sanctioned"
           value={summaryLoading ? null : formatCurrency(summary?.totalSanctioned)}
           color="text-vojas-600"
+          isError={summaryError}
+          onRetry={() => refetchSummary()}
         />
         <SummaryCard
           icon={Wallet}
           label="Total Spent"
           value={summaryLoading ? null : formatCurrency(summary?.totalSpent)}
           color="text-emerald-600"
+          isError={summaryError}
+          onRetry={() => refetchSummary()}
         />
         <SummaryCard
           icon={PiggyBank}
@@ -104,12 +126,16 @@ export function BudgetTrackerClient() {
               : formatCurrency(Math.max(summary.totalSanctioned - summary.totalSpent, 0))
           }
           color="text-amber-600"
+          isError={summaryError}
+          onRetry={() => refetchSummary()}
         />
         <SummaryCard
           icon={ArrowUpRight}
           label="Fund Utilization"
           value={summaryLoading ? null : nationalUtilization != null ? `${nationalUtilization.toFixed(1)}%` : 'Not available'}
           color="text-blue-600"
+          isError={summaryError}
+          onRetry={() => refetchSummary()}
         />
       </div>
 
@@ -121,7 +147,19 @@ export function BudgetTrackerClient() {
         <CardBody className="p-0">
           {statesLoading ? (
             <div className="py-10 text-center text-sm text-slate-400 flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> Loading state finances…
+            </div>
+          ) : statesError ? (
+            <div className="py-10 text-center text-sm text-red-600">
+              <AlertTriangle className="h-5 w-5 text-red-400 mx-auto mb-1.5" />
+              Could not load state summaries.
+              <button
+                type="button"
+                onClick={() => refetchStates()}
+                className="ml-2 font-semibold underline text-blue-600 hover:text-blue-700"
+              >
+                Retry
+              </button>
             </div>
           ) : sortedStates.length === 0 ? (
             <div className="py-10 text-center text-sm text-slate-400">No state-level data available.</div>
@@ -171,7 +209,19 @@ export function BudgetTrackerClient() {
         <CardBody className="p-0">
           {sectorsLoading ? (
             <div className="py-10 text-center text-sm text-slate-400 flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> Loading sector statistics…
+            </div>
+          ) : sectorsError ? (
+            <div className="py-10 text-center text-sm text-red-600">
+              <AlertTriangle className="h-5 w-5 text-red-400 mx-auto mb-1.5" />
+              Could not load sector statistics.
+              <button
+                type="button"
+                onClick={() => refetchSectors()}
+                className="ml-2 font-semibold underline text-blue-600 hover:text-blue-700"
+              >
+                Retry
+              </button>
             </div>
           ) : sortedSectors.length === 0 ? (
             <div className="py-10 text-center text-sm text-slate-400">No sector-level data available.</div>
@@ -339,14 +389,41 @@ export function BudgetTrackerClient() {
   );
 }
 
-function SummaryCard({ icon: Icon, label, value, color }: { icon: typeof IndianRupee; label: string; value: string | null | undefined; color: string }) {
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+  isError,
+  onRetry,
+}: {
+  icon: typeof IndianRupee;
+  label: string;
+  value: string | null | undefined;
+  color: string;
+  isError?: boolean;
+  onRetry?: () => void;
+}) {
   return (
     <Card>
       <CardBody className="p-4">
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 mb-2`}>
           <Icon className={`h-4 w-4 ${color}`} />
         </div>
-        {value == null ? (
+        {isError ? (
+          <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium py-1">
+            <span>Unavailable</span>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="underline hover:text-red-700 text-[11px]"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        ) : value == null ? (
           <div className="h-7 w-24 bg-slate-100 rounded animate-pulse" />
         ) : (
           <p className="text-xl font-bold text-slate-800">{value}</p>

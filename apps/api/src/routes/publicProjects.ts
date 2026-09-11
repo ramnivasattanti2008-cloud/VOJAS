@@ -14,9 +14,11 @@
 import { prisma } from '@vojas/db';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
-import { projectFiltersSchema } from '@vojas/domain';
+import { projectFiltersSchema, EvidenceService } from '@vojas/domain';
 import { success } from '../utils/apiResponse.js';
 import { CACHE_TTL, get, set } from '../utils/cache.js';
+
+const evidenceService = new EvidenceService(prisma);
 
 const router = Router();
 
@@ -75,6 +77,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (p.constituency) where.constituency = p.constituency;
     if (p.sector) where.sector = p.sector;
     if (p.status) where.status = p.status;
+    if (p.hasCoordinates || req.query.hasCoordinates === 'true') {
+      where.latitude = { not: null };
+      where.longitude = { not: null };
+    }
     if (p.minAmount !== undefined || p.maxAmount !== undefined) {
       where.approvedAmount = {};
       if (p.minAmount !== undefined) (where.approvedAmount as Record<string, number>).gte = p.minAmount;
@@ -172,20 +178,21 @@ router.get('/states', async (_req: Request, res: Response, next: NextFunction) =
       _sum: { approvedAmount: true, spentAmount: true },
     });
 
-    // Get counts by status per state
-    const stateNames = states.map((s) => s.state).filter(Boolean);
-    const statusCounts = await prisma.project.findMany({
+    // Get counts by status per state via fast aggregation
+    const stateNames = states.map((s) => s.state).filter(Boolean) as string[];
+    const statusCounts = await prisma.project.groupBy({
+      by: ['state', 'status'],
+      _count: { id: true },
       where: { state: { in: stateNames } },
-      select: { state: true, status: true },
     });
 
     const byState: Record<string, { completed: number; inProgress: number; delayed: number }> = {};
     for (const row of statusCounts) {
       if (!row.state) continue;
       if (!byState[row.state]) byState[row.state] = { completed: 0, inProgress: 0, delayed: 0 };
-      if (row.status === 'COMPLETED') byState[row.state].completed++;
+      if (row.status === 'COMPLETED') byState[row.state].completed += row._count.id;
       else if (row.status === 'IN_PROGRESS') {
-        byState[row.state].inProgress++;
+        byState[row.state].inProgress += row._count.id;
       }
     }
 
@@ -380,6 +387,37 @@ router.get('/:id/risk', async (req: Request, res: Response, next: NextFunction) 
       findings,
       disclaimer:
         'These findings are AI-assisted signals requiring human review. They are not proof of wrongdoing.',
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/public/:id/evidence — public-safe unified evidence feed.
+ * Aggregates across Document, SatelliteObservation, SatelliteAnalysis,
+ * FieldVerification, ContractorUpdate, ReportMedia, ProjectEvent, and
+ * RiskFinding, then returns only the PUBLIC-tier subset (satellite
+ * observations/analyses and source-attributed project events). Internal
+ * documents, field verifications, contractor submissions, citizen media,
+ * and AI risk findings are never exposed here — see the authenticated
+ * GET /projects/:id/evidence route for role-gated access to those.
+ */
+router.get('/:id/evidence', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = req.params.id as string;
+    const exists = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+    if (!exists) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+    }
+
+    const allEvidence = await evidenceService.getProjectEvidence(projectId);
+    const publicEvidence = evidenceService.filterPublic(allEvidence);
+
+    success(res, {
+      projectId,
+      total: publicEvidence.length,
+      items: publicEvidence,
     });
   } catch (err) {
     next(err);

@@ -68,8 +68,28 @@ app.use((_req, res, next) => {
 });
 
 // ── CORS — credentials required for httpOnly cookie auth ───────────────────────
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',');
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        (process.env.NODE_ENV !== 'production' &&
+          (/^https?:\/\/localhost(:\d+)?$/.test(origin) || /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)))
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 
 // ── Health checks ────────────────────────────────────────────────────────────
 // Liveness — process is up. No DB call, no auth. Safe to use in k8s livenessProbe.
@@ -152,7 +172,7 @@ app.get('/api/v1/ready', async (_req, res) => {
 // 1) Strict auth rate limit — login & register to defeat credential stuffing
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,                       // 10 attempts / 15 min / IP
+  limit: parseInt(process.env.RATE_LIMIT_AUTH ?? '10'),   // 10 attempts / 15 min / IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many authentication attempts. Try again in 15 minutes.' } },
@@ -161,7 +181,7 @@ const authLimiter = rateLimit({
 // 2) Public report submission limiter — prevent spam submissions from a single IP
 const reportSubmitLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,                        // 5 reports / hour / IP
+  limit: parseInt(process.env.RATE_LIMIT_REPORT_SUBMIT ?? '5'),  // 5 reports / hour / IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Report submission rate limited. Try again later.' } },
@@ -170,7 +190,7 @@ const reportSubmitLimiter = rateLimit({
 // 3) AI / analysis / forecast limiter — expensive compute, cap per user
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 20,                       // 20 calls / min / user
+  limit: parseInt(process.env.RATE_LIMIT_AI ?? '20'),     // 20 calls / min / user
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.userId ?? ipKeyGenerator(req.ip ?? 'unknown'),
@@ -180,7 +200,7 @@ const aiLimiter = rateLimit({
 // 4) Search limiter — bounded per user/IP
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 60,                       // 60 searches / min / user
+  limit: parseInt(process.env.RATE_LIMIT_SEARCH ?? '60'), // 60 searches / min / user
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.userId ?? ipKeyGenerator(req.ip ?? 'unknown'),
@@ -190,7 +210,18 @@ const searchLimiter = rateLimit({
 // Apply auth limiter to login + register BEFORE general limiter
 app.use('/api/v1/auth/login', authLimiter);
 app.use('/api/v1/auth/register', authLimiter);
-app.use('/api/v1/reports', reportSubmitLimiter);
+// Only actual report submissions consume the hourly quota. This limiter used to
+// be mounted across the whole /reports namespace, which meant reads spent it as
+// well — six page-loads of the public reports list locked a citizen out of
+// reading public reports for an hour. Reads remain covered by generalLimiter.
+const REPORT_SUBMIT_PATHS = new Set(['/', '/submit']);
+app.use('/api/v1/reports', (req, res, next) => {
+  if (req.method === 'POST' && REPORT_SUBMIT_PATHS.has(req.path)) {
+    reportSubmitLimiter(req, res, next);
+    return;
+  }
+  next();
+});
 app.use('/api/v1/search', searchLimiter);
 // Analytics + risk + forecast are AI/analysis-heavy
 app.use('/api/v1/analytics', aiLimiter);
