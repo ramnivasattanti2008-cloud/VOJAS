@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createAdmin, createOfficer } from '../helpers.js';
 
 const BASE = '/api/v1';
 
@@ -13,27 +14,10 @@ runIfDb('Projects API', () => {
   let projectId: string;
 
   beforeAll(async () => {
-    // Create officer
-    const officerRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: `proj-officer-${Date.now()}@example.com`,
-        password: 'OfficerPass123!',
-        name: 'Project Officer',
-        role: 'OFFICER',
-      });
-    officerToken = officerRes.body.data.accessToken;
-
-    // Create admin
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: `proj-admin-${Date.now()}@example.com`,
-        password: 'AdminPass123!',
-        name: 'Project Admin',
-        role: 'ADMIN',
-      });
-    adminToken = adminRes.body.data.accessToken;
+    // Privileged users are created directly: /auth/register always yields a
+    // CITIZEN by design, so it cannot provision an OFFICER or ADMIN.
+    officerToken = (await createOfficer()).token;
+    adminToken = (await createAdmin()).token;
   });
 
   it('POST /projects creates a project (OFFICER+)', async () => {
@@ -58,8 +42,13 @@ runIfDb('Projects API', () => {
   });
 
   it('GET /projects returns paginated list', async () => {
+    // GET /projects is authenticated with permission-based visibility scoping
+    // (see routes/projects.ts) — there is no anonymous listing endpoint, only
+    // the separate /projects/public/* summaries. A request with no token is
+    // correctly refused with 401.
     const res = await request(app)
       .get(`${BASE}/projects`)
+      .set('Authorization', `Bearer ${officerToken}`)
       .query({ page: 1, limit: 10 });
 
     expect(res.status).toBe(200);

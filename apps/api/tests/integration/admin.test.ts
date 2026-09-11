@@ -6,32 +6,24 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createAdmin, createOfficer, createCitizen } from '../helpers.js';
 
 const BASE = '/api/v1';
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
+// Privileged users are provisioned directly, because POST /auth/register
+// deliberately ignores a requested role and always creates a CITIZEN. See
+// tests/helpers.ts.
 async function getAdminToken(): Promise<string> {
-  const email = `admin-test-${Date.now()}@example.com`;
-  const res = await request(app)
-    .post(`${BASE}/auth/register`)
-    .send({ email, password: 'AdminPass123!', name: 'Admin', role: 'ADMIN' });
-  return res.body.data.accessToken;
+  return (await createAdmin()).token;
 }
 
 async function getOfficerToken(): Promise<string> {
-  const email = `officer-test-${Date.now()}@example.com`;
-  const res = await request(app)
-    .post(`${BASE}/auth/register`)
-    .send({ email, password: 'OfficerPass123!', name: 'Officer', role: 'OFFICER' });
-  return res.body.data.accessToken;
+  return (await createOfficer()).token;
 }
 
 async function getCitizenToken(): Promise<string> {
-  const email = `citizen-test-${Date.now()}@example.com`;
-  const res = await request(app)
-    .post(`${BASE}/auth/register`)
-    .send({ email, password: 'CitizenPass123!', name: 'Citizen', role: 'CITIZEN' });
-  return res.body.data.accessToken;
+  return (await createCitizen()).token;
 }
 
 runIfDb('Admin — RBAC Enforcement', () => {

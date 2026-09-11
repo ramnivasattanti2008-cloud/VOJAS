@@ -11,7 +11,7 @@ import {
   anomalyEscalateSchema,
   anomalyCreateSchema,
 } from '@vojas/domain';
-import { AuditAction, UserRole, PERMISSIONS, getPermissionsForRole, getFindingVisibilityFilter } from '@vojas/shared';
+import { AuditAction, UserRole, getPermissionsForRole, getFindingVisibilityFilter } from '@vojas/shared';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';

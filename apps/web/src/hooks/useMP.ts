@@ -4,7 +4,7 @@
  * useMP — MP Command Center hooks (M14)
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { createMPCommandApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
 import type { ProjectSector, ProjectStatus } from '@vojas/shared';
@@ -78,4 +78,14 @@ export interface MPReportParams {
   startDate?: string;
   endDate?: string;
   sector?: string;
+}
+
+/**
+ * Generates a constituency report through the API. Errors are surfaced to the
+ * caller — a failed generation must never be presented as a finished report.
+ */
+export function useGenerateMPReport(mpId: string | null | undefined) {
+  return useMutation({
+    mutationFn: (params: MPReportParams) => mpApi.generateReport(mpId!, params),
+  });
 }

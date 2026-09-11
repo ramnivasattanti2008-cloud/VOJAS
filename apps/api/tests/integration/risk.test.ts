@@ -13,6 +13,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { globalErrorHandler } from '../../src/middleware/errorHandler';
 import riskRoutes from '../../src/routes/risk';
+import { createAdmin } from '../helpers.js';
 
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
@@ -112,9 +113,20 @@ describe('M8 Risk Endpoints — Auth Enforcement', () => {
 
 runIfDb('M8 Risk Endpoints — DB-backed shape tests', () => {
   // These tests require a real DB. They run only when DATABASE_URL_TEST is set.
+  // GET /risk/summary and /risk/findings require risk.read / finding.read
+  // permission, so an authenticated-but-unprivileged token isn't enough —
+  // process.env.TEST_TOKEN was never set by anything, so these always hit
+  // 401. Provision a real ADMIN (which holds every permission) directly,
+  // the way the rest of the suite does via tests/helpers.ts.
+  let adminToken: string;
+
+  beforeAll(async () => {
+    adminToken = (await createAdmin()).token;
+  });
+
   it('GET /risk/summary returns expected shape', async () => {
     const res = await request(makeApp()).get('/api/v1/risk/summary')
-      .set('Authorization', `Bearer ${process.env.TEST_TOKEN ?? ''}`);
+      .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
       totalProjects: expect.any(Number),
@@ -128,7 +140,7 @@ runIfDb('M8 Risk Endpoints — DB-backed shape tests', () => {
 
   it('GET /risk/findings returns findings array with project info', async () => {
     const res = await request(makeApp()).get('/api/v1/risk/findings')
-      .set('Authorization', `Bearer ${process.env.TEST_TOKEN ?? ''}`);
+      .set('Authorization', `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
       findings: expect.any(Array),

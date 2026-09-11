@@ -25,7 +25,6 @@ import { buildTimeline, compareProgress } from '../services/satelliteEOAnalysis.
 import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
 import type { ReliabilityState } from '../services/satelliteJobQueue.js';
 import { cdseService } from '../services/cdseService.js';
-import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -73,7 +72,10 @@ router.get(
 
       const project = await getProjectOrThrow(projectId);
 
-      const hasCoords = project.latitude != null && project.longitude != null;
+      const hasCoords =
+        project.latitude != null &&
+        project.longitude != null &&
+        isValidCoords(project.latitude, project.longitude);
       const configured = cdseService.isConfigured();
 
       if (!hasCoords) {
@@ -289,6 +291,9 @@ router.post(
 
       if (!project.latitude || !project.longitude) {
         return success(res, { status: 'NO_COORDINATES', message: 'Project has no coordinates' });
+      }
+      if (!isValidCoords(project.latitude, project.longitude)) {
+        return success(res, { status: 'INVALID_COORDINATES', message: 'Project coordinates are out of valid range' });
       }
       if (!cdseService.isConfigured()) {
         return success(res, { status: 'NOT_CONFIGURED', message: 'Satellite provider not configured' });

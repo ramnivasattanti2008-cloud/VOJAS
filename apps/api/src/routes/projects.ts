@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { AuditService, EvidenceService, ProjectIntelligenceService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
-import { AuditAction, PERMISSIONS, ROLE_PERMISSIONS, getPermissionsForRole, getProjectVisibilityFilter, canAccessProject, buildUserContext } from '@vojas/shared';
+import { AuditService, EvidenceService, ProjectIntelligenceService, RealityCheckService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
+import { AuditAction, getPermissionsForRole, getProjectVisibilityFilter, canAccessProject, buildUserContext } from '@vojas/shared';
+import type { Permission } from '@vojas/shared';
 import {
   createProjectSchema,
   projectFiltersSchema,
@@ -15,6 +16,7 @@ const router = Router();
 const auditService = new AuditService(prisma);
 const evidenceService = new EvidenceService(prisma);
 const projectIntelligenceService = new ProjectIntelligenceService(prisma);
+const realityCheckService = new RealityCheckService(prisma);
 
 /**
  * GET /projects — authenticated with permission-based scoping
@@ -285,6 +287,46 @@ router.get('/:id/intelligence', authenticate, async (req: Request, res: Response
     }
 
     success(res, intel);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /projects/:id/reality-check — cross-source contradiction analysis.
+ *
+ * Compares what the government record, the contractor, the financial ledger,
+ * citizens, satellite imagery and environmental analysis each say about the
+ * same project, and reports where they disagree. The result is a verification
+ * priority for a human reviewer, never a determination of wrongdoing.
+ */
+router.get('/:id/reality-check', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const project = await prisma.project.findUnique({
+      where: { id },
+      select: { id: true, constituency: true },
+    });
+    if (!project) {
+      throw new NotFoundError('Project');
+    }
+
+    // Same project-level access check as /intelligence: a reality check exposes
+    // financial and citizen-report detail, so it must not be readable by a user
+    // who cannot read the project itself.
+    const user = req.user!;
+    const perms = req.userPermissions ?? getPermissionsForRole(user.role);
+    const userCtx = buildUserContext(user.role, user.userId, perms as Permission[]);
+    if (!canAccessProject(userCtx, project)) {
+      throw new ForbiddenError('You do not have access to this project');
+    }
+
+    const check = await realityCheckService.getRealityCheck(id);
+    if (!check) {
+      throw new NotFoundError('Project');
+    }
+
+    success(res, check);
   } catch (err) {
     next(err);
   }

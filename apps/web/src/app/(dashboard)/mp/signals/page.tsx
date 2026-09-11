@@ -14,6 +14,7 @@ import {
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { DataUnavailable } from '@/components/ui/DataUnavailable';
 import { useMPCitizenSignals } from '@/hooks/useMP';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -58,8 +59,9 @@ interface Signal {
   type: 'REPORT' | 'CLAIM' | 'FEEDBACK';
   title: string;
   description: string;
-  location: string;
-  sector: string;
+  /** Optional: a citizen report may carry no location. */
+  location?: string;
+  sector?: string;
   status: string;
   submittedAt: string;
   projectId?: string;
@@ -80,28 +82,21 @@ const SIGNAL_STATUSES: SignalStatusConfig[] = [
   { id: 'RESOLVED', label: 'Resolved', variant: 'success' },
 ];
 
-const mockSignals: Signal[] = [
-  { id: '1', type: 'REPORT', title: 'Road condition deteriorating', description: 'The road near Sector 5 has developed multiple potholes and is dangerous for commuters. Several accidents have been reported in the past month.', location: 'Sector 5, Main Road', sector: 'TRANSPORT', status: 'SUBMITTED', submittedAt: '2026-09-06T10:30:00Z', projectId: 'p1', projectName: 'NH-48 Road Widening' },
-  { id: '2', type: 'CLAIM', title: 'Project not started as per schedule', description: 'The announced water supply project for Block B has not started even though 6 months have passed since the foundation stone ceremony.', location: 'Block B, Rural Area', sector: 'WATER_SANITATION', status: 'REVIEWING', submittedAt: '2026-09-05T14:15:00Z', projectId: 'p2', projectName: 'Rural Water Supply Scheme' },
-  { id: '3', type: 'FEEDBACK', title: 'Construction quality concerns', description: 'The newly built school building shows signs of poor construction. Walls have cracks and the paint is already peeling off.', location: 'Township Primary School', sector: 'EDUCATION', status: 'VERIFIED', submittedAt: '2026-09-04T09:00:00Z', projectId: 'p3', projectName: 'School Infrastructure Upgrade' },
-  { id: '4', type: 'REPORT', title: 'Healthcare facility understaffed', description: 'The primary health center in our area is severely understaffed. Only one doctor is available for the entire population of 10,000+ residents.', location: 'PHC, District HQ', sector: 'HEALTH', status: 'ESCALATED', submittedAt: '2026-09-03T16:45:00Z', projectId: 'p4', projectName: 'PHC Strengthening' },
-  { id: '5', type: 'CLAIM', title: 'Delay in fund release', description: 'Despite government approval, the funds for our village drainage project have not been released for 3 months now.', location: 'Gram Panchayat D', sector: 'PUBLIC_ADMIN', status: 'SUBMITTED', submittedAt: '2026-09-02T11:20:00Z' },
-  { id: '6', type: 'FEEDBACK', title: 'Solar panel installation completed', description: 'The solar street light installation project has been completed successfully. All 50 lights are working and the village is satisfied.', location: 'Village A', sector: 'ENERGY', status: 'RESOLVED', submittedAt: '2026-08-28T08:30:00Z', projectId: 'p6', projectName: 'Solar Street Lighting' },
-  { id: '7', type: 'REPORT', title: 'Bridge safety concerns', description: 'The old bridge connecting two villages has developed structural cracks. Heavy vehicles should be restricted immediately.', location: 'Village Connector Bridge', sector: 'TRANSPORT', status: 'REVIEWING', submittedAt: '2026-08-25T13:00:00Z', projectId: 'p7', projectName: 'Bridge Repair Work' },
-  { id: '8', type: 'CLAIM', title: 'Land dispute affecting project', description: 'The affordable housing project is stuck due to an ongoing land dispute. Neither the district administration nor the developer has provided any clarity.', location: 'Affordable Housing Site', sector: 'HOUSING', status: 'ESCALATED', submittedAt: '2026-08-20T10:15:00Z', projectId: 'p8', projectName: 'PM Awas Yojana' },
-];
 
 export default function MPSignalsPage() {
   const { user } = useAuth();
   const mpId = (user as { mpId?: string } | null)?.mpId ?? 'current-mp';
-  useMPCitizenSignals(mpId, { limit: 50 });
+  const { data: signalsPage, isLoading, isError } = useMPCitizenSignals(mpId, { limit: 50 });
 
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSector, setFilterSector] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const signals = mockSignals;
+  // Real citizen signals. These are people's actual reports about public works —
+  // the hook's result was previously discarded and eight invented complaints
+  // rendered in its place.
+  const signals: Signal[] = useMemo(() => signalsPage?.data ?? [], [signalsPage?.data]);
 
   const filteredSignals = useMemo(() => {
     return signals.filter((s) => {
@@ -113,7 +108,7 @@ export default function MPSignalsPage() {
         return (
           s.title.toLowerCase().includes(query) ||
           s.description.toLowerCase().includes(query) ||
-          s.location.toLowerCase().includes(query)
+          (s.location?.toLowerCase().includes(query) ?? false)
         );
       }
       return true;
@@ -286,7 +281,25 @@ export default function MPSignalsPage() {
         </CardHeader>
         <CardBody className="p-0">
           <div className="divide-y divide-slate-100">
-            {filteredSignals.length === 0 ? (
+            {isLoading ? (
+              <div className="py-12 text-center text-slate-400">
+                <p>Loading citizen signals…</p>
+              </div>
+            ) : isError ? (
+              <DataUnavailable
+                reason="SOURCE_UNAVAILABLE"
+                variant="inline"
+                title="Citizen signals could not be loaded"
+                detail="The citizen reporting service did not respond. No stand-in reports are shown."
+              />
+            ) : signals.length === 0 ? (
+              <DataUnavailable
+                reason="NO_DATA"
+                variant="inline"
+                title="No citizen signals yet"
+                detail="Reports, claims and feedback submitted by citizens in this constituency will appear here."
+              />
+            ) : filteredSignals.length === 0 ? (
               <div className="py-12 text-center text-slate-400">
                 <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No signals match your filters</p>

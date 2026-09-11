@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import nextDynamic from 'next/dynamic';
-import { ArrowLeft, MapPin, AlertCircle, FileText, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2 } from 'lucide-react';
+import { ArrowLeft, MapPin, AlertCircle, FileText, Activity, DollarSign, Layers, ShieldAlert, Sparkles, ArrowRight, BarChart2, Scale } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
@@ -28,6 +28,10 @@ const ProjectDocumentsTab = nextDynamic(
   () => import('@/components/project/DocumentsTab').then((m) => m.ProjectDocumentsTab),
   { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
 );
+const RealityCheckTab = nextDynamic(
+  () => import('@/components/project/RealityCheckTab').then((m) => m.RealityCheckTab),
+  { ssr: false }
+);
 const FinancialTab = nextDynamic(
   () => import('@/components/project/FinancialTab').then((m) => m.FinancialTab),
   { loading: () => <div className="h-64 animate-pulse bg-slate-100 rounded-xl" />, ssr: false }
@@ -35,10 +39,11 @@ const FinancialTab = nextDynamic(
 
 const projectsApi = createProjectsApi(apiClient);
 
-type Tab = 'overview' | 'timeline' | 'financial' | 'documents' | 'satellite' | 'change' | 'risk';
+type Tab = 'overview' | 'reality' | 'timeline' | 'financial' | 'documents' | 'satellite' | 'change' | 'risk';
 
 const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
   { key: 'overview', label: 'Overview', icon: FileText },
+  { key: 'reality', label: 'Reality Check', icon: Scale },
   { key: 'timeline', label: 'Timeline', icon: Activity },
   { key: 'financial', label: 'Financial', icon: DollarSign },
   { key: 'documents', label: 'Documents', icon: Layers },
@@ -140,6 +145,7 @@ export default function ProjectDetailPage() {
       {/* Tab panels */}
       <div role="tabpanel" aria-label={`${activeTab} tab`}>
         {activeTab === 'overview' && <OverviewTab project={project} />}
+        {activeTab === 'reality' && <RealityCheckTab projectId={id} />}
         {activeTab === 'timeline' && <TimelineTab id={id} />}
         {activeTab === 'financial' && <FinancialTab projectId={id} />}
         {activeTab === 'documents' && <ProjectDocumentsTab projectId={id} />}

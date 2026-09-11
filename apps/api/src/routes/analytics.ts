@@ -204,6 +204,7 @@ router.get(
       const patterns = await engine.detectCrossProjectPatterns({
         sector: sector as string | undefined,
         state: state as string | undefined,
+        districtId: districtId as string | undefined,
       });
 
       success(res, { patterns });
@@ -229,7 +230,24 @@ router.get(
     try {
       const { minRiskScore, minFindings, limit } = req.query;
 
-      const hotspots = await engine.calculateHotspot('NATIONAL', 'all', 'India', 'RISK');
+      const hotspot = await engine.calculateHotspot('NATIONAL', 'all', 'India', 'RISK');
+
+      // minRiskScore/minFindings/limit filter and cap the (currently
+      // single-element) hotspot list rather than being accepted and
+      // silently dropped.
+      let hotspots = [hotspot];
+      if (minRiskScore !== undefined) {
+        const threshold = Number(minRiskScore);
+        if (!Number.isNaN(threshold)) hotspots = hotspots.filter((h) => h.avgRiskScore >= threshold);
+      }
+      if (minFindings !== undefined) {
+        const threshold = Number(minFindings);
+        if (!Number.isNaN(threshold)) hotspots = hotspots.filter((h) => h.totalFindings >= threshold);
+      }
+      if (limit !== undefined) {
+        const n = Number(limit);
+        if (!Number.isNaN(n) && n >= 0) hotspots = hotspots.slice(0, n);
+      }
 
       success(res, { hotspots });
     } catch (err) {
@@ -511,15 +529,45 @@ router.get(
       const where: Record<string, unknown> = {};
       if (severity) where.severity = severity;
 
-      const [insights, total] = await prisma.$transaction([
-        prisma.analyticsInsight.findMany({
+      // affectedEntities is an untyped JSON column (no entityType/entityId
+      // columns to filter on in the DB), so entityType/entityId filters are
+      // applied in application code against its `{ entityType, entityId }[]`
+      // shape (the same shape AuditEvent uses) rather than being silently
+      // dropped.
+      const hasEntityFilter = Boolean(entityType) || Boolean(entityId);
+      const matchesEntityFilter = (affectedEntities: unknown): boolean => {
+        if (!hasEntityFilter) return true;
+        if (!Array.isArray(affectedEntities)) return false;
+        return affectedEntities.some((entity) => {
+          if (!entity || typeof entity !== 'object') return false;
+          const e = entity as { entityType?: unknown; entityId?: unknown };
+          const typeMatches = !entityType || e.entityType === entityType;
+          const idMatches = !entityId || e.entityId === entityId;
+          return typeMatches && idMatches;
+        });
+      };
+
+      let insights: Awaited<ReturnType<typeof prisma.analyticsInsight.findMany>>;
+      let total: number;
+      if (hasEntityFilter) {
+        const allMatching = await prisma.analyticsInsight.findMany({
           where,
           orderBy: { createdAt: 'desc' },
-          skip: (pageNum - 1) * limitNum,
-          take: limitNum,
-        }),
-        prisma.analyticsInsight.count({ where }),
-      ]);
+        });
+        const filtered = allMatching.filter((i) => matchesEntityFilter(i.affectedEntities));
+        total = filtered.length;
+        insights = filtered.slice((pageNum - 1) * limitNum, (pageNum - 1) * limitNum + limitNum);
+      } else {
+        [insights, total] = await prisma.$transaction([
+          prisma.analyticsInsight.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            skip: (pageNum - 1) * limitNum,
+            take: limitNum,
+          }),
+          prisma.analyticsInsight.count({ where }),
+        ]);
+      }
 
       success(res, {
         insights: insights.map(i => ({

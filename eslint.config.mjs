@@ -82,4 +82,38 @@ export default [
       '@typescript-eslint/no-namespace': ['error', { allowDeclarations: true }],
     },
   },
+
+  // ── The fabricated-data gate ────────────────────────────────────────────────
+  //
+  // VOJAS is an anti-corruption tool: an invented figure is worse than a blank
+  // field, because a citizen or auditor cannot tell the two apart. Fabricated
+  // civic data had already been removed from these paths once and came back, so
+  // the prohibition is enforced by the linter rather than by documentation.
+  //
+  // Scoped to the rendering layer. Math.random() remains legitimate in the API
+  // for IDs, job IDs, filenames and reference suffixes — it is only banned where
+  // a value could be read by a user as a fact.
+  {
+    files: ['apps/web/src/app/**/*.tsx', 'apps/web/src/components/**/*.tsx'],
+    rules: {
+      'no-restricted-properties': ['error', {
+        object: 'Math',
+        property: 'random',
+        message:
+          'Never derive a displayed value from Math.random(). If real data is unavailable, render <DataUnavailable> or <ValueUnavailable> instead of a placeholder figure.',
+      }],
+      'no-restricted-syntax': ['error',
+        {
+          selector: 'VariableDeclarator[id.name=/^(MOCK|mock|FAKE|fake|DUMMY|dummy|SAMPLE_DATA|PLACEHOLDER)/]',
+          message:
+            'Mock data must not ship in the rendering layer. Wire the real API hook and render an explicit unavailable state when it returns nothing.',
+        },
+        {
+          selector: 'Property[key.name=/^(approvedAmount|sanctionedAmount|spentAmount|totalAmount|totalSanctioned|totalSpent|totalReleased|projectCount|utilization|utilizationPercent)$/][value.type=\'Literal\'][value.value!=0]',
+          message:
+            'Hardcoded financial amounts, counts and utilisation figures are prohibited in the rendering layer. These values must come from the API.',
+        },
+      ],
+    },
+  },
 ];

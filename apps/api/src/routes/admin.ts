@@ -465,7 +465,6 @@ router.get('/health', async (_req: Request, res: Response, next: NextFunction) =
 
 router.get('/health/history', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hours = Math.max(1, Math.min(parseInt(String(req.query.hours ?? '24'), 10), 168));
     // No history table yet — return empty array so the API contract holds
     success(res, []);
   } catch (err) {

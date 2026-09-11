@@ -52,3 +52,16 @@ export function useDeleteProject() {
     },
   });
 }
+
+/**
+ * Cross-source reality check for one project. Compares what the government
+ * record, contractor, financial ledger, citizens, satellite imagery and
+ * environmental analysis each say, and reports where they disagree.
+ */
+export function useProjectRealityCheck(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ['projects', id, 'reality-check'],
+    queryFn: () => projectsApi.getRealityCheck(id!),
+    enabled: !!id,
+  });
+}

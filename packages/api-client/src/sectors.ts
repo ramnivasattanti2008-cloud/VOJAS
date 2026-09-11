@@ -96,7 +96,13 @@ export interface SectorProjectStats {
   total: number;
   completed: number;
   inProgress: number;
+  /** Open projects whose recorded expectedEndDate is in the past. */
   delayed: number;
+  /**
+   * Open projects with no expectedEndDate, so lateness cannot be assessed.
+   * Kept separate so `delayed: 0` never reads as "nothing is late".
+   */
+  delayUnknown: number;
   totalAmount: number;
   spentAmount: number;
 }

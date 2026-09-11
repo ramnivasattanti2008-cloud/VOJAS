@@ -4,7 +4,7 @@ AI-assisted anomaly and fraud detection for MPLADS project monitoring. Smart Ind
 
 Stack: pnpm 9.12 monorepo · Next.js 15 + React 19 (apps/web) · Express (apps/api) · Prisma 6.19.3 + PostgreSQL/PostGIS (packages/db) · shared code in packages/{domain,shared,api-client} · TypeScript 5.6.
 
-legacy/ is the superseded v1 app. It is not built, deployed, or linted. Don't fix, refactor, or lint it. frontend/ is a leftover v1 directory with no package.json — same rule.
+legacy/ was the superseded v1 app; it has been deleted from the working tree (unreferenced by any build/lint/CI config or app code) but is still recoverable from git history (`git log --diff-filter=D --summary -- legacy/`). frontend/ is a leftover v1 directory with no package.json. It is not built, deployed, or linted — don't fix, refactor, or lint it — and unlike legacy/ it has not been deleted yet because scripts/pre-deploy-check.sh and scripts/setup-local.sh still reference frontend/ paths; those scripts need updating first.
 
 ## The rule that matters most: never fabricate civic data
 

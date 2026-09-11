@@ -349,6 +349,7 @@ model User {
   reportMediaVerified     ReportMedia[]
   citizenClaimsVerified   CitizenClaim[]
   notifications            Notification[]
+  projectWatches           ProjectWatch[]
 
   @@map("users")
 }
@@ -535,6 +536,8 @@ model Project {
   // M8: Risk signals and events
   riskSignals           RiskSignal[]
   riskEvents            RiskEvent[]
+  // Citizen watchlist
+  watchedBy             ProjectWatch[]
 
   // Constraints & indexes
   @@unique([source, sourceWorkId])
@@ -577,6 +580,25 @@ model ProjectEvent {
   @@index([eventType])
   @@index([source])
   @@map("project_events")
+}
+
+// ────────────────────────────────────────────────────────────
+// CITIZEN WATCHLIST — a citizen "following" a project
+// ────────────────────────────────────────────────────────────
+model ProjectWatch {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  projectId     String    @map("project_id")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastCheckedAt DateTime? @map("last_checked_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+  @@map("project_watches")
 }
 
 // ────────────────────────────────────────────────────────────

@@ -1,6 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
-  <rect width="192" height="192" rx="32" fill="#1e40af"/>
-  <path d="M96 24L144 48V96C144 126 120 150 96 162C72 150 48 126 48 96V48L96 24Z" fill="white" fill-opacity="0.15"/>
-  <path d="M96 24L144 48V96C144 126 120 150 96 162C72 150 48 126 48 96V48L96 24Z" stroke="white" stroke-width="4" fill="none"/>
-  <text x="96" y="118" font-family="system-ui,sans-serif" font-size="56" font-weight="700" fill="white" text-anchor="middle">V</text>
+  <!-- VOJAS app icon — "Geofenced Checkpoint" mark on Dossier-Stone ink.
+       Maskable-safe: mark occupies the central ~62% safe zone. -->
+  <rect width="192" height="192" rx="32" fill="#1E1C19"/>
+  <g transform="translate(36,36) scale(2.5)">
+    <path d="M5 15V5H15" stroke="#C89A3E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M33 5H43V15" stroke="#C89A3E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M43 33V43H33" stroke="#C89A3E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M15 43H5V33" stroke="#C89A3E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M13 12L24 31L35 12" stroke="#EAD29C" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="20.5" y="29.5" width="7" height="7" rx="1.25" fill="#F5E8CC"/>
+  </g>
 </svg>

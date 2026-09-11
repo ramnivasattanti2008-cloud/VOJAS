@@ -28,6 +28,9 @@ export interface CitizenWatchlistItem {
   lastChecked?: string;
   updateCount: number;
   hasAnomalies: boolean;
+  district?: string;
+  state?: string;
+  approvedAmount?: number;
 }
 
 export interface NearbyProject {

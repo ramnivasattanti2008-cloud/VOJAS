@@ -516,6 +516,7 @@ export class AnalyticsEngine {
     minProjects?: number;
     state?: string;
     sector?: string;
+    districtId?: string;
   }): Promise<Array<{
     patternType: string;
     description: string;
@@ -536,6 +537,7 @@ export class AnalyticsEngine {
     const where: Record<string, unknown> = {};
     if (options?.state) where.state = options.state;
     if (options?.sector) where.sector = options.sector;
+    if (options?.districtId) where.districtId = options.districtId;
 
     const minProjects = options?.minProjects ?? 3;
 
@@ -612,7 +614,7 @@ export class AnalyticsEngine {
     locationId: string,
     locationName: string,
     metric: string
-  ): Promise<{ intensity: number; severity: string; projectCount: number; avgRiskScore: number; confidence: ConfidenceLevel }> {
+  ): Promise<{ intensity: number; severity: string; projectCount: number; avgRiskScore: number; totalFindings: number; confidence: ConfidenceLevel }> {
     const where: Record<string, unknown> = {};
     if (locationType === 'DISTRICT') where.districtId = locationId;
     if (locationType === 'STATE') where.state = locationId;
@@ -627,8 +629,10 @@ export class AnalyticsEngine {
     });
 
     if (projects.length === 0) {
-      return { intensity: 0, severity: 'LOW', projectCount: 0, avgRiskScore: 0, confidence: 'INSUFFICIENT' };
+      return { intensity: 0, severity: 'LOW', projectCount: 0, avgRiskScore: 0, totalFindings: 0, confidence: 'INSUFFICIENT' };
     }
+
+    const totalFindings = projects.reduce((s, p) => s + p.riskFindings.length, 0);
 
     let intensity = 0;
     switch (metric) {
@@ -644,7 +648,6 @@ export class AnalyticsEngine {
         break;
       }
       case 'ANOMALY': {
-        const totalFindings = projects.reduce((s, p) => s + p.riskFindings.length, 0);
         intensity = Math.min(100, totalFindings * 5);
         break;
       }
@@ -656,6 +659,6 @@ export class AnalyticsEngine {
     const severity = intensity >= 70 ? 'CRITICAL' : intensity >= 50 ? 'HIGH' : intensity >= 30 ? 'MEDIUM' : 'LOW';
     const confidence: ConfidenceLevel = projects.length >= 10 ? 'HIGH' : projects.length >= 5 ? 'MEDIUM' : 'LOW';
 
-    return { intensity: Math.min(100, intensity), severity, projectCount: projects.length, avgRiskScore: Math.round(avgRiskScore), confidence };
+    return { intensity: Math.min(100, intensity), severity, projectCount: projects.length, avgRiskScore: Math.round(avgRiskScore), totalFindings, confidence };
   }
 }

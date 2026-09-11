@@ -13,6 +13,8 @@ import {
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { DataUnavailable } from '@/components/ui/DataUnavailable';
+import { useGenerateMPReport, type MPReportParams } from '@/hooks/useMP';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
@@ -71,33 +73,19 @@ const SECTOR_LABELS: Partial<Record<ProjectSector, string>> = {
   PUBLIC_SAFETY: 'Public Safety',
 };
 
-// Recent reports (mock data)
-const recentReports = [
-  {
-    id: '1',
-    title: 'Q3 2026 Progress Report',
-    type: 'PROGRESS',
-    generatedAt: '2026-09-01T10:30:00Z',
-    format: 'PDF',
-    status: 'READY',
-  },
-  {
-    id: '2',
-    title: 'August Financial Summary',
-    type: 'FINANCIAL',
-    generatedAt: '2026-08-31T14:15:00Z',
-    format: 'PDF',
-    status: 'READY',
-  },
-  {
-    id: '3',
-    title: 'Rural Development Sector Analysis',
-    type: 'SECTOR',
-    generatedAt: '2026-08-25T09:00:00Z',
-    format: 'CSV',
-    status: 'READY',
-  },
-];
+/**
+ * Reports generated in this session. There is no endpoint that lists an MP's
+ * previously generated reports, so history does not survive a reload — the UI
+ * says so rather than presenting a fabricated archive of downloadable files.
+ */
+interface GeneratedReport {
+  id: string;
+  title: string;
+  type: string;
+  generatedAt: string;
+  format: string;
+  status: string;
+}
 
 export default function MPReportsPage() {
   const { user } = useAuth();
@@ -110,15 +98,45 @@ export default function MPReportsPage() {
     endDate: '2026-09-30',
   });
   const [selectedFormat, setSelectedFormat] = useState<'PDF' | 'CSV' | 'JSON'>('PDF');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [generatedReport, setGeneratedReport] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [recentReports, setRecentReports] = useState<GeneratedReport[]>([]);
 
+  const generateReport = useGenerateMPReport(mpId);
+  const isGenerating = generateReport.isPending;
+
+  /**
+   * Calls the real generation endpoint. A failure is reported as a failure —
+   * there is no simulated delay and no fabricated filename on error.
+   */
   const handleGenerateReport = async () => {
-    setIsGenerating(true);
-    // Simulate report generation
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setGeneratedReport('report-' + Date.now() + '.pdf');
-    setIsGenerating(false);
+    setGenerateError(null);
+    try {
+      const result = await generateReport.mutateAsync({
+        type: selectedType as MPReportParams['type'],
+        format: selectedFormat,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+        sector: selectedSector || undefined,
+      });
+      setGeneratedReport(result.downloadUrl);
+      setRecentReports((prev) => [
+        {
+          id: result.reportId,
+          title: `${REPORT_TYPES.find((t) => t.id === selectedType)?.label ?? selectedType}`,
+          type: selectedType,
+          generatedAt: new Date().toISOString(),
+          format: selectedFormat,
+          status: 'READY',
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      setGeneratedReport(null);
+      setGenerateError(
+        err instanceof Error ? err.message : 'The report could not be generated. Please try again.'
+      );
+    }
   };
 
   const currentReportType = REPORT_TYPES.find((t) => t.id === selectedType);
@@ -345,6 +363,14 @@ export default function MPReportsPage() {
               <h3 className="font-semibold text-slate-900">Recent Reports</h3>
             </CardHeader>
             <CardBody className="p-0">
+              {recentReports.length === 0 ? (
+                <DataUnavailable
+                  reason="NO_DATA"
+                  variant="inline"
+                  title="No reports generated yet"
+                  detail="Reports you generate appear here for this session. A stored report history is not yet available."
+                />
+              ) : (
               <div className="divide-y divide-slate-100">
                 {recentReports.map((report) => {
                   const typeInfo = REPORT_TYPES.find((t) => t.id === report.type);
@@ -375,6 +401,7 @@ export default function MPReportsPage() {
                   );
                 })}
               </div>
+              )}
             </CardBody>
           </Card>
         </div>

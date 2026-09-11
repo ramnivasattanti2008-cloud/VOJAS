@@ -20,15 +20,17 @@ import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import {
   RiskAnalysisOrchestrator,
+  AuditService,
   NotFoundError,
   ValidationError,
 } from '@vojas/domain';
-import { AuditAction, PERMISSIONS, getPermissionsForRole } from '@vojas/shared';
+import { AuditAction } from '@vojas/shared';
 import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
-import { success, created } from '../utils/apiResponse.js';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 const orchestrator = new RiskAnalysisOrchestrator(prisma);
+const auditService = new AuditService(prisma);
 
 // ──────────────────────────────────────────────────────────────────
 // PROJECT-LEVEL RISK ENDPOINTS
@@ -481,17 +483,48 @@ router.patch(
         data: updateData as any,
       });
 
-      // Create risk event
+      // Create risk event. `notes` has no dedicated column on RiskFinding,
+      // so — rather than accepting it and silently discarding it — it is
+      // folded into the timeline entry's description, which is the
+      // append-only record of what happened to this finding.
+      const eventDescription = [
+        `Finding status changed to ${status}`,
+        resolution ? `: ${resolution}` : '',
+        notes ? ` (note: ${notes})` : '',
+      ].join('');
       await prisma.riskEvent.create({
         data: {
           projectId: finding.projectId,
           eventType: `finding_${status.toLowerCase()}`,
-          description: `Finding status changed to ${status}${resolution ? `: ${resolution}` : ''}`,
+          description: eventDescription,
           severity: finding.severity,
           riskScore: finding.riskScore,
           findingId: finding.id,
         },
       });
+
+      // Audit log — AuditAction has a dedicated RISK_FINDING_* action for
+      // every status this endpoint can set except NEW/UNDER_REVIEW/
+      // VERIFICATION_REQUIRED (no audit action defined for those transitions).
+      const auditActionByStatus: Partial<Record<string, AuditAction>> = {
+        ACKNOWLEDGED: AuditAction.RISK_FINDING_ACKNOWLEDGED,
+        RESOLVED: AuditAction.RISK_FINDING_RESOLVED,
+        DISMISSED: AuditAction.RISK_FINDING_DISMISSED,
+        ESCALATED: AuditAction.RISK_FINDING_ESCALATED,
+      };
+      const auditAction = auditActionByStatus[status];
+      if (auditAction) {
+        await auditService.logEvent({
+          actorId: req.user!.userId,
+          actorType: 'USER',
+          action: auditAction,
+          entityType: 'RiskFinding',
+          entityId: finding.id,
+          metadata: { status, resolution: resolution ?? undefined, notes: notes ?? undefined },
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        });
+      }
 
       success(res, {
         id: updated.id,
@@ -501,6 +534,7 @@ router.patch(
         resolvedById: updated.resolvedById,
         resolvedAt: updated.resolvedAt,
         resolution: updated.resolution,
+        notes: notes ?? null,
       });
     } catch (err) {
       next(err);

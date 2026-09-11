@@ -6,16 +6,14 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createOfficer } from '../helpers.js';
 
 const BASE = '/api/v1';
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
+// Provisioned directly: /auth/register always creates a CITIZEN by design.
 async function getOfficerToken(): Promise<string> {
-  const email = `officer-test-${Date.now()}@example.com`;
-  const res = await request(app)
-    .post(`${BASE}/auth/register`)
-    .send({ email, password: 'OfficerPass123!', name: 'Officer', role: 'OFFICER' });
-  return res.body.data.accessToken;
+  return (await createOfficer()).token;
 }
 
 runIfDb('Officer — RBAC Enforcement', () => {

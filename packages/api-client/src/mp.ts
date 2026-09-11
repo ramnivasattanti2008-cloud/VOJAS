@@ -27,7 +27,11 @@ export interface MPConstituencySummary {
 
 export interface MPFinancialSummary {
   totalSanctioned: number;
-  totalReleased: number;
+  /**
+   * null when no RELEASE financial observations are recorded. Releases are a
+   * distinct event from expenditure and must not be inferred from it.
+   */
+  totalReleased: number | null;
   totalSpent: number;
   utilizationPercent: number;
   bySector: Array<{
@@ -36,6 +40,7 @@ export interface MPFinancialSummary {
     spent: number;
     utilization: number;
   }>;
+  /** Empty when no dated financial observations exist. Never back-filled. */
   byMonth: Array<{
     month: string;
     sanctioned: number;

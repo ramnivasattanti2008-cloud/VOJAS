@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
-import { NotFoundError, ValidationError } from '@vojas/domain';
+import { NotFoundError, ValidationError, AuditService } from '@vojas/domain';
 import { AuditAction, UserRole } from '@vojas/shared';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
@@ -18,6 +18,7 @@ import {
 } from '../services/documentIntelligence.js';
 
 const router = Router();
+const auditService = new AuditService(prisma);
 
 // ─── File storage directory ────────────────────────────────────────────────
 
@@ -157,6 +158,17 @@ router.post(
         type,
         title,
         description,
+      });
+
+      await auditService.logEvent({
+        actorId: userId,
+        actorType: 'USER',
+        action: AuditAction.DOCUMENT_UPLOADED,
+        entityType: 'Document',
+        entityId: document.id,
+        metadata: { projectId, type, title },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
       });
 
       created(res, document);
@@ -335,6 +347,26 @@ router.patch(
           verificationNote: verificationNote ?? null,
         },
       });
+
+      // No AuditAction exists for REQUIRES_INFO — only log the two
+      // outcomes that have a dedicated action.
+      const auditActionByStatus: Partial<Record<string, AuditAction>> = {
+        VERIFIED: AuditAction.DOCUMENT_VERIFIED,
+        REJECTED: AuditAction.DOCUMENT_REJECTED,
+      };
+      const auditAction = auditActionByStatus[status];
+      if (auditAction && userId) {
+        await auditService.logEvent({
+          actorId: userId,
+          actorType: 'USER',
+          action: auditAction,
+          entityType: 'Document',
+          entityId: id,
+          metadata: { status, verificationNote: verificationNote ?? undefined },
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        });
+      }
 
       success(res, updated);
     } catch (err) {

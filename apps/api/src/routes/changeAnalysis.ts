@@ -23,7 +23,19 @@ import { NotFoundError } from '@vojas/domain';
 import { authenticate, requirePermission } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 import { changeAnalysisJobQueue } from '../services/changeAnalysisJobQueue.js';
-import type { ChangeClassification, Confidence } from '../services/changeAnalysisEngine.js';
+import type { SignalType } from '../services/changeAnalysisProviders/changeAnalysisProvider.js';
+
+const VALID_SIGNAL_TYPES: SignalType[] = [
+  'SPECTRAL_CHANGE',
+  'NDVI_CHANGE',
+  'BUILT_SURFACE_CHANGE',
+  'VEGETATION_DISTURBANCE',
+  'BARE_SOIL',
+  'WATER_CHANGE',
+];
+function isValidSignalType(value: unknown): value is SignalType {
+  return typeof value === 'string' && (VALID_SIGNAL_TYPES as string[]).includes(value);
+}
 
 const router = Router();
 
@@ -306,16 +318,18 @@ router.post(
       });
 
       const effectiveSector = sector ?? project?.sector ?? 'GENERAL';
-      const effectiveSignal = primarySignal ?? null;
+      // primarySignal must be one of the engine's known SignalType values —
+      // an unrecognized value is dropped rather than forwarded as garbage.
+      const effectiveSignal = isValidSignalType(primarySignal) ? primarySignal : undefined;
 
       const { jobId, status } = changeAnalysisJobQueue.enqueue(
         projectId,
         observationBeforeId,
         observationAfterId,
-        { sector: effectiveSector, analysisType: effectiveSignal ?? undefined }
+        { sector: effectiveSector, primarySignal: effectiveSignal }
       );
 
-      return success(res, { status: 'QUEUED', jobId, message: 'Change analysis job enqueued' });
+      return success(res, { status, jobId, message: 'Change analysis job enqueued' });
     } catch (err) {
       next(err);
     }

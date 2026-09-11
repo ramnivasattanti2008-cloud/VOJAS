@@ -3,14 +3,13 @@ import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@vojas/db';
 import { AuditService } from '@vojas/domain';
-import { registerSchema, loginSchema, refreshTokenSchema } from '@vojas/domain';
+import { registerSchema, loginSchema } from '@vojas/domain';
 import { ValidationError, UnauthorizedError, ConflictError, NotFoundError } from '@vojas/domain';
 import { UserRole, AuditAction } from '@vojas/shared';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../auth/jwt.js';
 import { authenticate } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
-import type { JWTPayload } from '../auth/jwt.js';
 
 const router = Router();
 const auditService = new AuditService(prisma);

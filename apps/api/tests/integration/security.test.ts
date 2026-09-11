@@ -11,6 +11,7 @@
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import app from '../../src/app';
+import { createUserWithRole, createAdmin, createOfficer } from '../helpers.js';
 
 const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
@@ -53,14 +54,15 @@ runIfDb('Auth Security', () => {
     citizenEmail = genEmail();
     officerEmail = genEmail();
 
-    const adminRes = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = adminRes.body.data?.accessToken ?? '';
+    // ADMIN and OFFICER are provisioned directly — /auth/register always
+    // creates a CITIZEN, so it cannot hand out a privileged token. The CITIZEN
+    // still goes through the public endpoint, because these tests then log in
+    // with those credentials.
+    adminToken = (await createUserWithRole('ADMIN', { email: adminEmail, password: 'AdminPass123!' })).token;
+    officerToken = (await createUserWithRole('OFFICER', { email: officerEmail, password: 'OfficerPass123!' })).token;
 
     const citizenRes = await register(citizenEmail, 'CitizenPass123!', 'CITIZEN');
     citizenToken = citizenRes.body.data?.accessToken ?? '';
-
-    const officerRes = await register(officerEmail, 'OfficerPass123!', 'OFFICER');
-    officerToken = officerRes.body.data?.accessToken ?? '';
   });
 
   // ── Login success ──────────────────────────────────────────────────────────
@@ -190,22 +192,17 @@ runIfDb('RBAC Enforcement', () => {
   let analystToken: string;
 
   beforeAll(async () => {
-    const adminEmail = genEmail();
+    // ADMIN, OFFICER and ANALYST are provisioned directly — /auth/register
+    // deliberately always creates a CITIZEN (see helpers.ts), so it cannot
+    // hand out a privileged token. Only the CITIZEN goes through the public
+    // endpoint.
+    adminToken = (await createAdmin()).token;
+    officerToken = (await createOfficer()).token;
+    analystToken = (await createUserWithRole('ANALYST')).token;
+
     const citizenEmail = genEmail();
-    const officerEmail = genEmail();
-    const analystEmail = genEmail();
-
-    const a = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = a.body.data?.accessToken ?? '';
-
     const c = await register(citizenEmail, 'CitizenPass123!', 'CITIZEN');
     citizenToken = c.body.data?.accessToken ?? '';
-
-    const o = await register(officerEmail, 'OfficerPass123!', 'OFFICER');
-    officerToken = o.body.data?.accessToken ?? '';
-
-    const an = await register(analystEmail, 'AnalystPass123!', 'ANALYST');
-    analystToken = an.body.data?.accessToken ?? '';
   });
 
   // ── Admin-only routes ───────────────────────────────────────────────────
@@ -255,10 +252,23 @@ runIfDb('RBAC Enforcement', () => {
   });
 
   it('POST /projects allows ADMIN', async () => {
+    // Was previously posting (with no body) to /admin/users — a copy/paste
+    // bug that tested the wrong endpoint and could never return 200 (missing
+    // required fields yield 400). This exercises the endpoint the test name
+    // actually describes, mirroring the sibling "requires OFFICER+" test above.
     const res = await request(app)
-      .post('/api/v1/admin/users')
-      .set(authHeader(adminToken));
-    expect(res.status).toBe(200); // Admin can access admin routes
+      .post('/api/v1/projects')
+      .set(authHeader(adminToken))
+      .send({
+        name: 'Admin-created Project',
+        status: 'IN_PROGRESS',
+        sector: 'TRANSPORT',
+        district: 'Bengaluru',
+        state: 'Karnataka',
+        approvedAmount: 1000000,
+        source: 'MANUAL',
+      });
+    expect(res.status).toBe(201); // Admin can create projects
   });
 
   // ── Audit routes ───────────────────────────────────────────────────────
@@ -347,7 +357,6 @@ runIfDb('IDOR Protection', () => {
   beforeAll(async () => {
     user1Email = genEmail();
     user2Email = genEmail();
-    const adminEmail = genEmail();
 
     const u1 = await register(user1Email, 'UserOnePass123!', 'CITIZEN');
     user1Token = u1.body.data?.accessToken ?? '';
@@ -355,8 +364,8 @@ runIfDb('IDOR Protection', () => {
     const u2 = await register(user2Email, 'UserTwoPass123!', 'CITIZEN');
     user2Token = u2.body.data?.accessToken ?? '';
 
-    const a = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = a.body.data?.accessToken ?? '';
+    // /auth/register always creates a CITIZEN — an ADMIN must be provisioned directly.
+    adminToken = (await createAdmin()).token;
   });
 
   // ── User profile access ───────────────────────────────────────────────
@@ -423,9 +432,8 @@ runIfDb('Input Validation', () => {
   let adminToken: string;
 
   beforeAll(async () => {
-    const adminEmail = genEmail();
-    const a = await register(adminEmail, 'AdminPass123!', 'ADMIN');
-    adminToken = a.body.data?.accessToken ?? '';
+    // /auth/register always creates a CITIZEN — an ADMIN must be provisioned directly.
+    adminToken = (await createAdmin()).token;
   });
 
   // ── Malformed IDs ───────────────────────────────────────────────────

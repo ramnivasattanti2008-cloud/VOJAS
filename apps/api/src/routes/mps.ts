@@ -144,12 +144,11 @@ router.get('/:id/financials', optionalAuth, async (req: Request, res: Response, 
 
     const projects = await prisma.project.findMany({
       where: { mpId: mp.id },
-      select: { sector: true, approvedAmount: true, spentAmount: true, createdAt: true },
+      select: { id: true, sector: true, approvedAmount: true, spentAmount: true, createdAt: true },
     });
 
     const totalSanctioned = projects.reduce((sum, p) => sum + (p.approvedAmount || 0), 0);
     const totalSpent = projects.reduce((sum, p) => sum + (p.spentAmount || 0), 0);
-    const totalReleased = totalSpent;
     const utilizationPercent = totalSanctioned > 0 ? (totalSpent / totalSanctioned) * 100 : 0;
 
     const sectorMap: Record<string, { sanctioned: number; spent: number }> = {};
@@ -167,16 +166,43 @@ router.get('/:id/financials', optionalAuth, async (req: Request, res: Response, 
       utilization: v.sanctioned > 0 ? (v.spent / v.sanctioned) * 100 : 0,
     }));
 
-    const byMonth = [
-      { month: '2026-06', sanctioned: Math.round(totalSanctioned * 0.3), spent: Math.round(totalSpent * 0.2) },
-      { month: '2026-07', sanctioned: Math.round(totalSanctioned * 0.4), spent: Math.round(totalSpent * 0.3) },
-      { month: '2026-08', sanctioned: Math.round(totalSanctioned * 0.2), spent: Math.round(totalSpent * 0.3) },
-      { month: '2026-09', sanctioned: Math.round(totalSanctioned * 0.1), spent: Math.round(totalSpent * 0.2) },
-    ];
+    // Monthly series and released totals come from dated FinancialObservation
+    // rows, never from apportioning a total across invented months. When no
+    // observations exist the series is empty and releasedTotal is null — the UI
+    // renders an explicit unavailable state rather than a shape of a chart.
+    const observations = await prisma.financialObservation.findMany({
+      where: { projectId: { in: projects.map((p) => p.id) } },
+      select: { date: true, type: true, amount: true },
+      orderBy: { date: 'asc' },
+    });
+
+    const monthMap = new Map<string, { sanctioned: number; spent: number }>();
+    let releasedTotal: number | null = null;
+
+    for (const obs of observations) {
+      const month = obs.date.toISOString().slice(0, 7); // YYYY-MM
+      const bucket = monthMap.get(month) ?? { sanctioned: 0, spent: 0 };
+
+      if (obs.type === 'EXPENDITURE') {
+        bucket.spent += obs.amount;
+      } else if (obs.type === 'SANCTION' || obs.type === 'ALLOCATION') {
+        bucket.sanctioned += obs.amount;
+      } else if (obs.type === 'RELEASE') {
+        releasedTotal = (releasedTotal ?? 0) + obs.amount;
+      }
+
+      if (obs.type !== 'RELEASE') monthMap.set(month, bucket);
+    }
+
+    const byMonth = [...monthMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, v]) => ({ month, sanctioned: v.sanctioned, spent: v.spent }));
 
     success(res, {
       totalSanctioned,
-      totalReleased,
+      // null, not a copy of totalSpent: releases and expenditure are different
+      // events, and reporting one as the other misstates the fund position.
+      totalReleased: releasedTotal,
       totalSpent,
       utilizationPercent,
       bySector,

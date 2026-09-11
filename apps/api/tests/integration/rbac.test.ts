@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createAdmin, createOfficer, createCitizen } from '../helpers.js';
 
 const BASE = '/api/v1';
 
@@ -9,13 +10,8 @@ const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
 runIfDb('RBAC — User Management', () => {
   it('ADMIN can access GET /users', async () => {
-    // Register admin
-    const adminEmail = `admin-rbac-${Date.now()}@example.com`;
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: adminEmail, password: 'AdminPass123!', name: 'Admin', role: 'ADMIN' });
-
-    const token = adminRes.body.data.accessToken;
+    // Provisioned directly — /auth/register always creates a CITIZEN by design.
+    const { token } = await createAdmin();
 
     const res = await request(app)
       .get(`${BASE}/users`)
@@ -26,12 +22,7 @@ runIfDb('RBAC — User Management', () => {
   });
 
   it('CITIZEN cannot access GET /users (403)', async () => {
-    const citizenEmail = `citizen-rbac-${Date.now()}@example.com`;
-    const citizenRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: citizenEmail, password: 'CitizenPass123!', name: 'Citizen', role: 'CITIZEN' });
-
-    const token = citizenRes.body.data.accessToken;
+    const { token } = await createCitizen();
 
     const res = await request(app)
       .get(`${BASE}/users`)
@@ -43,12 +34,7 @@ runIfDb('RBAC — User Management', () => {
 
 runIfDb('RBAC — Project Management', () => {
   it('OFFICER can create a project', async () => {
-    const officerEmail = `officer-rbac-${Date.now()}@example.com`;
-    const officerRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: officerEmail, password: 'OfficerPass123!', name: 'Officer', role: 'OFFICER' });
-
-    const token = officerRes.body.data.accessToken;
+    const { token } = await createOfficer();
 
     const res = await request(app)
       .post(`${BASE}/projects`)
@@ -67,12 +53,7 @@ runIfDb('RBAC — Project Management', () => {
   });
 
   it('CITIZEN cannot create a project (403)', async () => {
-    const citizenEmail = `citizen-proj-${Date.now()}@example.com`;
-    const citizenRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: citizenEmail, password: 'CitizenPass123!', name: 'Citizen', role: 'CITIZEN' });
-
-    const token = citizenRes.body.data.accessToken;
+    const { token } = await createCitizen();
 
     const res = await request(app)
       .post(`${BASE}/projects`)

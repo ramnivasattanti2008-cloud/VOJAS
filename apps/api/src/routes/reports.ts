@@ -25,6 +25,22 @@ const PRIVILEGED_ROLES = [UserRole.ADMIN, UserRole.OFFICER, UserRole.ANALYST];
  */
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // reportListSchema (packages/domain) doesn't model latitude/longitude, so
+    // an out-of-range value would otherwise pass through unnoticed instead of
+    // being rejected — validate them explicitly before anything else.
+    if (req.query.latitude !== undefined) {
+      const lat = Number(req.query.latitude);
+      if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+        throw new ValidationError('Invalid latitude: must be between -90 and 90');
+      }
+    }
+    if (req.query.longitude !== undefined) {
+      const lng = Number(req.query.longitude);
+      if (Number.isNaN(lng) || lng < -180 || lng > 180) {
+        throw new ValidationError('Invalid longitude: must be between -180 and 180');
+      }
+    }
+
     const parsed = reportListSchema.safeParse(req.query);
     if (!parsed.success) throw new ValidationError('Invalid query parameters', parsed.error.errors);
 

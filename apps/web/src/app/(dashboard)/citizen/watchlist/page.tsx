@@ -11,6 +11,8 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { DataUnavailable, ValueUnavailable } from '@/components/ui/DataUnavailable';
+import { useCitizenWatchlist, useRemoveFromWatchlist } from '@/hooks/useCitizen';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {
@@ -23,74 +25,48 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'warni
   CANCELLED: { label: 'Cancelled', variant: 'danger' },
 };
 
-// Mock watchlist data (in real app, this would come from API/user preferences)
+// Display names for sector codes. Duplicated per page today; consolidating
+// these into a single data-driven source is tracked as sector-framework work.
+const SECTOR_LABELS: Record<string, string> = {
+  PUBLIC_INFRASTRUCTURE: 'Public Infrastructure',
+  WATER_SANITATION: 'Water & Sanitation',
+  EDUCATION: 'Education',
+  HEALTH: 'Health',
+  AGRICULTURE: 'Agriculture',
+  ENVIRONMENT: 'Environment',
+  TRANSPORT: 'Transport',
+  ENERGY: 'Energy',
+  HOUSING: 'Housing',
+  RURAL_DEVELOPMENT: 'Rural Development',
+  SOCIAL_WELFARE: 'Social Welfare',
+  PUBLIC_ADMIN: 'Public Admin',
+  FINANCE_PROCUREMENT: 'Finance',
+  JUSTICE: 'Justice',
+  LEGISLATIVE: 'Legislative',
+  PUBLIC_SAFETY: 'Public Safety',
+};
+
+/**
+ * A followed project as shown on this page. Fields the watchlist API does not
+ * supply are optional and render as an explicit unavailable state — never as a
+ * zero, a placeholder amount, or an invented district.
+ */
 interface WatchlistProject {
   id: string;
   name: string;
   sector: string;
   sectorLabel: string;
   status: string;
-  state: string;
-  district: string;
-  approvedAmount: number;
+  state?: string;
+  district?: string;
+  approvedAmount?: number;
   spentAmount?: number;
   progressPercent?: number;
   followedAt: string;
-  lastUpdated: string;
+  lastUpdated?: string;
   updatesCount: number;
   anomalyCount: number;
 }
-
-const MOCK_WATCHLIST: WatchlistProject[] = [
-  {
-    id: '1',
-    name: 'Construction of Primary Health Centre',
-    sector: 'HEALTH',
-    sectorLabel: 'Health',
-    status: 'IN_PROGRESS',
-    state: 'Karnataka',
-    district: 'Bangalore Rural',
-    approvedAmount: 2500000,
-    spentAmount: 1200000,
-    progressPercent: 48,
-    followedAt: '2024-01-15',
-    lastUpdated: '2024-03-10',
-    updatesCount: 5,
-    anomalyCount: 1,
-  },
-  {
-    id: '2',
-    name: 'Rural Road Connectivity Project',
-    sector: 'TRANSPORT',
-    sectorLabel: 'Transport',
-    status: 'IN_PROGRESS',
-    state: 'Maharashtra',
-    district: 'Pune',
-    approvedAmount: 5000000,
-    spentAmount: 4800000,
-    progressPercent: 96,
-    followedAt: '2024-02-01',
-    lastUpdated: '2024-03-12',
-    updatesCount: 12,
-    anomalyCount: 0,
-  },
-  {
-    id: '3',
-    name: 'Drinking Water Supply Scheme',
-    sector: 'WATER_SANITATION',
-    sectorLabel: 'Water & Sanitation',
-    status: 'COMPLETED',
-    state: 'Tamil Nadu',
-    district: 'Coimbatore',
-    approvedAmount: 3500000,
-    spentAmount: 3400000,
-    progressPercent: 100,
-    followedAt: '2023-11-20',
-    lastUpdated: '2024-02-28',
-    updatesCount: 8,
-    anomalyCount: 0,
-  },
-];
 
 // Watchlist Card Component
 function WatchlistCard({
@@ -137,10 +113,12 @@ function WatchlistCard({
 
         <div className="space-y-3">
           {/* Location */}
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <MapPin className="h-4 w-4 text-slate-400" />
-            <span>{project.district}, {project.state}</span>
-          </div>
+          {(project.district || project.state) && (
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <MapPin className="h-4 w-4 text-slate-400" />
+              <span>{[project.district, project.state].filter(Boolean).join(', ')}</span>
+            </div>
+          )}
 
           {/* Progress */}
           {project.progressPercent !== undefined && (
@@ -169,7 +147,11 @@ function WatchlistCard({
               <div>
                 <p className="text-xs text-slate-500">Sanctioned</p>
                 <p className="text-sm font-semibold text-slate-900">
-                  {formatCurrency(project.approvedAmount)}
+                  {project.approvedAmount === undefined ? (
+                    <ValueUnavailable reason="NOT_AVAILABLE" />
+                  ) : (
+                    formatCurrency(project.approvedAmount)
+                  )}
                 </p>
               </div>
               {project.spentAmount && (
@@ -264,16 +246,39 @@ export default function CitizenWatchlistPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [watchlist, setWatchlist] = useState<WatchlistProject[]>(MOCK_WATCHLIST);
   const [showFilters, setShowFilters] = useState(false);
+
+  const { data: watchlistData, isLoading, isError } = useCitizenWatchlist();
+  const removeFromWatchlist = useRemoveFromWatchlist();
+
+  /**
+   * Only fields the API actually returns are populated. Location and financial
+   * fields are left undefined until the watchlist endpoint supplies them, and
+   * the card renders them as unavailable rather than inventing values.
+   */
+  const watchlist: WatchlistProject[] = useMemo(
+    () =>
+      (watchlistData ?? []).map((item) => ({
+        id: item.projectId,
+        name: item.projectName,
+        sector: item.projectSector,
+        sectorLabel: SECTOR_LABELS[item.projectSector] ?? item.projectSector,
+        status: item.projectStatus,
+        followedAt: item.followedAt,
+        lastUpdated: item.lastChecked,
+        updatesCount: item.updateCount,
+        anomalyCount: item.hasAnomalies ? 1 : 0,
+      })),
+    [watchlistData]
+  );
 
   // Filter watchlist
   const filteredWatchlist = useMemo(() => {
     return watchlist.filter(project => {
       const matchesSearch = search
         ? project.name.toLowerCase().includes(search.toLowerCase()) ||
-          project.district.toLowerCase().includes(search.toLowerCase()) ||
-          project.state.toLowerCase().includes(search.toLowerCase())
+          (project.district?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
+          (project.state?.toLowerCase().includes(search.toLowerCase()) ?? false)
         : true;
 
       const matchesStatus = statusFilter
@@ -286,9 +291,9 @@ export default function CitizenWatchlistPage() {
 
   const hasFilters = !!(statusFilter || search);
 
-  // Remove from watchlist
+  // Remove from watchlist — persisted through the API, not local state.
   const handleRemove = (projectId: string) => {
-    setWatchlist(prev => prev.filter(p => p.id !== projectId));
+    removeFromWatchlist.mutate(projectId);
   };
 
   // Stats
@@ -432,7 +437,20 @@ export default function CitizenWatchlistPage() {
       )}
 
       {/* Watchlist */}
-      {watchlist.length === 0 ? (
+      {isLoading ? (
+        <WatchlistSkeleton />
+      ) : isError ? (
+        <DataUnavailable
+          reason="SOURCE_UNAVAILABLE"
+          title="Your watchlist could not be loaded"
+          detail="The service that stores followed projects did not respond. Your followed projects are safe — nothing is shown here rather than showing a stand-in list."
+          action={
+            <Button variant="secondary" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+          }
+        />
+      ) : watchlist.length === 0 ? (
         <EmptyWatchlist />
       ) : filteredWatchlist.length === 0 ? (
         <Card>

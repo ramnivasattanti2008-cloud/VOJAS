@@ -63,22 +63,37 @@ router.get('/overview', async (_req: Request, res: Response, next: NextFunction)
         completed: 0,
         inProgress: 0,
         delayed: 0,
+        // Projects whose lateness cannot be assessed because no expected end
+        // date is recorded. Reported separately so a `delayed: 0` is never read
+        // as "nothing is late" when it actually means "we cannot tell".
+        delayUnknown: 0,
         totalAmount: row?._sum.approvedAmount ?? 0,
         spentAmount: row?._sum.spentAmount ?? 0,
       };
     });
 
-    // Get status breakdown per sector
+    // Status and delay breakdown per sector. There is no DELAYED status in the
+    // schema — lateness is derived from expectedEndDate against today, which is
+    // the only honest source for it.
     const statusRows = await prisma.project.findMany({
-      select: { sector: true, status: true },
+      select: { sector: true, status: true, expectedEndDate: true, completedAt: true },
     });
+
+    const now = new Date();
 
     for (const row of statusRows) {
       if (!row.sector) continue;
       const stats = projectStats.find((s) => s.sector === row.sector);
       if (!stats) continue;
+
       if (row.status === 'COMPLETED') stats.completed++;
       else if (row.status === 'IN_PROGRESS') stats.inProgress++;
+
+      const isOpen = row.status !== 'COMPLETED' && row.status !== 'VERIFIED' && row.status !== 'CANCELLED';
+      if (!isOpen) continue;
+
+      if (!row.expectedEndDate) stats.delayUnknown++;
+      else if (row.expectedEndDate < now) stats.delayed++;
     }
 
     success(res, {

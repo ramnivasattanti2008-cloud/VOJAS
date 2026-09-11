@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../auth/jwt.js';
 import { UnauthorizedError, ForbiddenError } from '@vojas/domain';
+import { prisma } from '@vojas/db';
 import type { JWTPayload } from '../auth/jwt.js';
 import {
   UserRole,
@@ -23,7 +24,7 @@ declare global {
 
 export const requireAuth = authenticate;
 
-export function authenticate(req: Request, _res: Response, next: NextFunction) {
+export async function authenticate(req: Request, _res: Response, next: NextFunction) {
   // Prefer httpOnly cookie; fall back to Authorization header (legacy/Bearer).
   const cookieToken = (req as unknown as { cookies?: Record<string, string> }).cookies?.vojas_token;
   const authHeader = req.headers.authorization;
@@ -34,6 +35,15 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
   }
   try {
     const payload = verifyAccessToken(token);
+    // A JWT signature alone only proves the token was minted by us — it says
+    // nothing about whether the session behind it is still live. Without this
+    // lookup, a logged-out (or admin-revoked) access token stays usable for
+    // its full lifetime, which defeats POST /auth/logout entirely. The
+    // session row is the source of truth for revocation.
+    const session = await prisma.session.findUnique({ where: { id: payload.sessionId } });
+    if (!session || session.expiresAt < new Date()) {
+      return next(new UnauthorizedError('Session expired or revoked'));
+    }
     req.user = payload;
     // Compute permissions from role
     req.userPermissions = ROLE_PERMISSIONS[payload.role] ?? [];
@@ -68,7 +78,11 @@ export function requireRole(...roles: string[]) {
       return next(new UnauthorizedError('Authentication required'));
     }
     if (!roles.includes(req.user.role)) {
-      return next(new UnauthorizedError(`Insufficient permissions. Required: ${roles.join(' or ')}`));
+      // 403, not 401: the caller is authenticated and we know exactly who they
+      // are — they simply are not allowed. Returning 401 here tells a client to
+      // re-authenticate, which can never resolve a role mismatch, and it hides
+      // a genuine authorisation refusal behind what looks like a login problem.
+      return next(new ForbiddenError(`Insufficient permissions. Required: ${roles.join(' or ')}`));
     }
     next();
   };

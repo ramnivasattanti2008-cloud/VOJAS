@@ -142,3 +142,15 @@ export {
   isValidReferralTransition,
 } from './referralService.js';
 export type { ReferralAuthorityCode, ReferralStatus, ReferralDossier } from './referralService.js';
+
+// Project Reality Check — cross-source contradiction analysis
+export { RealityCheckService } from './realityCheckService.js';
+export type {
+  RealitySourceKey,
+  RealitySourceAccount,
+  RealityConflict,
+  ConflictSeverity,
+  RealityVerdict,
+  RealityCheckAssessment,
+  ProjectRealityCheck,
+} from './realityCheckService.js';

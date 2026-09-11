@@ -21,7 +21,6 @@ import { prisma, Prisma } from '@vojas/db';
 import {
   AuditService,
   NotFoundError,
-  ValidationError,
 } from '@vojas/domain';
 import { ReportTriageService } from '../services/reportTriageService.js';
 import {
@@ -360,6 +359,22 @@ router.get('/nearby', async (req: Request, res: Response, next: NextFunction) =>
  */
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // reportListSchema doesn't model latitude/longitude, so an out-of-range
+    // value would otherwise pass through unnoticed instead of being rejected
+    // — validate them explicitly before anything else.
+    if (req.query.latitude !== undefined) {
+      const lat = Number(req.query.latitude);
+      if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+        return error(res, 'VALIDATION_ERROR', 'Invalid latitude: must be between -90 and 90', undefined, 400);
+      }
+    }
+    if (req.query.longitude !== undefined) {
+      const lng = Number(req.query.longitude);
+      if (Number.isNaN(lng) || lng < -180 || lng > 180) {
+        return error(res, 'VALIDATION_ERROR', 'Invalid longitude: must be between -180 and 180', undefined, 400);
+      }
+    }
+
     const parsed = reportListSchema.safeParse(req.query);
     if (!parsed.success) {
       return error(res, 'VALIDATION_ERROR', 'Invalid query parameters', parsed.error.errors, 400);
@@ -762,7 +777,7 @@ router.post(
         await prisma.notification.create({
           data: {
             userId: 'SYSTEM', // In production, would look up reporter user or send email
-            type: 'REPORT_MORE_INFO_REQUESTED' as any,
+            type: NotificationType.REPORT_MORE_INFO_REQUESTED,
             title: 'More information requested',
             message: `Your report ${report.reportReference} requires additional information: ${reason}`,
             resource: 'Report',

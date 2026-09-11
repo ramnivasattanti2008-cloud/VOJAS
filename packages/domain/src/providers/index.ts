@@ -29,6 +29,9 @@ export {
   NullStorageProvider,
 } from './nullProviders.js';
 
+// Re-export real provider implementations
+export { CdseSatelliteProvider } from './cdseSatelliteProvider.js';
+
 // Re-export factory
 export {
   createSatelliteProvider,

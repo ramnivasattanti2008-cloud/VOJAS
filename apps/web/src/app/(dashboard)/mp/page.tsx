@@ -16,6 +16,8 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useMPConstituency } from '@/hooks/useMP';
+import { useSectorOverview } from '@/hooks/useSectors';
+import { DataUnavailable } from '@/components/ui/DataUnavailable';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
@@ -48,6 +50,26 @@ export default function MPHomePage() {
   const mpId = (user as any)?.mpId ?? 'current-mp';
 
   const { data: constituency, isLoading } = useMPConstituency(mpId);
+  const { data: sectorOverview } = useSectorOverview();
+
+  /**
+   * Real per-sector project counts. Sectors with no projects are dropped rather
+   * than shown as a zero tile, and nothing is displayed at all if the overview
+   * has not loaded.
+   */
+  const sectorDistribution = useMemo(
+    () =>
+      (sectorOverview?.projectStats ?? [])
+        .filter((s) => s.total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 8)
+        .map((s) => ({
+          code: s.sector,
+          label: SECTOR_LABELS[s.sector] ?? s.sector,
+          count: s.total,
+        })),
+    [sectorOverview?.projectStats]
+  );
 
   // Quick stats
   const stats = useMemo(() => [
@@ -243,18 +265,23 @@ export default function MPHomePage() {
               </div>
             </CardHeader>
             <CardBody>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {/* Sector breakdown would come from API */}
-                {Object.entries(SECTOR_LABELS).slice(0, 8).map(([key, label]) => {
-                  const count = Math.floor(Math.random() * 15) + 1; // Placeholder - would come from API
-                  return (
-                    <div key={key} className="text-center p-3 bg-slate-50 rounded-lg">
-                      <p className="text-2xl font-bold text-vojas-600">{count}</p>
+              {sectorDistribution.length === 0 ? (
+                <DataUnavailable
+                  reason="NO_DATA"
+                  variant="inline"
+                  title="No sector distribution available"
+                  detail="No projects with a recorded sector are linked to this constituency yet."
+                />
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {sectorDistribution.map(({ code, label, count }) => (
+                    <div key={code} className="text-center p-3 bg-slate-50 rounded-lg">
+                      <p className="text-2xl font-bold text-vojas-600 tabular-nums">{count}</p>
                       <p className="text-xs text-slate-500 mt-1 truncate">{label}</p>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardBody>
           </Card>
 

@@ -234,6 +234,69 @@ export interface ProjectEvidenceFeed {
   items: ProjectEvidence[];
 }
 
+// ── Project Reality Check ────────────────────────────────────────────────────
+// Matches ProjectRealityCheck in packages/domain/src/services/realityCheckService.ts
+
+export type RealitySourceKey =
+  | 'GOVERNMENT'
+  | 'CONTRACTOR'
+  | 'FINANCIAL'
+  | 'CITIZEN'
+  | 'GEOSPATIAL'
+  | 'ENVIRONMENTAL';
+
+export type RealityUnavailableReason =
+  | 'NO_DATA'
+  | 'NOT_APPLICABLE'
+  | 'NO_USABLE_OBSERVATION'
+  | 'INSUFFICIENT_DATA';
+
+export interface RealitySourceAccount {
+  key: RealitySourceKey;
+  label: string;
+  available: boolean;
+  unavailableReason?: RealityUnavailableReason;
+  /** 0-100 where this source can honestly express completion; null otherwise. */
+  completionEstimate: number | null;
+  statement: string;
+  basis: string;
+  freshness: { status: 'FRESH' | 'STALE' | 'UNAVAILABLE'; ageDays: number | null; referenceDate: string | null };
+}
+
+export interface RealityConflict {
+  between: [RealitySourceKey, RealitySourceKey];
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  description: string;
+  gap: number | null;
+}
+
+export type RealityVerdict =
+  | 'CONSISTENT'
+  | 'MINOR_DISCREPANCY'
+  | 'CONFLICTING'
+  | 'INSUFFICIENT_EVIDENCE';
+
+export interface RealityCheckAssessment {
+  problem: string;
+  evidence: string[];
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  impact: string;
+  recommendedAction: string;
+  disclaimer: string;
+}
+
+export interface ProjectRealityCheck {
+  projectId: string;
+  projectName: string;
+  verdict: RealityVerdict;
+  sources: RealitySourceAccount[];
+  conflicts: RealityConflict[];
+  missingSources: RealitySourceKey[];
+  staleSources: RealitySourceKey[];
+  assessment: RealityCheckAssessment;
+  computedAt: string;
+}
+
 // Matches ProjectIntelligence in packages/domain/src/services/projectIntelligenceService.ts
 export type SignalCardStatus = 'LOW' | 'MEDIUM' | 'HIGH' | 'UNAVAILABLE';
 export type FreshnessStatus = 'FRESH' | 'STALE' | 'UNAVAILABLE';
@@ -405,6 +468,9 @@ export function createProjectsApi(client: ApiClient) {
     },
     getIntelligence(id: string) {
       return client.get<ProjectIntelligence>(`/projects/${id}/intelligence`);
+    },
+    getRealityCheck(id: string) {
+      return client.get<ProjectRealityCheck>(`/projects/${id}/reality-check`);
     },
     findNearby(params: { latitude: number; longitude: number; radiusKm?: number }) {
       return client.get<Project[]>('/projects/nearby', params);

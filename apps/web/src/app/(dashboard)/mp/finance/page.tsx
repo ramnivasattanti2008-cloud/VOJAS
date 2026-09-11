@@ -8,10 +8,12 @@
 import { useMemo } from 'react';
 import {
   DollarSign, TrendingUp, PieChart,
-  ArrowUpRight, Building2, BarChart3
+  Building2, BarChart3
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { DataUnavailable, ValueUnavailable } from '@/components/ui/DataUnavailable';
 import { ExportButton } from '@/components/ui/ExportButton';
 import { useMPFinancials } from '@/hooks/useMP';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,78 +45,110 @@ export default function MPFinancePage() {
   const mpId = (user as any)?.mpId ?? 'current-mp';
   const { data: financials, isLoading } = useMPFinancials(mpId);
 
-  // Default values for demo
-  const summary = financials ?? {
-    totalSanctioned: 500000000,
-    totalReleased: 425000000,
-    totalSpent: 312500000,
-    utilizationPercent: 62.5,
-    bySector: Object.entries(SECTOR_LABELS).map(([key]) => ({
-      sector: key,
-      sanctioned: Math.floor(Math.random() * 50000000) + 10000000,
-      spent: Math.floor(Math.random() * 30000000) + 5000000,
-      utilization: Math.floor(Math.random() * 40) + 40,
-    })),
-    byMonth: [
-      { month: 'Jan', sanctioned: 40000000, spent: 28000000 },
-      { month: 'Feb', sanctioned: 35000000, spent: 32000000 },
-      { month: 'Mar', sanctioned: 45000000, spent: 38000000 },
-      { month: 'Apr', sanctioned: 38000000, spent: 29000000 },
-      { month: 'May', sanctioned: 42000000, spent: 35000000 },
-      { month: 'Jun', sanctioned: 40000000, spent: 42000000 },
-      { month: 'Jul', sanctioned: 45000000, spent: 32000000 },
-      { month: 'Aug', sanctioned: 40000000, spent: 38500000 },
-    ],
-  };
-
-  const totalSanctioned = summary.totalSanctioned;
-  const totalReleased = summary.totalReleased;
-  const totalSpent = summary.totalSpent;
-  const utilizationRate = summary.utilizationPercent;
-  const remaining = totalSanctioned - totalSpent;
-
   const topSectors = useMemo(() => {
-    return [...(summary.bySector ?? [])]
+    return [...(financials?.bySector ?? [])]
       .sort((a, b) => b.sanctioned - a.sanctioned)
       .slice(0, 6);
-  }, [summary.bySector]);
+  }, [financials?.bySector]);
 
-  const stats = [
-    {
-      label: 'Total Sanctioned',
-      value: totalSanctioned,
-      formatted: formatCurrency(totalSanctioned),
-      icon: DollarSign,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-    },
-    {
-      label: 'Total Released',
-      value: totalReleased,
-      formatted: formatCurrency(totalReleased),
-      icon: TrendingUp,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-      trend: '+8.2%',
-    },
-    {
-      label: 'Total Spent',
-      value: totalSpent,
-      formatted: formatCurrency(totalSpent),
-      icon: BarChart3,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      trend: '+12.5%',
-    },
-    {
-      label: 'Remaining',
-      value: remaining,
-      formatted: formatCurrency(remaining),
-      icon: Building2,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-    },
-  ];
+  const stats = useMemo(() => {
+    if (!financials) return [];
+    const remainingAmount = financials.totalSanctioned - financials.totalSpent;
+    return [
+      {
+        label: 'Total Sanctioned',
+        formatted: formatCurrency(financials.totalSanctioned),
+        icon: DollarSign,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50',
+      },
+      {
+        label: 'Total Released',
+        // null when no RELEASE observations exist — shown as unavailable, not
+        // silently substituted with the expenditure figure.
+        formatted:
+          financials.totalReleased === null ? null : formatCurrency(financials.totalReleased),
+        icon: TrendingUp,
+        color: 'text-emerald-600',
+        bgColor: 'bg-emerald-50',
+      },
+      {
+        label: 'Total Spent',
+        formatted: formatCurrency(financials.totalSpent),
+        icon: BarChart3,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50',
+      },
+      {
+        label: 'Remaining',
+        formatted: formatCurrency(remainingAmount),
+        icon: Building2,
+        color: 'text-amber-600',
+        bgColor: 'bg-amber-50',
+      },
+    ];
+  }, [financials]);
+
+  const totalSanctioned = financials?.totalSanctioned ?? 0;
+  const totalReleased = financials?.totalReleased ?? null;
+  const totalSpent = financials?.totalSpent ?? 0;
+  const utilizationRate = financials?.utilizationPercent ?? 0;
+  const remaining = totalSanctioned - totalSpent;
+
+  /**
+   * Every insight is derived from figures actually returned by the API and
+   * names the sector or month it came from. An insight with no supporting data
+   * is omitted rather than asserted.
+   */
+  const insights = useMemo(() => {
+    if (!financials) return [];
+    const out: Array<{
+      label: string;
+      body: string;
+      bg: string;
+      labelColor: string;
+      textColor: string;
+    }> = [];
+
+    const sectorsWithBudget = financials.bySector.filter((s) => s.sanctioned > 0);
+
+    if (sectorsWithBudget.length > 0) {
+      const best = sectorsWithBudget.reduce((a, b) => (b.utilization > a.utilization ? b : a));
+      out.push({
+        label: 'Highest utilisation',
+        body: `${SECTOR_LABELS[best.sector as ProjectSector] ?? best.sector} at ${best.utilization.toFixed(0)}% of sanctioned funds spent.`,
+        bg: 'bg-emerald-50',
+        labelColor: 'text-emerald-700',
+        textColor: 'text-emerald-800',
+      });
+
+      const worst = sectorsWithBudget.reduce((a, b) => (b.utilization < a.utilization ? b : a));
+      if (worst.sector !== best.sector) {
+        out.push({
+          label: 'Lowest utilisation',
+          body: `${SECTOR_LABELS[worst.sector as ProjectSector] ?? worst.sector} at ${worst.utilization.toFixed(0)}%. Low utilisation is a prompt to check for delays, not evidence of any wrongdoing.`,
+          bg: 'bg-amber-50',
+          labelColor: 'text-amber-700',
+          textColor: 'text-amber-800',
+        });
+      }
+    }
+
+    if (financials.byMonth.length > 0) {
+      const peak = financials.byMonth.reduce((a, b) => (b.spent > a.spent ? b : a));
+      if (peak.spent > 0) {
+        out.push({
+          label: 'Peak expenditure month',
+          body: `${peak.month} recorded the highest expenditure at ${formatCurrency(peak.spent)}.`,
+          bg: 'bg-blue-50',
+          labelColor: 'text-blue-700',
+          textColor: 'text-blue-800',
+        });
+      }
+    }
+
+    return out;
+  }, [financials]);
 
   return (
     <div className="space-y-6">
@@ -137,6 +171,29 @@ export default function MPFinancePage() {
         />
       </div>
 
+      {isLoading && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardBody className="p-4">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-3 h-6 w-32" />
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !financials && (
+        <DataUnavailable
+          reason="NO_DATA"
+          title="No financial records for this constituency"
+          detail="No sanctioned, released or expenditure records are linked to projects for this MP. Figures will appear here once official financial data is ingested."
+        />
+      )}
+
+      {!isLoading && financials && (
+        <>
       {/* Main Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
@@ -146,14 +203,8 @@ export default function MPFinancePage() {
                 <div>
                   <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
                   <p className={cn('text-xl font-bold', stat.color)}>
-                    {stat.formatted}
+                    {stat.formatted ?? <ValueUnavailable reason="NO_DATA" />}
                   </p>
-                  {stat.trend && (
-                    <div className="flex items-center gap-0.5 mt-1 text-xs text-emerald-600">
-                      <ArrowUpRight className="h-3 w-3" />
-                      <span>{stat.trend} from last period</span>
-                    </div>
-                  )}
                 </div>
                 <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', stat.bgColor)}>
                   <stat.icon className={cn('h-5 w-5', stat.color)} />
@@ -201,31 +252,56 @@ export default function MPFinancePage() {
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-slate-600">Released vs Sanctioned</span>
                     <span className="font-semibold text-slate-900">
-                      {formatCurrency(totalReleased)} / {formatCurrency(totalSanctioned)}
+                      {totalReleased === null ? (
+                        <ValueUnavailable reason="NO_DATA" />
+                      ) : (
+                        `${formatCurrency(totalReleased)} / ${formatCurrency(totalSanctioned)}`
+                      )}
                     </span>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-slate-400 rounded-full"
-                      style={{ width: `${(totalReleased / totalSanctioned) * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {(totalReleased / totalSanctioned * 100).toFixed(1)}% of sanctioned amount released
-                  </p>
+                  {totalReleased === null ? (
+                    <p className="text-xs text-slate-500">
+                      No fund-release records are available for this constituency, so the released
+                      share cannot be calculated.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-slate-400 rounded-full"
+                          style={{
+                            width: `${totalSanctioned > 0 ? Math.min((totalReleased / totalSanctioned) * 100, 100) : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {totalSanctioned > 0
+                          ? `${((totalReleased / totalSanctioned) * 100).toFixed(1)}% of sanctioned amount released`
+                          : 'Sanctioned amount not recorded, so the released share cannot be calculated.'}
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100">
                   <div className="text-center">
                     <p className="text-xs text-slate-500 mb-1">Released</p>
                     <p className="text-lg font-bold text-emerald-600">
-                      {((totalReleased / totalSanctioned) * 100).toFixed(0)}%
+                      {totalReleased !== null && totalSanctioned > 0 ? (
+                        `${((totalReleased / totalSanctioned) * 100).toFixed(0)}%`
+                      ) : (
+                        <ValueUnavailable reason="NO_DATA" />
+                      )}
                     </p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-slate-500 mb-1">Spent</p>
                     <p className="text-lg font-bold text-vojas-600">
-                      {((totalSpent / totalReleased) * 100).toFixed(0)}%
+                      {totalReleased !== null && totalReleased > 0 ? (
+                        `${((totalSpent / totalReleased) * 100).toFixed(0)}%`
+                      ) : (
+                        <ValueUnavailable reason="NO_DATA" />
+                      )}
                     </p>
                   </div>
                   <div className="text-center">
@@ -244,27 +320,37 @@ export default function MPFinancePage() {
               <h2 className="text-lg font-semibold text-slate-900">Monthly Expenditure</h2>
             </CardHeader>
             <CardBody>
-              <div className="space-y-3">
-                {summary.byMonth?.map((month) => {
-                  const maxAmount = Math.max(...summary.byMonth.map((m) => m.spent));
-                  const percentage = (month.spent / maxAmount) * 100;
-
-                  return (
-                    <div key={month.month} className="flex items-center gap-4">
-                      <p className="text-sm text-slate-600 w-8">{month.month}</p>
-                      <div className="flex-1 h-8 bg-slate-100 rounded-lg overflow-hidden relative">
-                        <div
-                          className="h-full bg-vojas-500 rounded-lg transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-700">
-                          {formatCurrency(month.spent)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {financials.byMonth.length === 0 ? (
+                <DataUnavailable
+                  reason="NO_DATA"
+                  variant="inline"
+                  title="No dated expenditure records"
+                  detail="A monthly series needs financial observations carrying a transaction date. None are recorded for this constituency yet."
+                />
+              ) : (
+                <div className="space-y-3">
+                  {(() => {
+                    const maxAmount = Math.max(...financials.byMonth.map((m) => m.spent));
+                    return financials.byMonth.map((month) => {
+                      const percentage = maxAmount > 0 ? (month.spent / maxAmount) * 100 : 0;
+                      return (
+                        <div key={month.month} className="flex items-center gap-4">
+                          <p className="text-sm text-slate-600 w-16 tabular-nums">{month.month}</p>
+                          <div className="flex-1 h-8 bg-slate-100 rounded-lg overflow-hidden relative">
+                            <div
+                              className="h-full bg-vojas-500 rounded-lg transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-700">
+                              {formatCurrency(month.spent)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
             </CardBody>
           </Card>
         </div>
@@ -276,6 +362,14 @@ export default function MPFinancePage() {
               <h2 className="text-lg font-semibold text-slate-900">By Sector</h2>
             </CardHeader>
             <CardBody className="p-0">
+              {topSectors.length === 0 && (
+                <DataUnavailable
+                  reason="NO_DATA"
+                  variant="inline"
+                  title="No sector breakdown"
+                  detail="No projects with recorded amounts are linked to this constituency."
+                />
+              )}
               <div className="divide-y divide-slate-100">
                 {topSectors.map((sector) => {
                   const utilization = sector.utilization;
@@ -317,28 +411,27 @@ export default function MPFinancePage() {
               <h2 className="text-lg font-semibold text-slate-900">Key Insights</h2>
             </CardHeader>
             <CardBody className="space-y-3">
-              <div className="p-3 bg-emerald-50 rounded-lg">
-                <p className="text-xs font-medium text-emerald-700 mb-1">Strong Performance</p>
-                <p className="text-sm text-emerald-800">
-                  Rural Development sector at {topSectors[0]?.utilization.toFixed(0)}% utilization
-                </p>
-              </div>
-              <div className="p-3 bg-amber-50 rounded-lg">
-                <p className="text-xs font-medium text-amber-700 mb-1">Needs Attention</p>
-                <p className="text-sm text-amber-800">
-                  Housing sector utilization below 50%
-                </p>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs font-medium text-blue-700 mb-1">Monthly Trend</p>
-                <p className="text-sm text-blue-800">
-                  August shows highest monthly expenditure
-                </p>
-              </div>
+              {insights.length === 0 ? (
+                <DataUnavailable
+                  reason="INSUFFICIENT_DATA"
+                  variant="inline"
+                  title="Not enough data for insights"
+                  detail="Insights are derived from recorded sector and expenditure figures. There are none yet for this constituency."
+                />
+              ) : (
+                insights.map((insight) => (
+                  <div key={insight.label} className={cn('p-3 rounded-lg', insight.bg)}>
+                    <p className={cn('text-xs font-medium mb-1', insight.labelColor)}>{insight.label}</p>
+                    <p className={cn('text-sm', insight.textColor)}>{insight.body}</p>
+                  </div>
+                ))
+              )}
             </CardBody>
           </Card>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

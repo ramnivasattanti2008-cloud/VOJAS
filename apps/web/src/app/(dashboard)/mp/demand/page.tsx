@@ -13,6 +13,7 @@ import {
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { DataUnavailable } from '@/components/ui/DataUnavailable';
 import { useMPDemandClusters } from '@/hooks/useMP';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -49,27 +50,40 @@ const INTENSITY_CONFIG = {
   HIGH: { variant: 'danger' as const, label: 'High', color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
-const mockDemands = [
-  { id: '1', location: 'Ward 5, Mainpuri', requestCount: 45, sector: 'TRANSPORT', primaryIssue: 'Road construction needed', intensity: 'HIGH' as const, type: 'CITIZEN' as const },
-  { id: '2', location: 'Block A, Rural', requestCount: 32, sector: 'WATER_SANITATION', primaryIssue: 'Clean water supply', intensity: 'HIGH' as const, type: 'CITIZEN' as const },
-  { id: '3', location: 'District HQ', requestCount: 28, sector: 'HEALTH', primaryIssue: 'Primary health center upgrade', intensity: 'MEDIUM' as const, type: 'OFFICIAL' as const },
-  { id: '4', location: 'Village Cluster 3', requestCount: 24, sector: 'EDUCATION', primaryIssue: 'Secondary school construction', intensity: 'MEDIUM' as const, type: 'CITIZEN' as const },
-  { id: '5', location: 'Industrial Area', requestCount: 18, sector: 'ENERGY', primaryIssue: 'Power supply improvement', intensity: 'MEDIUM' as const, type: 'OFFICIAL' as const },
-  { id: '6', location: 'Township B', requestCount: 15, sector: 'HOUSING', primaryIssue: 'Affordable housing scheme', intensity: 'LOW' as const, type: 'ADMIN' as const },
-  { id: '7', location: 'Gram Panchayat D', requestCount: 12, sector: 'AGRICULTURE', primaryIssue: 'Irrigation facilities', intensity: 'LOW' as const, type: 'CITIZEN' as const },
-  { id: '8', location: 'Urban Ward 12', requestCount: 10, sector: 'ENVIRONMENT', primaryIssue: 'Solid waste management', intensity: 'LOW' as const, type: 'ADMIN' as const },
-];
+/** A demand cluster as displayed. `type` is not supplied by the API. */
+interface DisplayDemand {
+  id: string;
+  location: string;
+  requestCount: number;
+  sector: string;
+  primaryIssue: string;
+  intensity: 'LOW' | 'MEDIUM' | 'HIGH';
+  type?: 'CITIZEN' | 'OFFICIAL' | 'ADMIN';
+}
 
 export default function MPDemandPage() {
   const { user } = useAuth();
   const mpId = (user as any)?.mpId ?? 'current-mp';
-  useMPDemandClusters(mpId);
+  const { data: clusters, isLoading, isError } = useMPDemandClusters(mpId);
 
   const [filterType, setFilterType] = useState<string>('');
   const [filterIntensity, setFilterIntensity] = useState<string>('');
   const [filterSector, setFilterSector] = useState<string>('');
 
-  const demands = mockDemands;
+  // Real clusters from the API. The hook's result was previously discarded and
+  // a hardcoded list rendered in its place.
+  const demands: DisplayDemand[] = useMemo(
+    () =>
+      (clusters ?? []).map((c) => ({
+        id: c.id,
+        location: c.location,
+        requestCount: c.requestCount,
+        sector: c.sector,
+        primaryIssue: c.primaryIssue,
+        intensity: c.intensity,
+      })),
+    [clusters]
+  );
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
@@ -247,7 +261,25 @@ export default function MPDemandPage() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {filteredDemands.length === 0 ? (
+                {isLoading ? (
+                  <div className="py-12 text-center text-slate-400">
+                    <p>Loading demand clusters…</p>
+                  </div>
+                ) : isError ? (
+                  <DataUnavailable
+                    reason="SOURCE_UNAVAILABLE"
+                    variant="inline"
+                    title="Demand clusters could not be loaded"
+                    detail="The constituency demand service did not respond. No stand-in clusters are shown."
+                  />
+                ) : demands.length === 0 ? (
+                  <DataUnavailable
+                    reason="NO_DATA"
+                    variant="inline"
+                    title="No demand clusters recorded"
+                    detail="Clusters are built from citizen requests in this constituency. None have been recorded yet."
+                  />
+                ) : filteredDemands.length === 0 ? (
                   <div className="py-12 text-center text-slate-400">
                     <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>No demands match your filters</p>

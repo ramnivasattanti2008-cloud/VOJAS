@@ -149,10 +149,21 @@ app.get('/api/v1/ready', async (_req, res) => {
 });
 
 // ── Rate limiting ────────────────────────────────────────────────────────────
+//
+// The integration suite drives these same endpoints hundreds of times from one
+// IP — it registers a fresh user per test — so production limits throttle the
+// tests themselves and every subsequent request fails auth with a 401. Limits
+// are therefore raised under NODE_ENV=test rather than the middleware being
+// removed: the limiters stay mounted, so the RateLimit headers the security
+// tests assert on are still emitted, and the real limits still apply everywhere
+// else.
+const isTest = process.env.NODE_ENV === 'test';
+const limitFor = (production: number) => (isTest ? 100_000 : production);
+
 // 1) Strict auth rate limit — login & register to defeat credential stuffing
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,                       // 10 attempts / 15 min / IP
+  limit: limitFor(10),             // 10 attempts / 15 min / IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many authentication attempts. Try again in 15 minutes.' } },
@@ -161,7 +172,7 @@ const authLimiter = rateLimit({
 // 2) Public report submission limiter — prevent spam submissions from a single IP
 const reportSubmitLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,                        // 5 reports / hour / IP
+  limit: limitFor(5),              // 5 reports / hour / IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Report submission rate limited. Try again later.' } },
@@ -170,7 +181,7 @@ const reportSubmitLimiter = rateLimit({
 // 3) AI / analysis / forecast limiter — expensive compute, cap per user
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 20,                       // 20 calls / min / user
+  limit: limitFor(20),             // 20 calls / min / user
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.userId ?? ipKeyGenerator(req.ip ?? 'unknown'),
@@ -180,7 +191,7 @@ const aiLimiter = rateLimit({
 // 4) Search limiter — bounded per user/IP
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 60,                       // 60 searches / min / user
+  limit: limitFor(60),             // 60 searches / min / user
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.userId ?? ipKeyGenerator(req.ip ?? 'unknown'),
@@ -202,7 +213,7 @@ app.use('/api/v1/projects/:id/scenario', aiLimiter);
 // 5) General limiter — fallback for everything else
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: parseInt(process.env.RATE_LIMIT_GENERAL ?? '300'),
+  limit: limitFor(parseInt(process.env.RATE_LIMIT_GENERAL ?? '300')),
   standardHeaders: true,
   legacyHeaders: false,
 });

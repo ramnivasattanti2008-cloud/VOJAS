@@ -486,7 +486,34 @@ router.get('/responses', async (req: Request, res: Response, next: NextFunction)
 router.post('/responses/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const { response, documents, evidenceUrls } = req.body;
+    const { response, documents, evidenceUrls } = req.body as {
+      response?: string;
+      documents?: string[];
+      evidenceUrls?: string[];
+    };
+
+    if (!response) {
+      throw new ValidationError('response is required');
+    }
+
+    const existing = await prisma.contractorUpdate.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('ContractorUpdate');
+
+    // `documents` and `evidenceUrls` are both client-supplied evidence
+    // reference lists; the schema has a single `evidenceUrls` Json column,
+    // so both are merged into it rather than one being silently dropped.
+    const combinedEvidenceUrls = [...(documents ?? []), ...(evidenceUrls ?? [])];
+
+    const updated = await prisma.contractorUpdate.update({
+      where: { id },
+      data: {
+        description: response,
+        evidenceUrls: combinedEvidenceUrls,
+        status: 'SUBMITTED',
+        submittedById: req.user!.userId,
+        submittedAt: new Date(),
+      },
+    });
 
     await auditService.logEvent({
       actorId: req.user!.userId,
@@ -500,11 +527,11 @@ router.post('/responses/:id', async (req: Request, res: Response, next: NextFunc
     });
 
     return success(res, {
-      id,
-      status: 'SUBMITTED',
-      response,
-      evidenceUrls: evidenceUrls || [],
-      submittedAt: new Date().toISOString(),
+      id: updated.id,
+      status: updated.status,
+      response: updated.description,
+      evidenceUrls: combinedEvidenceUrls,
+      submittedAt: updated.submittedAt.toISOString(),
     });
   } catch (err) {
     next(err);

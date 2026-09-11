@@ -6,6 +6,7 @@ import anomalyRoutes from './anomalies.js';
 import auditRoutes from './audit.js';
 import authRoutes from './auth.js';
 import changeAnalysisRoutes from './changeAnalysis.js';
+import citizenRoutes from './citizen.js';
 import citizenReportRoutes from './citizenReports.js';
 import documentRoutes from './documents.js';
 import exportRoutes from './export.js';
@@ -73,6 +74,9 @@ router.use('/audit', authenticate, requirePermission('audit.read'), auditRoutes)
 
 // Anomaly routes
 router.use('/anomalies', anomalyRoutes);
+
+// Citizen watchlist routes (follow / unfollow projects) — auth-scoped to the calling user
+router.use('/citizen', citizenRoutes);
 
 // M10: Citizen Reports (extended public + authenticated routes) — register BEFORE
 // reportRoutes which has a `/:id` catch-all that would otherwise match /public, /nearby, /track, etc.

@@ -18,17 +18,35 @@ import {
 } from 'lucide-react';
 import { ShowcaseProjectSelector } from '@/components/projects/ShowcaseProjectSelector';
 
-const DEFAULT_SUMMARY = { totalProjects: 5, totalSanctioned: 875000000, totalSpent: 423500000 };
+interface PublicSummary {
+  totalProjects: number;
+  totalSanctioned: number;
+  totalSpent: number;
+}
 
-async function getSummaryData() {
+/**
+ * Returns null when the registry cannot be reached. It must never fall back to
+ * a stand-in figure: these numbers are read as national public-spending totals,
+ * and a reader cannot tell an invented one from a real one.
+ */
+async function getSummaryData(): Promise<PublicSummary | null> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_INTERNAL_URL || 'http://localhost:5000';
     const res = await fetch(`${apiUrl}/api/v1/projects/public/summary`, { next: { revalidate: 60 } });
-    if (!res.ok) return DEFAULT_SUMMARY;
+    if (!res.ok) return null;
     const json = await res.json();
-    return (json.data as { totalProjects: number; totalSanctioned: number; totalSpent: number }) || DEFAULT_SUMMARY;
+    const data = json?.data as PublicSummary | undefined;
+    if (
+      !data ||
+      typeof data.totalProjects !== 'number' ||
+      typeof data.totalSanctioned !== 'number' ||
+      typeof data.totalSpent !== 'number'
+    ) {
+      return null;
+    }
+    return data;
   } catch {
-    return DEFAULT_SUMMARY;
+    return null;
   }
 }
 
@@ -127,23 +145,23 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Real Data Highlights Bar */}
+        {/* Registry totals — real figures only, or an explicit unavailable state */}
         <div className="mt-12 pt-8 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-6 text-slate-300 text-xs">
           <div>
             <div className="text-2xl font-bold text-white tracking-tight">
-              {summary ? summary.totalProjects.toLocaleString('en-IN') : 'Live Registry'}
+              {summary ? summary.totalProjects.toLocaleString('en-IN') : <span className="text-slate-500">—</span>}
             </div>
             <div className="text-slate-400 font-medium mt-0.5">MPLADS Works Monitored</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-white tracking-tight">
-              {summary ? `₹${(summary.totalSanctioned / 10000000).toFixed(1)} Cr` : 'Official Records'}
+              {summary ? `₹${(summary.totalSanctioned / 10000000).toFixed(1)} Cr` : <span className="text-slate-500">—</span>}
             </div>
             <div className="text-slate-400 font-medium mt-0.5">Sanctioned Public Funds</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-white tracking-tight">
-              {summary ? `₹${(summary.totalSpent / 10000000).toFixed(1)} Cr` : 'Tracked Spend'}
+              {summary ? `₹${(summary.totalSpent / 10000000).toFixed(1)} Cr` : <span className="text-slate-500">—</span>}
             </div>
             <div className="text-slate-400 font-medium mt-0.5">Reported Fund Utilization</div>
           </div>
@@ -152,6 +170,13 @@ export default async function HomePage() {
             <div className="text-slate-400 font-medium mt-0.5">10m Multispectral Verification</div>
           </div>
         </div>
+
+        {!summary && (
+          <p className="mt-4 text-xs text-slate-400" role="status" data-unavailable-reason="SOURCE_UNAVAILABLE">
+            Registry totals are temporarily unavailable — the project database could not be reached.
+            No estimated figures are shown in their place.
+          </p>
+        )}
       </section>
 
       {/* 13 Curated Construction Showcase & Weekly Satellite AI Fraud Detector */}

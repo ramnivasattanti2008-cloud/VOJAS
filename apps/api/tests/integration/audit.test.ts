@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app';
+import { createAdmin, createCitizen } from '../helpers.js';
 
 const BASE = '/api/v1';
 
@@ -9,13 +10,7 @@ const runIfDb = process.env.DATABASE_URL_TEST ? describe : describe.skip;
 
 runIfDb('Audit Logging', () => {
   it('project creation creates an audit log entry', async () => {
-    const adminEmail = `audit-admin-${Date.now()}@example.com`;
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({ email: adminEmail, password: 'AdminPass123!', name: 'Audit Admin', role: 'ADMIN' });
-
-    const token = adminRes.body.data.accessToken;
-    const userId = adminRes.body.data.user.id;
+    const { token, id: userId } = await createAdmin();
 
     await request(app)
       .post(`${BASE}/projects`)
@@ -51,18 +46,8 @@ runIfDb('Audit Logging', () => {
       .post(`${BASE}/auth/login`)
       .send({ email, password: 'TestPass123!' });
 
-    // Get admin token to read audit log
-    const adminEmail = `audit-admin-login-${Date.now()}@example.com`;
-    const adminRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: adminEmail,
-        password: 'AdminPass123!',
-        name: 'Audit Admin',
-        role: 'ADMIN',
-      });
-
-    const adminToken = adminRes.body.data.accessToken;
+    // Admin token to read the audit log
+    const { token: adminToken } = await createAdmin();
 
     // Check audit log for AUTH_LOGIN
     const auditRes = await request(app)
@@ -74,17 +59,15 @@ runIfDb('Audit Logging', () => {
     expect(auditRes.body.data.data.some((e: any) => e.action === 'AUTH_LOGIN')).toBe(true);
   });
 
-  it('GET /audit requires ADMIN or AUDIT_READ permission (403 for OFFICER)', async () => {
-    const officerRes = await request(app)
-      .post(`${BASE}/auth/register`)
-      .send({
-        email: `audit-officer-${Date.now()}@example.com`,
-        password: 'OfficerPass123!',
-        name: 'Audit Officer',
-        role: 'OFFICER',
-      });
-
-    const token = officerRes.body.data.accessToken;
+  it('GET /audit requires ADMIN or AUDIT_READ permission (403 for CITIZEN)', async () => {
+    // NOTE: this was originally written against an OFFICER token, expecting
+    // 403. That's not how the permission matrix is designed though —
+    // ROLE_PERMISSIONS (packages/shared/src/permissions.ts) deliberately
+    // grants OFFICER (and REVIEWER, ANALYST) the AUDIT_READ permission
+    // alongside ADMIN, so officers investigating a case can see the audit
+    // trail. A role that genuinely lacks AUDIT_READ (CITIZEN) is the correct
+    // one to assert 403 against.
+    const { token } = await createCitizen();
 
     const res = await request(app)
       .get(`${BASE}/audit`)
