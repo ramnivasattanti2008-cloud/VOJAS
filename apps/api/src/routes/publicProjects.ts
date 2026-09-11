@@ -57,6 +57,19 @@ const PUBLIC_PROJECT_SELECT = {
       term: true,
     },
   },
+  projectRisk: {
+    select: {
+      riskScore: true,
+      riskLevel: true,
+      confidence: true,
+      primaryDriver: true,
+      financialScore: true,
+      progressScore: true,
+      satelliteScore: true,
+      contractorScore: true,
+      geographicScore: true,
+    },
+  },
 } as const;
 
 /**
@@ -88,6 +101,22 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     if (p.constituency) where.constituency = p.constituency;
     if (p.sector) where.sector = p.sector;
     if (p.status) where.status = p.status;
+    if (p.completion === 'DONE') {
+      where.status = { in: ['COMPLETED', 'VERIFIED'] };
+    } else if (p.completion === 'NOT_DONE') {
+      where.status = { notIn: ['COMPLETED', 'VERIFIED'] };
+    }
+    if (p.showcase) {
+      where.id = {
+        in: [
+          'cmtwjxvip000n932octqrfpw7',
+          'cmtwjxvjl000v932of8gat0wn',
+          'showcase-fin-1',
+          'showcase-ong-1',
+          'showcase-fraud-1',
+        ],
+      };
+    }
     if (p.hasCoordinates || req.query.hasCoordinates === 'true') {
       where.latitude = { not: null };
       where.longitude = { not: null };
@@ -104,7 +133,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       ];
     }
 
-    const orderBy = p.sortBy ? { [p.sortBy]: p.sortOrder } : { createdAt: 'desc' as const };
+    let orderBy: Record<string, unknown> = { createdAt: 'desc' as const };
+    if (p.sortBy === 'riskScore') {
+      orderBy = { projectRisk: { riskScore: p.sortOrder ?? 'desc' } };
+    } else if (p.sortBy) {
+      orderBy = { [p.sortBy]: p.sortOrder ?? 'asc' };
+    }
 
     const [data, total] = await prisma.$transaction([
       prisma.project.findMany({

@@ -1,10 +1,12 @@
-﻿'use client';
+'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Loader2, AlertTriangle, Crosshair, Sparkles } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { MapToolbar, BasemapMode, MapLayerState } from './MapToolbar';
-import { SelectedLocationInspector, InspectedEntity } from './SelectedLocationInspector';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type { BasemapMode, MapLayerState } from './MapToolbar';
+import { MapToolbar } from './MapToolbar';
+import type { InspectedEntity } from './SelectedLocationInspector';
+import { SelectedLocationInspector } from './SelectedLocationInspector';
 
 let MapLibre: typeof import('maplibre-gl') | null = null;
 
@@ -49,6 +51,9 @@ export interface MapProjectItem {
   expenditure?: number;
   status?: string;
   contractorName?: string;
+  riskScore?: number;
+  riskLevel?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  aiDriver?: string;
 }
 
 export interface MapRiskFindingItem {
@@ -243,7 +248,10 @@ export const InteractiveGisMap: React.FC<InteractiveGisMapProps> = ({
             sanctionedAmount: p.sanctionedAmount,
             expenditure: p.expenditure,
             status: p.status,
-            contractorName: p.contractorName
+            contractorName: p.contractorName,
+            riskScore: p.riskScore,
+            riskLevel: p.riskLevel,
+            aiDriver: p.aiDriver,
           };
           setSelectedEntity(inspected);
           map.flyTo({ center: [p.longitude, p.latitude], zoom: Math.max(map.getZoom(), 12) });

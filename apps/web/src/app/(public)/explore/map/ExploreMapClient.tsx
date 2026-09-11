@@ -59,8 +59,12 @@ export function ExploreMapClient() {
     state: p.state,
     status: p.status,
     sanctionedAmount: p.approvedAmount,
-    spentAmount: p.spentAmount,
+    expenditure: p.spentAmount,
     sector: p.sector,
+    contractorName: p.contractor ?? undefined,
+    riskScore: p.projectRisk?.riskScore,
+    riskLevel: (p.projectRisk?.riskLevel as 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW') ?? undefined,
+    aiDriver: p.projectRisk?.primaryDriver ?? undefined,
   }));
 
   return (

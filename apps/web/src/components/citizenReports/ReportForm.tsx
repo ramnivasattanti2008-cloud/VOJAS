@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { MapPin, Camera, Calendar, AlertCircle, CheckCircle, Shield, Info, Building2 } from 'lucide-react';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useSubmitReport } from '@/hooks/useCitizenReports';
 import { usePublicProject } from '@/hooks/usePublicProjects';
 import {
-  PRIVACY_LABELS,
-  REPORT_CATEGORY_LABELS,
-  type ReportPrivacyLevel,
+    PRIVACY_LABELS,
+    type ReportPrivacyLevel
 } from '@vojas/api-client';
+import { AlertCircle, Building2, Calendar, CheckCircle, Info, MapPin, Shield } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useCallback, useState } from 'react';
 
 const CATEGORIES = [
   { value: 'PROJECT_NOT_STARTED', label: 'Project Not Started', icon: '🏗️' },

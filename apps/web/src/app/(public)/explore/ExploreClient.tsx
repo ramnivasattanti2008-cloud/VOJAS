@@ -1,18 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Search, X, Loader2, AlertTriangle } from 'lucide-react';
-import { ProjectSector, ProjectStatus } from '@vojas/shared';
-import { usePublicProjects } from '@/hooks/usePublicProjects';
-import { useQuery } from '@tanstack/react-query';
-import { createProjectsApi } from '@vojas/api-client';
-import { apiClient } from '@/lib/api';
 import { PublicProjectCard } from '@/components/transparency/PublicProjectCard';
 import { Button } from '@/components/ui/Button';
+import { usePublicProjects } from '@/hooks/usePublicProjects';
+import { apiClient } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { createProjectsApi } from '@vojas/api-client';
+import { ProjectSector, ProjectStatus } from '@vojas/shared';
+import { AlertTriangle, CheckCircle2, Clock, Loader2, Search, Sparkles, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 
 const projectsApi = createProjectsApi(apiClient);
 const PAGE_SIZE = 20;
+
+type CompletionTab = 'ALL' | 'DONE' | 'NOT_DONE' | 'SHOWCASE';
 
 function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -29,10 +32,19 @@ export function ExploreClient() {
   // the filter UI below is the source of truth after that.
   const initialParams = useSearchParams();
 
+  const [activeTab, setActiveTab] = useState<CompletionTab>(() => {
+    const c = initialParams.get('completion');
+    if (c === 'DONE') return 'DONE';
+    if (c === 'NOT_DONE') return 'NOT_DONE';
+    if (initialParams.get('showcase') === 'true') return 'SHOWCASE';
+    return 'ALL';
+  });
+
   const [searchInput, setSearchInput] = useState(() => initialParams.get('search') ?? '');
   const [state, setState] = useState(() => initialParams.get('state') ?? '');
   const [sector, setSector] = useState(() => initialParams.get('sector') ?? '');
   const [status, setStatus] = useState(() => initialParams.get('status') ?? '');
+  const [sort, setSort] = useState<string>('createdAt_desc');
   const [page, setPage] = useState(1);
 
   const search = useDebounced(searchInput, 400);
@@ -40,7 +52,7 @@ export function ExploreClient() {
   // Reset to page 1 whenever a filter changes.
   useEffect(() => {
     setPage(1);
-  }, [search, state, sector, status]);
+  }, [search, state, sector, status, activeTab, sort]);
 
   const filters = useMemo(
     () => ({
@@ -48,10 +60,19 @@ export function ExploreClient() {
       state: state || undefined,
       sector: (sector || undefined) as ProjectSector | undefined,
       status: (status || undefined) as ProjectStatus | undefined,
+      completion:
+        activeTab === 'DONE' ? ('DONE' as const) : activeTab === 'NOT_DONE' ? ('NOT_DONE' as const) : undefined,
+      showcase: activeTab === 'SHOWCASE' ? true : undefined,
+      sortBy: (sort.startsWith('riskScore')
+        ? 'riskScore'
+        : sort.startsWith('approvedAmount')
+        ? 'approvedAmount'
+        : 'createdAt') as any,
+      sortOrder: (sort.endsWith('asc') ? 'asc' : 'desc') as any,
       page,
       limit: PAGE_SIZE,
     }),
-    [search, state, sector, status, page]
+    [search, state, sector, status, activeTab, sort, page]
   );
 
   const { data, isLoading, isFetching, isError, error, refetch } = usePublicProjects(filters);
@@ -64,17 +85,106 @@ export function ExploreClient() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const hasFilters = Boolean(search || state || sector || status);
+  const hasFilters = Boolean(search || state || sector || status || activeTab !== 'ALL');
   const projects = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Explore Projects</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {isLoading ? 'Loading…' : `${data?.total ?? 0} MPLAD project${data?.total === 1 ? '' : 's'} found`}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Explore Projects</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {isLoading
+              ? 'Loading…'
+              : `${data?.total?.toLocaleString('en-IN') ?? 0} official MPLAD project${data?.total === 1 ? '' : 's'} in registry`}
+          </p>
+        </div>
+
+        {/* Quick Done / Not Done / Showcase Switcher */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setActiveTab('ALL')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+              activeTab === 'ALL'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            )}
+          >
+            <span>All Projects</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+              60k+
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('DONE')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+              activeTab === 'DONE'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-emerald-700 hover:bg-emerald-50'
+            )}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>✓ Done</span>
+            <span
+              className={cn(
+                'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                activeTab === 'DONE' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-800'
+              )}
+            >
+              1.5k
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('NOT_DONE')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+              activeTab === 'NOT_DONE'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'text-amber-700 hover:bg-amber-50'
+            )}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>⏳ Not Done</span>
+            <span
+              className={cn(
+                'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                activeTab === 'NOT_DONE' ? 'bg-amber-700 text-amber-100' : 'bg-amber-100 text-amber-800'
+              )}
+            >
+              58.8k
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('SHOWCASE')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+              activeTab === 'SHOWCASE'
+                ? 'bg-vojas-700 text-white shadow-xs'
+                : 'text-vojas-700 hover:bg-vojas-50'
+            )}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>🏛️ Showcase Demo</span>
+            <span
+              className={cn(
+                'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
+                activeTab === 'SHOWCASE' ? 'bg-vojas-800 text-vojas-100' : 'bg-vojas-100 text-vojas-800'
+              )}
+            >
+              5
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Search + filters */}
@@ -131,6 +241,19 @@ export function ExploreClient() {
               {s.replace(/_/g, ' ')}
             </option>
           ))}
+        </select>
+
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
+          aria-label="Sort projects"
+        >
+          <option value="createdAt_desc">Sort: Newest First</option>
+          <option value="riskScore_desc">🚨 Highest AI Risk Score</option>
+          <option value="riskScore_asc">🟢 Lowest AI Risk Score</option>
+          <option value="approvedAmount_desc">💰 Sanctioned: High to Low</option>
+          <option value="approvedAmount_asc">💰 Sanctioned: Low to High</option>
         </select>
 
         {hasFilters && (

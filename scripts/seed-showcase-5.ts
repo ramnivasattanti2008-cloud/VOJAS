@@ -19,21 +19,21 @@
  * - For showcase-fraud-1: AI risk signals, high-severity finding, and Vigilance referral
  */
 
-import 'dotenv/config';
 import {
-  PrismaClient,
-  House,
-  ProjectStatus,
-  ProjectSector,
-  ProjectEventType,
-  ReportCategory,
-  ReportSeverity,
-  ReportStatus,
-  ReportPrivacyLevel,
-  SignalType,
-  AnomalySeverity,
-  RiskFindingStatus,
+    AnomalySeverity,
+    House,
+    PrismaClient,
+    ProjectEventType,
+    ProjectSector,
+    ProjectStatus,
+    ReportCategory,
+    ReportPrivacyLevel,
+    ReportSeverity,
+    ReportStatus,
+    RiskFindingStatus,
+    SignalType,
 } from '@vojas/db';
+import 'dotenv/config';
 
 const prisma = new PrismaClient();
 

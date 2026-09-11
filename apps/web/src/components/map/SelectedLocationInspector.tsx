@@ -1,24 +1,16 @@
 'use client';
 
-import React from 'react';
-import Link from 'next/link';
 import {
-  X,
-  ExternalLink,
-  MapPin,
-  AlertTriangle,
-  Building2,
-  Calendar,
-  IndianRupee,
-  Activity,
-  Sparkles,
-  ShieldAlert,
-  Satellite,
-  CheckCircle2,
-  Layers
+    AlertTriangle,
+    ExternalLink,
+    MapPin,
+    Satellite,
+    ShieldAlert,
+    Sparkles,
+    X
 } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import Link from 'next/link';
+import React from 'react';
 
 export interface InspectedEntity {
   id: string;
@@ -39,6 +31,8 @@ export interface InspectedEntity {
   category?: string;
   contractorName?: string;
   description?: string;
+  riskScore?: number;
+  aiDriver?: string;
   spectralMetrics?: {
     ndvi?: number;
     ndbi?: number;
@@ -103,6 +97,17 @@ export const SelectedLocationInspector: React.FC<SelectedLocationInspectorProps>
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                 {entity.type}
               </span>
+              {entity.status && (
+                entity.status === 'COMPLETED' || entity.status === 'VERIFIED' ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    ✓ DONE
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                    ⏳ NOT DONE
+                  </span>
+                )
+              )}
               {entity.riskLevel && getRiskBadge(entity.riskLevel)}
             </div>
             <h4 className="font-semibold text-sm text-slate-100 line-clamp-2 mt-0.5 leading-snug">
@@ -145,6 +150,28 @@ export const SelectedLocationInspector: React.FC<SelectedLocationInspectorProps>
             <span className="text-slate-200 font-medium">{entity.constituency || 'General'}</span>
           </div>
         </div>
+
+        {/* AI Risk Score & Findings */}
+        {(entity.riskScore != null || entity.aiDriver) && (
+          <div className="p-2.5 rounded-lg bg-purple-950/20 border border-purple-500/30 space-y-1.5 font-mono text-[11px]">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-purple-300 font-semibold">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                <span>AI RISK AUDIT</span>
+              </span>
+              {entity.riskScore != null && (
+                <span className="px-2 py-0.5 rounded font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                  {entity.riskScore}/100
+                </span>
+              )}
+            </div>
+            {entity.aiDriver && (
+              <p className="text-[11px] font-sans text-slate-300 leading-relaxed pt-0.5">
+                {entity.aiDriver}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Financial Metrics */}
         {(entity.sanctionedAmount != null || entity.expenditure != null) && (

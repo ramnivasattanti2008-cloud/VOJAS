@@ -83,6 +83,19 @@ export interface PublicProjectListItem {
   createdAt: string;
   updatedAt: string;
   mp?: PublicProjectMP | null;
+  projectRisk?: PublicProjectRiskInfo | null;
+}
+
+export interface PublicProjectRiskInfo {
+  riskScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+  confidence: string;
+  primaryDriver?: string | null;
+  financialScore?: number;
+  progressScore?: number;
+  satelliteScore?: number;
+  contractorScore?: number;
+  geographicScore?: number;
 }
 
 export interface PublicProjectMP {
@@ -120,13 +133,15 @@ export interface PublicProjectFilters {
   constituency?: string;
   sector?: ProjectSector;
   status?: ProjectStatus;
+  completion?: 'DONE' | 'NOT_DONE';
+  showcase?: boolean;
   minAmount?: number;
   maxAmount?: number;
   search?: string;
   hasCoordinates?: boolean;
   page?: number;
   limit?: number;
-  sortBy?: 'name' | 'approvedAmount' | 'spentAmount' | 'createdAt' | 'status';
+  sortBy?: 'name' | 'approvedAmount' | 'spentAmount' | 'createdAt' | 'status' | 'riskScore';
   sortOrder?: 'asc' | 'desc';
 }
 

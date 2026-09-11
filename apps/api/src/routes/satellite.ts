@@ -15,17 +15,16 @@
  * isn't available. NO_USABLE_OBSERVATION is a real status, not a failure.
  */
 
-import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { NotFoundError } from '@vojas/domain';
+import type { NextFunction, Request, Response } from 'express';
+import { Router } from 'express';
 import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
-import { success } from '../utils/apiResponse.js';
-import { buildTimeline, compareProgress } from '../services/satelliteEOAnalysis.js';
-import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
-import type { ReliabilityState } from '../services/satelliteJobQueue.js';
 import { cdseService } from '../services/cdseService.js';
-import { logger } from '../utils/logger.js';
+import { buildTimeline, compareProgress } from '../services/satelliteEOAnalysis.js';
+import type { ReliabilityState } from '../services/satelliteJobQueue.js';
+import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 

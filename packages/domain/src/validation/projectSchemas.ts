@@ -33,6 +33,11 @@ export const projectFiltersSchema = z.object({
   constituency: z.string().optional(),
   sector: z.nativeEnum(ProjectSector).optional(),
   status: z.nativeEnum(ProjectStatus).optional(),
+  completion: z.enum(['DONE', 'NOT_DONE']).optional(),
+  showcase: z
+    .boolean()
+    .or(z.enum(['true', 'false']).transform((v) => v === 'true'))
+    .optional(),
   minAmount: z.number().nonnegative().optional(),
   maxAmount: z.number().nonnegative().optional(),
   hasAnomalies: z.boolean().optional(),
@@ -44,7 +49,7 @@ export const projectFiltersSchema = z.object({
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).max(100).default(20),
   sortBy: z
-    .enum(['name', 'approvedAmount', 'spentAmount', 'createdAt', 'status'])
+    .enum(['name', 'approvedAmount', 'spentAmount', 'createdAt', 'status', 'riskScore'])
     .optional(),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });

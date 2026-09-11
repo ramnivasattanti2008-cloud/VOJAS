@@ -1,36 +1,39 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
-import {
-  ArrowLeft,
-  MapPin,
-  Activity,
-  DollarSign,
-  FileText,
-  Satellite,
-  Loader2,
-  ShieldAlert,
-  UserCheck,
-  MessageSquare,
-} from 'lucide-react';
-import {
-  usePublicProject,
-  usePublicProjectTimeline,
-  usePublicProjectRisk,
-  usePublicProjectEvidence,
-  usePublicProjectReports,
-} from '@/hooks/usePublicProjects';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { InformationClassificationBanner } from '@/components/transparency/InformationClassificationBanner';
+import { PublicMoneyView } from '@/components/transparency/PublicMoneyView';
+import { SourcePanel } from '@/components/transparency/SourcePanel';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { InformationClassificationBanner } from '@/components/transparency/InformationClassificationBanner';
-import { SourcePanel } from '@/components/transparency/SourcePanel';
-import { PublicMoneyView } from '@/components/transparency/PublicMoneyView';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import {
+    usePublicProject,
+    usePublicProjectEvidence,
+    usePublicProjectReports,
+    usePublicProjectRisk,
+    usePublicProjectTimeline,
+} from '@/hooks/usePublicProjects';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PublicProjectDetail } from '@vojas/api-client';
+import {
+    Activity,
+    ArrowLeft,
+    CheckCircle2,
+    Clock,
+    DollarSign,
+    FileText,
+    Loader2,
+    MapPin,
+    MessageSquare,
+    Satellite,
+    ShieldAlert,
+    Sparkles,
+    UserCheck,
+} from 'lucide-react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
 const SatelliteTab = dynamic(
   () => import('@/components/satellite/SatelliteTab').then((m) => m.SatelliteTab),
@@ -111,6 +114,14 @@ export function ExploreDetailClient() {
     );
   }
 
+  const isDone = project.status === 'COMPLETED' || project.status === 'VERIFIED';
+  const progressPercent =
+    project.approvedAmount > 0
+      ? Math.min(100, Math.round((project.spentAmount / project.approvedAmount) * 100))
+      : isDone
+      ? 100
+      : 0;
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
@@ -122,7 +133,40 @@ export function ExploreDetailClient() {
           Back to Explore
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {isDone ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  STATUS: DONE
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  STATUS: NOT DONE
+                </span>
+              )}
+              <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono">
+                {progressPercent}% Complete
+              </span>
+              {project.projectRisk && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-xs',
+                    project.projectRisk.riskLevel === 'CRITICAL'
+                      ? 'bg-rose-100 text-rose-800 border-rose-300'
+                      : project.projectRisk.riskLevel === 'HIGH'
+                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                      : project.projectRisk.riskLevel === 'MEDIUM'
+                      ? 'bg-sky-100 text-sky-800 border-sky-300'
+                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  )}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  AI RISK: {project.projectRisk.riskScore}/100 ({project.projectRisk.riskLevel})
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <Badge variant={STATUS_VARIANT[project.status] ?? 'neutral'}>{project.status.replace(/_/g, ' ')}</Badge>
@@ -169,7 +213,7 @@ export function ExploreDetailClient() {
       {activeTab === 'overview' && <OverviewTab project={project} />}
       {activeTab === 'financial' && <FinancialTab project={project} />}
       {activeTab === 'timeline' && <TimelineTab projectId={id} active={activeTab === 'timeline'} />}
-      {activeTab === 'risk' && <RiskTab projectId={id} active={activeTab === 'risk'} />}
+      {activeTab === 'risk' && <RiskTab projectId={id} project={project} active={activeTab === 'risk'} />}
       {activeTab === 'satellite' && (
         <SatelliteTab
           projectId={id}
@@ -193,9 +237,140 @@ function DetailField({ label, value }: { label: string; value: string }) {
   );
 }
 
+function SignalMeter({ label, score }: { label: string; score: number }) {
+  const isHigh = score >= 50;
+  const isMed = score >= 25 && score < 50;
+  return (
+    <div className="p-2.5 rounded-lg bg-white/90 border border-slate-200 shadow-2xs space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-slate-600 font-medium truncate">{label}</span>
+        <span
+          className={cn(
+            'font-mono font-bold text-xs',
+            isHigh ? 'text-rose-600' : isMed ? 'text-amber-600' : 'text-emerald-700'
+          )}
+        >
+          {score}/100
+        </span>
+      </div>
+      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            isHigh ? 'bg-rose-500' : isMed ? 'bg-amber-500' : 'bg-emerald-500'
+          )}
+          style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
+  const risk = project.projectRisk;
+  if (!risk) return null;
+
+  const isCritical = risk.riskLevel === 'CRITICAL';
+  const isHigh = risk.riskLevel === 'HIGH';
+  const isMed = risk.riskLevel === 'MEDIUM';
+
+  return (
+    <Card
+      className={cn(
+        'border-2 shadow-xs transition-all overflow-hidden',
+        isCritical
+          ? 'border-rose-300 bg-rose-50/30'
+          : isHigh
+          ? 'border-amber-300 bg-amber-50/30'
+          : isMed
+          ? 'border-sky-300 bg-sky-50/30'
+          : 'border-emerald-300 bg-emerald-50/30'
+      )}
+    >
+      <CardHeader className="pb-3 border-b border-slate-200/60 bg-white/70">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={cn(
+                'w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-xs',
+                isCritical
+                  ? 'bg-rose-600'
+                  : isHigh
+                  ? 'bg-amber-600'
+                  : isMed
+                  ? 'bg-sky-600'
+                  : 'bg-emerald-600'
+              )}
+            >
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                VOJAS AI Multi-Signal Risk Audit
+              </h2>
+              <p className="text-xs text-slate-500">
+                Statutory anomaly engine &amp; cross-source verification · Confidence:{' '}
+                <span className="font-semibold text-slate-700">{risk.confidence}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                'px-3.5 py-1.5 rounded-xl text-white font-mono font-bold text-sm shadow-xs flex items-center gap-2',
+                isCritical
+                  ? 'bg-rose-600'
+                  : isHigh
+                  ? 'bg-amber-600'
+                  : isMed
+                  ? 'bg-sky-700'
+                  : 'bg-emerald-600'
+              )}
+            >
+              <span className="text-base">{risk.riskScore}</span>
+              <span className="text-xs opacity-75">/ 100</span>
+              <span className="text-[11px] px-2 py-0.5 rounded bg-black/20 uppercase tracking-wider font-semibold">
+                {risk.riskLevel}
+              </span>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardBody className="space-y-4 pt-4">
+        {risk.primaryDriver && (
+          <div className="p-3.5 rounded-xl bg-white/90 border border-slate-200 shadow-2xs space-y-1">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Primary AI Audit Findings &amp; Rationale
+            </p>
+            <p className="text-sm font-medium text-slate-800 leading-relaxed">
+              {risk.primaryDriver}
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Multi-Signal Sub-Score Breakdown (0 = Safe, 100 = Max Disparity)
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            <SignalMeter label="Financial Utilization" score={risk.financialScore ?? 0} />
+            <SignalMeter label="Milestone & Progress" score={risk.progressScore ?? 0} />
+            <SignalMeter label="Satellite Observation" score={risk.satelliteScore ?? 0} />
+            <SignalMeter label="Contractor Disparity" score={risk.contractorScore ?? 0} />
+            <SignalMeter label="Geographic Integrity" score={risk.geographicScore ?? 0} />
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function OverviewTab({ project }: { project: PublicProjectDetail }) {
   return (
     <div className="space-y-5">
+      <AiRiskAuditCard project={project} />
+
       <Card>
         <CardHeader>
           <h2 className="text-base font-semibold text-slate-800">Project Details</h2>
@@ -376,12 +551,22 @@ function TimelineTab({ projectId, active }: { projectId: string; active: boolean
   );
 }
 
-function RiskTab({ projectId, active }: { projectId: string; active: boolean }) {
+function RiskTab({
+  projectId,
+  project,
+  active,
+}: {
+  projectId: string;
+  project: PublicProjectDetail;
+  active: boolean;
+}) {
   const { data, isLoading } = usePublicProjectRisk(projectId, active);
   const findings = data?.findings ?? [];
 
   return (
     <div className="space-y-4">
+      <AiRiskAuditCard project={project} />
+
       <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 flex items-start gap-2">
         <ShieldAlert className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
         <p className="text-xs text-amber-700 leading-relaxed">
