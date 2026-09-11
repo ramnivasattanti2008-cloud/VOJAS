@@ -27,9 +27,21 @@ function onUnauthorized() {
   window.location.href = '/login';
 }
 
+// TEMPORARY: vercel.json's /api/v1/* rewrite to the Render backend is
+// currently failing with DNS_HOSTNAME_RESOLVED_PRIVATE even though the
+// backend itself is confirmed healthy and its DNS resolves publicly. Until
+// that's root-caused, call the backend directly (cross-origin) instead of
+// via the same-origin rewrite so the deployed site actually serves data.
+// Revert this once the Vercel rewrite is fixed — it exists specifically to
+// keep API calls same-origin for SameSite=Lax cookie auth.
+const DIRECT_BACKEND_FALLBACK = 'https://vojas-backend.onrender.com/api/v1';
+
 const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
-    return `${window.location.origin}/api/v1`;
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `${window.location.origin}/api/v1`;
+    }
+    return DIRECT_BACKEND_FALLBACK;
   }
   return `${process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000'}/api/v1`;
 };
