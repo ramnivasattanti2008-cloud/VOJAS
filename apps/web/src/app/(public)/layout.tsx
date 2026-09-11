@@ -5,6 +5,8 @@ import { Shield, MapPin, Search, BarChart3, Wallet, FileText, Satellite } from '
 import { PublicHeaderActions } from '@/components/layout/PublicHeaderActions';
 import { CivicAICopilot } from '@/components/ai/CivicAICopilot';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'VOJAS — Public Infrastructure Intelligence Platform',
   description: 'Track India MPLAD development projects, analyze geospatial & satellite evidence, and inspect civic budget accountability.',
@@ -12,6 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-blue-500 selection:text-white">
       {/* Premium Sticky Navigation Header */}
