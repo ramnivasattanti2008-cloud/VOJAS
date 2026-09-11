@@ -1,0 +1,61 @@
+# Vercel deploys apps/web (a Next.js app) via vercel.json's buildCommand
+# (`cd apps/web && pnpm install --frozen-lockfile && pnpm build`), but the
+# upload step reads the WHOLE repo unless told otherwise, since this is a
+# pnpm monorepo and Vercel needs the sibling workspace packages
+# (@vojas/db, @vojas/domain, @vojas/shared, @vojas/api-client) to install.
+# Without this file the upload swept in >100MB of stuff apps/web's build
+# never touches (a 51MB GeoJSON in frontend/, a 60k-row ingest CSV,
+# uploads/, legacy/) and Vercel refused the deploy outright.
+
+# Backend source — apps/web's build never touches this. NOT excluding
+# apps/api/package.json itself: `pnpm install --frozen-lockfile` validates
+# the lockfile against every pnpm-workspace.yaml member's package.json, so
+# removing it here would break the install step the same way it did for
+# apps/api/Dockerfile before that file existed.
+apps/api/src
+apps/api/tests
+apps/api/dist
+apps/api/Dockerfile
+
+# Dead/leftover directories (see CLAUDE.md: not built, deployed, or linted)
+legacy
+frontend
+# Another leftover, undocumented in CLAUDE.md but the same story: a plain
+# `backend/` directory with an old SQLite dev.db (269MB — the exact size
+# every upload attempt kept hitting the 100MB single-file limit on, before
+# this was found).
+backend
+
+# Large data files — not needed to build the frontend
+scripts/ingest/data
+uploads
+
+# Build outputs (rebuilt during deploy)
+**/node_modules
+**/dist
+**/.next
+**/coverage
+
+# Local/dev state
+.env
+.env.*
+!.env.example
+*.log
+**/*.log
+
+# Docs, not part of the deployed app
+docs
+legacy
+*.md
+!README.md
+
+# Editor/OS cruft
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Git metadata and LFS objects — never needed to build the app, and one LFS
+# object here is 75MB (close to Vercel's 100MB single-file upload limit).
+.git
+.gitattributes

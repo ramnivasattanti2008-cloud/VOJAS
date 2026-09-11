@@ -1,13 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "cd apps/web && pnpm install --frozen-lockfile && pnpm build",
-  "installCommand": "pnpm install",
+  "buildCommand": "pnpm run build:packages && pnpm --filter @vojas/web build",
+  "installCommand": "pnpm install --frozen-lockfile",
   "framework": "nextjs",
   "outputDirectory": "apps/web/.next",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@vojas-next-public-api-url",
-    "NEXT_PUBLIC_MAP_TILER_KEY": "@vojas-map-tiler-key"
-  },
   "headers": [
     {
       "source": "/api/(.*)",

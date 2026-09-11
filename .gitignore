@@ -85,3 +85,5 @@ docker-compose.*.override.yml
 .cache
 .temp
 .sass-cache
+.vercel
+.env*
