@@ -1,11 +1,10 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
-// Forcing a rebuild: the /api/v1/* rewrite below was failing with
-// DNS_HOSTNAME_RESOLVED_PRIVATE against vojas-backend.onrender.com even
-// after the backend's own DNS/build/env issues were fixed and it was
-// confirmed healthy directly. This is a no-op change to trigger a fresh
-// Vercel deploy in case the rewrite destination was validated/cached stale.
+// Forcing a rebuild (attempt 2): the previous trigger commit (3ab4f41) built
+// and deployed, but the very next commit with the actual fix
+// (b6b24f8, apps/web/src/lib/api.ts) never triggered a Vercel build at all.
+// This commit exists solely to get Vercel to build current master HEAD.
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
