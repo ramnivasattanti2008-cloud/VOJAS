@@ -1,32 +1,32 @@
 'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import type { ApiClient, AuthResponse, User } from '@vojas/api-client';
 import { createAuthApi } from '@vojas/api-client';
-import type { ApiClient, User, AuthResponse } from '@vojas/api-client';
-import { setAccessTokenGetter } from './api';
 import {
-  hasPermission,
-  hasAnyPermission,
-  canVerify,
-  isAdminRole,
-  isOfficerRole,
-  isMPRole,
-  isCitizenRole,
-  isContractorRole,
-  getRoleCategory,
-  getPermissions,
-  getRoleColor,
-  type Permission,
+    canVerify,
+    getPermissions,
+    getRoleCategory,
+    getRoleColor,
+    hasAnyPermission,
+    hasPermission,
+    isAdminRole,
+    isCitizenRole,
+    isContractorRole,
+    isMPRole,
+    isOfficerRole,
+    type Permission,
 } from '@vojas/domain';
 import type { UserRole } from '@vojas/shared';
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
+import { setAccessTokenGetter } from './api';
 
 export interface AuthContextValue {
   user: User | null;
@@ -112,6 +112,10 @@ export function AuthProvider({ children, apiClient, onAuthError }: AuthProviderP
         const res: AuthResponse = await authApi.login({ email, password });
         setUser(res.user);
         setAccessToken(res.accessToken);
+        if (typeof document !== 'undefined') {
+          document.cookie = `vojas_token=${res.accessToken}; path=/; max-age=900; SameSite=Lax`;
+          document.cookie = `vojas_session=1; path=/; max-age=604800; SameSite=Lax`;
+        }
       } finally {
         setIsLoading(false);
       }
@@ -126,6 +130,10 @@ export function AuthProvider({ children, apiClient, onAuthError }: AuthProviderP
         const res: AuthResponse = await authApi.register({ name, email, password });
         setUser(res.user);
         setAccessToken(res.accessToken);
+        if (typeof document !== 'undefined') {
+          document.cookie = `vojas_token=${res.accessToken}; path=/; max-age=900; SameSite=Lax`;
+          document.cookie = `vojas_session=1; path=/; max-age=604800; SameSite=Lax`;
+        }
       } finally {
         setIsLoading(false);
       }
@@ -139,6 +147,11 @@ export function AuthProvider({ children, apiClient, onAuthError }: AuthProviderP
     } catch {
       // Ignore logout errors
     } finally {
+      if (typeof document !== 'undefined') {
+        document.cookie = 'vojas_token=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'access_token=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = 'vojas_session=; path=/; max-age=0; SameSite=Lax';
+      }
       setUser(null);
       setAccessToken(null);
       onAuthError?.();

@@ -180,6 +180,7 @@ export interface CitizenReport {
   media?: ReportMedia[];
   claims?: CitizenClaim[];
   moderations?: ReportModeration[];
+  statusHistory?: Array<{ status: string; note?: string | null; date: string }>;
   createdAt: string;
   updatedAt: string;
 }

@@ -24,6 +24,17 @@ const CATEGORIES = [
   { value: 'DOCUMENT_CONCERN', label: 'Document Concern', icon: '📄' },
   { value: 'CONTRACTOR_CONCERN', label: 'Contractor Concern', icon: '👷' },
   { value: 'OTHER', label: 'Other', icon: '❓' },
+  { value: 'CONSTRUCTION_QUALITY', label: 'Work Quality Issue', icon: '🔧' },
+  { value: 'DELAYED_WORK', label: 'Project Delay', icon: '⏰' },
+  { value: 'ABANDONED_WORK', label: 'Project Not Started / Abandoned', icon: '🏗️' },
+  { value: 'PROGRESS_MISMATCH', label: 'Project Incomplete / Progress Mismatch', icon: '📋' },
+  { value: 'SAFETY_HAZARD', label: 'Public Safety Concern', icon: '⚠️' },
+  { value: 'ENVIRONMENTAL_VIOLATION', label: 'Environmental Concern', icon: '🌿' },
+  { value: 'FINANCIAL_IRREGULARITY', label: 'Financial Concern / Corruption', icon: '💰' },
+  { value: 'FAKE_DOCUMENTS', label: 'Document Concern', icon: '📄' },
+  { value: 'VENDOR_MISCONDUCT', label: 'Contractor Misconduct', icon: '👷' },
+  { value: 'LOCATION_MISMATCH', label: 'Ghost Project / Location Mismatch', icon: '📍' },
+  { value: 'OTHER', label: 'Other Observation', icon: '❓' },
 ];
 
 const PRIVACY_OPTIONS: ReportPrivacyLevel[] = ['PUBLIC', 'RESTRICTED', 'CONFIDENTIAL', 'ANONYMOUS'];
@@ -135,7 +146,7 @@ export function ReportForm() {
         latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
         longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
         locationAccuracyM: formData.locationAccuracyM ? parseFloat(formData.locationAccuracyM) : undefined,
-        incidentDate: formData.incidentDate || undefined,
+        incidentDate: formData.incidentDate ? new Date(formData.incidentDate).toISOString() : undefined,
         projectId: formData.projectId.trim() || undefined,
         reporterName: formData.isAnonymous ? undefined : formData.reporterName.trim() || undefined,
         reporterEmail: formData.isAnonymous ? undefined : formData.reporterEmail.trim() || undefined,
@@ -145,8 +156,8 @@ export function ReportForm() {
 
       setReportReference(result.reportReference);
       setSubmitted(true);
-    } catch {
-      setSubmitError('Failed to submit report. Please check your connection and try again.');
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Failed to submit report. Please check your inputs and try again.');
     }
   };
 

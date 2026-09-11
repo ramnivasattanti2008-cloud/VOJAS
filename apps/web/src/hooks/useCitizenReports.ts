@@ -1,14 +1,14 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createCitizenReportsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
-  SubmitReportPayload,
-  UpdateReportPayload,
-  ReportFilters,
-  ModerationAction,
+    ModerationAction,
+    ReportFilters,
+    SubmitReportPayload,
+    UpdateReportPayload,
 } from '@vojas/api-client';
+import { createCitizenReportsApi } from '@vojas/api-client';
 
 const reportsApi = createCitizenReportsApi(apiClient);
 
@@ -36,6 +36,18 @@ export function useTrackReportStatus(reportReference: string | null) {
     queryKey: ['citizen-reports', 'status', reportReference],
     queryFn: () => reportsApi.trackStatus(reportReference!),
     enabled: !!reportReference,
+  });
+}
+
+export function useUpdateReportByReference() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportReference, note, newStatus }: { reportReference: string; note: string; newStatus?: string }) =>
+      reportsApi.updateByReference(reportReference, note, newStatus),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['citizen-reports', 'track', vars.reportReference] });
+      qc.invalidateQueries({ queryKey: ['citizen-reports', 'status', vars.reportReference] });
+    },
   });
 }
 

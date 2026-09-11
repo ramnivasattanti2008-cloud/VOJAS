@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { Search, CheckCircle, Clock, AlertCircle, FileText, MapPin, Calendar } from 'lucide-react';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useTrackReport, useTrackReportStatus } from '@/hooks/useCitizenReports';
-import { REPORT_STATUS_LABELS, REPORT_CATEGORY_LABELS } from '@vojas/api-client';
-import { formatDate, formatDateTime } from '@/lib/utils';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { useTrackReport, useTrackReportStatus, useUpdateReportByReference } from '@/hooks/useCitizenReports';
+import { formatDateTime } from '@/lib/utils';
+import { REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS } from '@vojas/api-client';
+import { AlertCircle, Calendar, CheckCircle, CheckCircle2, Clock, FileText, MapPin, MessageSquare, Search, Send } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   SUBMITTED: 'info',
@@ -43,10 +43,34 @@ export default function TrackReportPage() {
 
   const { data: report, isLoading, error } = useTrackReport(searchReference || null);
   const { data: status } = useTrackReportStatus(searchReference || null);
+  const updateMutation = useUpdateReportByReference();
+
+  const [updateNote, setUpdateNote] = useState('');
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchReference(inputReference.trim().toUpperCase());
+    setUpdateSuccess(false);
+    setUpdateError(null);
+  };
+
+  const handleSendUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!updateNote.trim() || !searchReference) return;
+    setUpdateError(null);
+    setUpdateSuccess(false);
+    try {
+      await updateMutation.mutateAsync({
+        reportReference: searchReference,
+        note: updateNote.trim(),
+      });
+      setUpdateNote('');
+      setUpdateSuccess(true);
+    } catch (err: any) {
+      setUpdateError(err?.message || 'Failed to submit update. Please try again.');
+    }
   };
 
   const displayReport = report;
@@ -261,6 +285,76 @@ export default function TrackReportPage() {
                   </div>
                 )}
               </div>
+            </CardBody>
+          </Card>
+
+          {/* Status & Update History */}
+          {((displayReport as any)?.statusHistory?.length ?? 0) > 0 && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-slate-500" />
+                  Activity & Update History
+                </h2>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-3">
+                  {(displayReport as any).statusHistory.map((h: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-800">{h.status.replace(/_/g, ' ')}</span>
+                        <span className="text-[11px] text-slate-400">{formatDateTime(h.date)}</span>
+                      </div>
+                      {h.note && <p className="text-xs text-slate-600 mt-1">{h.note}</p>}
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Citizen Follow-Up Update Form */}
+          <Card className="border-blue-100 bg-blue-50/40">
+            <CardHeader>
+              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-blue-600" />
+                Submit Follow-Up Note / Update
+              </h2>
+            </CardHeader>
+            <CardBody>
+              <form onSubmit={handleSendUpdate} className="space-y-3">
+                <p className="text-xs text-slate-600">
+                  Observed new developments, contractor presence, or ongoing stall? Post an update to append to this report&apos;s official log.
+                </p>
+                {updateSuccess && (
+                  <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-green-600" />
+                    <span>Your update has been recorded successfully and appended to the report history!</span>
+                  </div>
+                )}
+                {updateError && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                    <span>{updateError}</span>
+                  </div>
+                )}
+                <textarea
+                  rows={3}
+                  value={updateNote}
+                  onChange={(e) => setUpdateNote(e.target.value)}
+                  placeholder="Describe recent changes, work activity, or additional details..."
+                  className="w-full p-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-200 focus:border-vojas-500 bg-white"
+                  required
+                />
+                <Button
+                  type="submit"
+                  isLoading={updateMutation.isPending}
+                  leftIcon={<Send className="w-4 h-4" />}
+                  className="w-full sm:w-auto"
+                >
+                  Post Update
+                </Button>
+              </form>
             </CardBody>
           </Card>
 

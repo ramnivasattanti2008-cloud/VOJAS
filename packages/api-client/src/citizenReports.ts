@@ -1,11 +1,11 @@
 import type { ApiClient } from './client.js';
 import type {
-  CitizenReport,
-  ReportMedia,
-  CitizenClaim,
-  PaginatedResponse,
-  ReportPrivacyLevel,
-  ModerationAction,
+    CitizenClaim,
+    CitizenReport,
+    ModerationAction,
+    PaginatedResponse,
+    ReportMedia,
+    ReportPrivacyLevel,
 } from './types.js';
 
 export interface SubmitReportPayload {
@@ -66,6 +66,14 @@ export function createCitizenReportsApi(client: ApiClient) {
     trackStatus(reportReference: string) {
       return client.get<{ status: string; triageStatus: string; updatedAt: string }>(
         `/reports/track/${reportReference}/status`
+      );
+    },
+
+    // Public: Add follow-up note or update to tracked report
+    updateByReference(reportReference: string, note: string, newStatus?: string) {
+      return client.post<{ success: boolean; report: CitizenReport }>(
+        `/reports/track/${reportReference}/update`,
+        { note, newStatus }
       );
     },
 

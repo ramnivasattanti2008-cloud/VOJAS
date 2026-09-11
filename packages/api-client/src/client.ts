@@ -33,7 +33,9 @@ export class ApiClient {
     }
     if (options?.params) {
       Object.entries(options.params).forEach(([k, v]) => {
-        if (v !== undefined) url.searchParams.set(k, String(v));
+        if (v !== undefined && v !== null && v !== '') {
+          url.searchParams.set(k, String(v));
+        }
       });
     }
 
@@ -54,13 +56,27 @@ export class ApiClient {
       this.onUnauthorized();
     }
 
-    const json: ApiResponse<T> = (await response.json().catch(() => null)) as ApiResponse<T> ?? {
-      success: false,
-      error: { code: 'NETWORK_ERROR', message: 'Failed to parse response' }
-    };
+    let json: ApiResponse<T> | null = null;
+    let rawText = '';
+    try {
+      rawText = await response.text();
+      if (rawText) {
+        json = JSON.parse(rawText) as ApiResponse<T>;
+      }
+    } catch {
+      json = null;
+    }
+
+    if (!json) {
+      const errMsg = rawText ? rawText.slice(0, 300) : `HTTP ${response.status} ${response.statusText}`;
+      throw new Error(response.ok ? 'Failed to parse response' : `Server error (${response.status}): ${errMsg}`);
+    }
 
     if (!json.success) {
-      throw new Error(json.error?.message ?? 'Request failed');
+      const details = Array.isArray(json.error?.details)
+        ? json.error.details.map((d: any) => d.message || JSON.stringify(d)).join('; ')
+        : '';
+      throw new Error(details ? `${json.error?.message}: ${details}` : (json.error?.message ?? 'Request failed'));
     }
     return json.data as T;
   }

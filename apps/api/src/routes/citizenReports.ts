@@ -77,23 +77,55 @@ const upload = multer({
   },
 });
 
-// ─── Schemas ─────────────────────────────────────────────────────────────────
+const CATEGORY_MAP: Record<string, string> = {
+  PROJECT_NOT_STARTED: 'ABANDONED_WORK',
+  PROJECT_DELAY: 'DELAYED_WORK',
+  WORK_QUALITY: 'CONSTRUCTION_QUALITY',
+  PROJECT_INCOMPLETE: 'PROGRESS_MISMATCH',
+  PUBLIC_SAFETY: 'SAFETY_HAZARD',
+  ENVIRONMENTAL_CONCERN: 'ENVIRONMENTAL_VIOLATION',
+  FINANCIAL_CONCERN: 'FINANCIAL_IRREGULARITY',
+  DOCUMENT_CONCERN: 'FAKE_DOCUMENTS',
+  CONTRACTOR_CONCERN: 'VENDOR_MISCONDUCT',
+};
 
 const reportSubmitSchema = z.object({
   title: z.string().min(1).max(300),
-  description: z.string().min(10).max(5000),
-  category: z.enum([
-    'CONSTRUCTION_QUALITY', 'FINANCIAL_IRREGULARITY', 'DELAYED_WORK',
-    'ABANDONED_WORK', 'FAKE_DOCUMENTS', 'VENDOR_MISCONDUCT',
-    'LOCATION_MISMATCH', 'PROGRESS_MISMATCH', 'ENVIRONMENTAL_VIOLATION',
-    'SAFETY_HAZARD', 'OTHER',
-  ]),
+  description: z.string().min(1).max(5000),
+  category: z
+    .string()
+    .transform((val) => CATEGORY_MAP[val] ?? val)
+    .pipe(
+      z.enum([
+        'CONSTRUCTION_QUALITY',
+        'FINANCIAL_IRREGULARITY',
+        'DELAYED_WORK',
+        'ABANDONED_WORK',
+        'FAKE_DOCUMENTS',
+        'VENDOR_MISCONDUCT',
+        'LOCATION_MISMATCH',
+        'PROGRESS_MISMATCH',
+        'ENVIRONMENTAL_VIOLATION',
+        'SAFETY_HAZARD',
+        'OTHER',
+      ])
+    ),
   privacyLevel: z.enum(['PUBLIC', 'RESTRICTED', 'CONFIDENTIAL', 'ANONYMOUS']).default('RESTRICTED'),
   locationDesc: z.string().max(500).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   locationAccuracyM: z.number().positive().optional(),
-  incidentDate: z.string().datetime().optional(),
+  incidentDate: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val) return undefined;
+      try {
+        return new Date(val).toISOString();
+      } catch {
+        return undefined;
+      }
+    }),
   projectId: z.string().min(1).optional(),
   reporterName: z.string().max(200).optional(),
   reporterEmail: z.string().email().max(200).optional().or(z.literal('')),
@@ -910,14 +942,58 @@ router.get('/track/:reportReference', async (req: Request, res: Response, next: 
       return;
     }
 
-    // No token: return limited public info
+    // Public safe view for citizens tracking by reference
     success(res, {
       reportReference: report.reportReference,
       title: report.title,
+      description: report.description,
+      category: report.category,
       status: report.status,
+      triageStatus: report.triageStatus,
+      severity: report.severity,
+      locationDesc: report.locationDesc,
+      submittedAt: report.submittedAt,
       updatedAt: report.updatedAt,
-      statusHistory: statusHistory.map(h => ({ status: h.status, date: h.date })),
+      statusHistory: statusHistory.map((h) => ({ status: h.status, note: h.note, date: h.date })),
+      accessTokenValid: false,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /reports/track/:reportReference/update — citizen/whistleblower adds follow-up note/update
+ */
+router.post('/track/:reportReference/update', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reportReference = req.params.reportReference as string;
+    const { note, newStatus } = req.body;
+    if (!note || typeof note !== 'string' || !note.trim()) {
+      return error(res, 'VALIDATION_ERROR', 'Update note cannot be empty', null, 400);
+    }
+
+    const report = await prisma.report.findUnique({ where: { reportReference } });
+    if (!report) throw new NotFoundError('Report');
+
+    const updated = await prisma.report.update({
+      where: { id: report.id },
+      data: {
+        updatedAt: new Date(),
+        ...(newStatus && typeof newStatus === 'string' ? { status: newStatus as ReportStatus } : {}),
+      },
+    });
+
+    await prisma.reportStatusLog.create({
+      data: {
+        reportId: report.id,
+        fromStatus: report.status,
+        toStatus: newStatus && typeof newStatus === 'string' ? (newStatus as ReportStatus) : report.status,
+        notes: `[Citizen Follow-up] ${note.trim()}`,
+      },
+    });
+
+    success(res, { success: true, report: updated });
   } catch (err) {
     next(err);
   }

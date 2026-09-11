@@ -50,7 +50,7 @@ export const reportSubmitSchema = z.object({
   locationDesc: z.string().max(500).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
-  projectId: z.string().uuid().optional(),
+  projectId: z.string().min(1).optional(),
   reporterName: z.string().max(200).optional(),
   reporterEmail: z.string().email().max(200).optional().or(z.literal('')),
   reporterPhone: z.string().max(20).optional(),
