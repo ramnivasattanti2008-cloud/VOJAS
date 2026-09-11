@@ -1,9 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run build:packages && pnpm --filter @vojas/web build",
-  "installCommand": "pnpm install --frozen-lockfile",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next",
   "headers": [
     {
       "source": "/api/(.*)",
@@ -68,5 +65,6 @@
       "source": "/api/v1/(.*)",
       "destination": "https://vojas-backend.onrender.com/api/v1/$1"
     }
-  ]
+  ],
+  "buildCommand": "cd ../.. && pnpm db:generate && pnpm --filter @vojas/db build && pnpm --filter @vojas/shared build && pnpm --filter @vojas/domain build && pnpm --filter @vojas/api-client build && pnpm --filter @vojas/web build"
 }
