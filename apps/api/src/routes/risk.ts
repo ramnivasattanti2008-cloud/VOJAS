@@ -15,19 +15,19 @@
  *   PATCH /findings/:id/status        — Update finding status
  */
 
-import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import {
-  RiskAnalysisOrchestrator,
-  ProjectIntelligenceService,
-  NotFoundError,
-  ValidationError,
+    NotFoundError,
+    ProjectIntelligenceService,
+    RiskAnalysisOrchestrator,
+    ValidationError,
 } from '@vojas/domain';
-import { AuditAction, PERMISSIONS, UserRole, getPermissionsForRole, buildUserContext, canAccessProject } from '@vojas/shared';
+import { UserRole, buildUserContext, canAccessProject, getPermissionsForRole } from '@vojas/shared';
+import type { NextFunction, Request, Response } from 'express';
+import { Router } from 'express';
 import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
-import { success, created } from '../utils/apiResponse.js';
 import { LLMDetectionService } from '../services/llmDetectionService.js';
+import { success } from '../utils/apiResponse.js';
 
 const router = Router();
 const orchestrator = new RiskAnalysisOrchestrator(prisma);

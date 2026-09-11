@@ -18,6 +18,10 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30000,
+    // beforeAll hooks provision fixture users, and bcrypt hashing plus login
+    // round-trips routinely exceed Vitest's 10s hook default on slower machines
+    // even though each individual test fits well inside testTimeout.
+    hookTimeout: 30000,
     env: {
       // The suites register and log in dozens of fixture users and submit
       // several reports, which exceeds the production rate-limit ceilings and

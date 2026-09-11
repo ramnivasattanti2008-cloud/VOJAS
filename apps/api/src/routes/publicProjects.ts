@@ -15,9 +15,9 @@ import { prisma } from '@vojas/db';
 import { EvidenceService, projectFiltersSchema } from '@vojas/domain';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
+import { LLMDetectionService } from '../services/llmDetectionService.js';
 import { success } from '../utils/apiResponse.js';
 import { CACHE_TTL, get, set } from '../utils/cache.js';
-import { LLMDetectionService } from '../services/llmDetectionService.js';
 
 const evidenceService = new EvidenceService(prisma);
 const llmDetectionService = new LLMDetectionService(prisma);

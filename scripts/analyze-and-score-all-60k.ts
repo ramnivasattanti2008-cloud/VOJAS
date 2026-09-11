@@ -8,10 +8,13 @@
  * Usage: pnpm tsx --tsconfig scripts/tsconfig.json scripts/analyze-and-score-all-60k.ts
  */
 
+import type { Prisma } from '@vojas/db';
 import { PrismaClient, RiskLevel } from '@vojas/db';
 import 'dotenv/config';
 
 const prisma = new PrismaClient();
+
+const ALGORITHM_VERSION = 'vojas-ai-engine-v4.0-sentinel';
 
 const SHOWCASE_IDS = [
   'cmtwjxvip000n932octqrfpw7',
@@ -52,7 +55,7 @@ interface ScoredRisk {
   correlationScore: number;
   confidence: string;
   primaryDriver: string;
-  drivers: import('@vojas/db').Prisma.InputJsonValue;
+  drivers: Prisma.InputJsonValue;
   algorithmVersion: string;
 }
 
@@ -101,7 +104,7 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
             solution: 'Archived for statutory social audit and routine maintenance handover.',
           },
         ],
-        algorithmVersion: 'vojas-ai-engine-v3.0',
+        algorithmVersion: ALGORITHM_VERSION,
       };
     } else if (spentRatio < 0.5) {
       score = 42;
@@ -130,7 +133,7 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
             solution: 'Verify final settlement bill and de-obligate remaining capital back to MPLADS treasury.',
           },
         ],
-        algorithmVersion: 'vojas-ai-engine-v3.0',
+        algorithmVersion: ALGORITHM_VERSION,
       };
     }
   }
@@ -184,10 +187,6 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
     });
   }
 
-  // 5. High Allocation with Missing Coordinates
-  if (!hasCoords && approved > 2500000) {
-    score += 15;
-    geoScore += 20;
   // 5. High Allocation with Missing Coordinates / Geofence Anomaly
   if (!hasCoords && approved > 2000000) {
     const geoPts = approved > 5000000 ? 25 : 15;
@@ -195,9 +194,6 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
     geoScore += geoPts + 10;
     driversList.push({
       name: 'Geospatial Verifiability Gap',
-      contribution: 15,
-      evidence: `High-value capital project (₹${(approved / 100000).toFixed(1)}L) lacking mandatory geospatial coordinates.`,
-      solution: 'Enforce mandatory GPS coordinate upload by implementing agency.',
       contribution: geoPts,
       evidence: `High-value capital project (₹${(approved / 100000).toFixed(1)}L) lacking mandatory statutory GPS geofence coordinates.`,
       solution: 'Enforce mandatory geotagged inspection and satellite bounding polygon upload before subsequent tranche release.',
@@ -218,9 +214,6 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
 
   // Default baseline
   if (score === 0) {
-    score = p.status === 'IN_PROGRESS' ? 24 : p.status === 'APPROVED' ? 18 : 32;
-    finScore = 15;
-    progScore = 15;
     score = p.status === 'IN_PROGRESS' ? 22 : p.status === 'APPROVED' ? 16 : 28;
     finScore = 12;
     progScore = 12;
@@ -257,9 +250,8 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
     correlationScore: 0,
     confidence: hasCoords ? 'HIGH' : 'MEDIUM',
     primaryDriver,
-    drivers: driversList as unknown as import('@vojas/db').Prisma.InputJsonValue,
-    algorithmVersion: 'vojas-ai-engine-v3.0',
-    algorithmVersion: 'vojas-ai-engine-v4.0-sentinel',
+    drivers: driversList as unknown as Prisma.InputJsonValue,
+    algorithmVersion: ALGORITHM_VERSION,
   };
 }
 

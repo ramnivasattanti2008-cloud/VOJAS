@@ -22,7 +22,15 @@ export class ApiClient {
     endpoint: string,
     options?: { body?: unknown; params?: Record<string, string | number | boolean | undefined> }
   ): Promise<T> {
-    const url = new URL(`${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`);
+    const fullPath = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    let url: URL;
+    try {
+      url = new URL(fullPath);
+    } catch {
+      const g = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
+      const fallbackOrigin = g.location?.origin ?? 'http://127.0.0.1:5000';
+      url = new URL(fullPath, fallbackOrigin);
+    }
     if (options?.params) {
       Object.entries(options.params).forEach(([k, v]) => {
         if (v !== undefined) url.searchParams.set(k, String(v));

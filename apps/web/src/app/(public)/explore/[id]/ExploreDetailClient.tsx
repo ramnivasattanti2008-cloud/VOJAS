@@ -22,8 +22,6 @@ import {
     ArrowLeft,
     CheckCircle,
     CheckCircle2,
-    ChevronDown,
-    ChevronUp,
     Clock,
     Cpu,
     DollarSign,
@@ -32,12 +30,11 @@ import {
     Loader2,
     MapPin,
     MessageSquare,
-    RefreshCw,
     Satellite,
     Scale,
     ShieldAlert,
     Sparkles,
-    UserCheck,
+    UserCheck
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
