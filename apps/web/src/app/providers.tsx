@@ -1,13 +1,13 @@
 'use client';
 
-import { Suspense } from 'react';
-import { useCallback, useRef } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '@/lib/auth-context';
-import { apiClient, setAccessTokenGetter, isOnPublicPath } from '@/lib/api';
-import { queryClient } from '@/lib/query-client';
 import { GlobalErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { LanguageProvider } from '@/i18n/LanguageContext';
+import { apiClient, isOnPublicPath, setAccessTokenGetter } from '@/lib/api';
+import { AuthProvider } from '@/lib/auth-context';
+import { queryClient } from '@/lib/query-client';
+import { QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { Suspense, useCallback, useRef } from 'react';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -38,9 +38,11 @@ export function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
       <GlobalErrorBoundary>
         <Suspense fallback={<PageLoading />}>
-          <AuthProvider apiClient={apiClient} onAuthError={handleAuthError}>
-            {children}
-          </AuthProvider>
+          <LanguageProvider>
+            <AuthProvider apiClient={apiClient} onAuthError={handleAuthError}>
+              {children}
+            </AuthProvider>
+          </LanguageProvider>
         </Suspense>
       </GlobalErrorBoundary>
     </QueryClientProvider>

@@ -1,8 +1,10 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { Shield, MapPin, Search, BarChart3, Wallet, FileText, Satellite } from 'lucide-react';
 import { PublicHeaderActions } from '@/components/layout/PublicHeaderActions';
+import { PublicMobileNavBar, PublicNavBar } from '@/components/layout/PublicNavBar';
+import { LanguageSelector } from '@/components/ui/LanguageSelector';
+import { Shield } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: 'VOJAS — Public Infrastructure Intelligence Platform',
@@ -32,58 +34,11 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           </Link>
 
           {/* Core Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Link
-              href="/explore"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 rounded-lg hover:text-blue-600 hover:bg-slate-100/80 transition-all"
-            >
-              <Search className="w-3.5 h-3.5 text-slate-500" />
-              Explore Projects
-            </Link>
-
-            <Link
-              href="/explore/map"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 rounded-lg hover:text-blue-600 hover:bg-slate-100/80 transition-all"
-            >
-              <MapPin className="w-3.5 h-3.5 text-slate-500" />
-              Project Map
-            </Link>
-
-            <Link
-              href="/budget"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 rounded-lg hover:text-blue-600 hover:bg-slate-100/80 transition-all"
-            >
-              <Wallet className="w-3.5 h-3.5 text-slate-500" />
-              Budget Tracker
-            </Link>
-
-            <Link
-              href="/insights"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 rounded-lg hover:text-blue-600 hover:bg-slate-100/80 transition-all"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
-              Sector Analytics
-            </Link>
-
-            <Link
-              href="/satellites"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 rounded-lg hover:text-blue-600 hover:bg-slate-100/80 transition-all"
-            >
-              <Satellite className="w-3.5 h-3.5 text-slate-500" />
-              Satellite Engine
-            </Link>
-
-            <Link
-              href="/report"
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 rounded-lg hover:text-blue-600 hover:bg-slate-100/80 transition-all"
-            >
-              <FileText className="w-3.5 h-3.5 text-slate-500" />
-              Report Discrepancy
-            </Link>
-          </nav>
+          <PublicNavBar />
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageSelector variant="button" />
             <Link
               href="/report"
               className="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg shadow-xs hover:bg-blue-700 transition-colors"
@@ -95,14 +50,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         </div>
 
         {/* Mobile Quick Links Bar */}
-        <div className="md:hidden flex items-center gap-1 px-4 py-2 bg-slate-100/80 border-t border-slate-200 overflow-x-auto text-xs font-medium text-slate-600 no-scrollbar">
-          <Link href="/explore" className="px-2.5 py-1 rounded-md hover:bg-white shrink-0">Explore</Link>
-          <Link href="/explore/map" className="px-2.5 py-1 rounded-md hover:bg-white shrink-0">Map</Link>
-          <Link href="/budget" className="px-2.5 py-1 rounded-md hover:bg-white shrink-0">Budget</Link>
-          <Link href="/insights" className="px-2.5 py-1 rounded-md hover:bg-white shrink-0">Analytics</Link>
-          <Link href="/satellites" className="px-2.5 py-1 rounded-md hover:bg-white shrink-0">Satellite</Link>
-          <Link href="/report" className="px-2.5 py-1 rounded-md hover:bg-white shrink-0">Report</Link>
-        </div>
+        <PublicMobileNavBar />
       </header>
 
       {/* Main Content Container */}

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ChevronDown, LogOut, User as UserIcon, Bell } from 'lucide-react';
+import { LanguageSelector } from '@/components/ui/LanguageSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotificationCount } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
+import { Bell, ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -46,6 +47,9 @@ export function Header() {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
       <div className="px-6 py-3 flex items-center justify-end gap-3">
+        {/* Language selector */}
+        <LanguageSelector variant="compact" />
+
         {/* Notification bell */}
         <Link
           href="/notifications"

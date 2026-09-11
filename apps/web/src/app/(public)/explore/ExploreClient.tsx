@@ -3,6 +3,7 @@
 import { PublicProjectCard } from '@/components/transparency/PublicProjectCard';
 import { Button } from '@/components/ui/Button';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -27,9 +28,7 @@ function useDebounced<T>(value: T, delayMs: number): T {
 }
 
 export function ExploreClient() {
-  // Pre-fill from links elsewhere in the app (Budget Tracker, Analytics,
-  // Map) — e.g. /explore?sector=HEALTH&state=Kerala. Read once on mount;
-  // the filter UI below is the source of truth after that.
+  const { t } = useLanguage();
   const initialParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<CompletionTab>(() => {
@@ -93,11 +92,11 @@ export function ExploreClient() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Explore Projects</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t('nav.projects', 'Explore Projects')}</h1>
           <p className="text-sm text-slate-500 mt-1">
             {isLoading
-              ? 'Loading…'
-              : `${data?.total?.toLocaleString('en-IN') ?? 0} official MPLAD project${data?.total === 1 ? '' : 's'} in registry`}
+              ? t('common.loading', 'Loading…')
+              : `${data?.total?.toLocaleString('en-IN') ?? 0} ${t('common.officialMPLADProjects', 'official MPLAD projects in registry')}`}
           </p>
         </div>
 
@@ -113,7 +112,7 @@ export function ExploreClient() {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
             )}
           >
-            <span>All Projects</span>
+            <span>{t('explore.allProjects', 'All Projects')}</span>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
               60k+
             </span>
@@ -130,7 +129,7 @@ export function ExploreClient() {
             )}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>✓ Done</span>
+            <span>✓ {t('common.completed', 'Done')}</span>
             <span
               className={cn(
                 'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
@@ -152,7 +151,7 @@ export function ExploreClient() {
             )}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>⏳ Not Done</span>
+            <span>⏳ {t('common.pending', 'Not Done')}</span>
             <span
               className={cn(
                 'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
@@ -174,7 +173,7 @@ export function ExploreClient() {
             )}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>🏛️ Showcase Demo</span>
+            <span>🏛️ {t('explore.showcaseDemo', 'Showcase Demo')}</span>
             <span
               className={cn(
                 'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
@@ -193,11 +192,11 @@ export function ExploreClient() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden="true" />
           <input
             type="search"
-            placeholder="Search by project name or description…"
+            placeholder={t('common.search', 'Search by project name or description…')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-200 focus:border-vojas-500"
-            aria-label="Search projects"
+            aria-label={t('common.search', 'Search projects')}
           />
         </div>
 
@@ -205,9 +204,9 @@ export function ExploreClient() {
           value={state}
           onChange={(e) => setState(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
-          aria-label="Filter by state"
+          aria-label={t('common.filter', 'Filter by state')}
         >
-          <option value="">All states</option>
+          <option value="">{t('common.all', 'All')} {t('common.state', 'states')}</option>
           {(stateSummaries ?? []).map((s) => (
             <option key={s.state} value={s.state}>
               {s.state} ({s.totalProjects})
@@ -219,9 +218,9 @@ export function ExploreClient() {
           value={sector}
           onChange={(e) => setSector(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
-          aria-label="Filter by sector"
+          aria-label={t('common.filter', 'Filter by sector')}
         >
-          <option value="">All sectors</option>
+          <option value="">{t('common.all', 'All')} {t('common.category', 'sectors')}</option>
           {Object.values(ProjectSector).map((s) => (
             <option key={s} value={s}>
               {s.replace(/_/g, ' ')}
@@ -233,9 +232,9 @@ export function ExploreClient() {
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
-          aria-label="Filter by status"
+          aria-label={t('common.filter', 'Filter by status')}
         >
-          <option value="">All statuses</option>
+          <option value="">{t('common.all', 'All')} {t('common.status', 'statuses')}</option>
           {Object.values(ProjectStatus).map((s) => (
             <option key={s} value={s}>
               {s.replace(/_/g, ' ')}
@@ -249,11 +248,11 @@ export function ExploreClient() {
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
           aria-label="Sort projects"
         >
-          <option value="createdAt_desc">Sort: Newest First</option>
-          <option value="riskScore_desc">🚨 Highest AI Risk Score</option>
-          <option value="riskScore_asc">🟢 Lowest AI Risk Score</option>
-          <option value="approvedAmount_desc">💰 Sanctioned: High to Low</option>
-          <option value="approvedAmount_asc">💰 Sanctioned: Low to High</option>
+          <option value="createdAt_desc">{t('common.newest', 'Sort: Newest First')}</option>
+          <option value="riskScore_desc">🚨 {t('explore.highestRisk', 'Highest AI Risk Score')}</option>
+          <option value="riskScore_asc">🟢 {t('explore.lowestRisk', 'Lowest AI Risk Score')}</option>
+          <option value="approvedAmount_desc">💰 {t('explore.budgetHigh', 'Sanctioned: High to Low')}</option>
+          <option value="approvedAmount_asc">💰 {t('explore.budgetLow', 'Sanctioned: Low to High')}</option>
         </select>
 
         {hasFilters && (
@@ -268,7 +267,7 @@ export function ExploreClient() {
               setStatus('');
             }}
           >
-            Clear filters
+            {t('common.clear', 'Clear filters')}
           </Button>
         )}
       </div>

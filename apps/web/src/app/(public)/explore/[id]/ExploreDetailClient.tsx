@@ -13,6 +13,7 @@ import {
     usePublicProjectRisk,
     usePublicProjectTimeline,
 } from '@/hooks/usePublicProjects';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PublicProjectDetail } from '@vojas/api-client';
 import {
@@ -49,14 +50,6 @@ const SatelliteTab = dynamic(
 
 type Tab = 'overview' | 'financial' | 'timeline' | 'risk' | 'satellite';
 
-const tabs: { key: Tab; label: string; icon: typeof FileText }[] = [
-  { key: 'overview', label: 'Overview', icon: FileText },
-  { key: 'financial', label: 'Finance', icon: DollarSign },
-  { key: 'timeline', label: 'Evidence & Timeline', icon: Activity },
-  { key: 'risk', label: 'Risk', icon: ShieldAlert },
-  { key: 'satellite', label: 'Satellite', icon: Satellite },
-];
-
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'primary'> = {
   COMPLETED: 'success',
   VERIFIED: 'success',
@@ -76,9 +69,18 @@ const SEVERITY_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info'
 };
 
 export function ExploreDetailClient() {
+  const { t } = useLanguage();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+
+  const tabItems: { key: Tab; label: string; icon: typeof FileText }[] = [
+    { key: 'overview', label: t('common.overview', 'Overview'), icon: FileText },
+    { key: 'financial', label: t('common.financial', 'Finance'), icon: DollarSign },
+    { key: 'timeline', label: t('projects.timeline', 'Evidence & Timeline'), icon: Activity },
+    { key: 'risk', label: t('risk.title', 'Risk'), icon: ShieldAlert },
+    { key: 'satellite', label: t('satellite.title', 'Satellite'), icon: Satellite },
+  ];
 
   const { data: project, isLoading, isError } = usePublicProject(id);
 
@@ -87,7 +89,7 @@ export function ExploreDetailClient() {
       <div className="flex items-center justify-center py-24">
         <div className="text-center">
           <Loader2 className="h-6 w-6 animate-spin text-vojas-500 mx-auto mb-2" aria-hidden="true" />
-          <p className="text-sm text-slate-400">Loading project…</p>
+          <p className="text-sm text-slate-400">{t('common.loading', 'Loading project…')}</p>
         </div>
       </div>
     );
@@ -98,12 +100,12 @@ export function ExploreDetailClient() {
       <div className="space-y-4">
         <Link href="/explore" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
           <ArrowLeft className="h-4 w-4" />
-          Back to Explore
+          {t('common.back', 'Back to Explore')}
         </Link>
         <Card>
           <CardBody>
             <div className="text-center py-12 text-slate-500">
-              <p className="font-medium">Project not found</p>
+              <p className="font-medium">{t('common.notFound', 'Project not found')}</p>
               <p className="text-sm text-slate-400 mt-1">
                 This project does not exist, or is not available for public viewing.
               </p>
@@ -130,7 +132,7 @@ export function ExploreDetailClient() {
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 -ml-1 mb-3"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Explore
+          {t('common.back', 'Back to Explore')}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
@@ -138,16 +140,16 @@ export function ExploreDetailClient() {
               {isDone ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  STATUS: DONE
+                  STATUS: {t('common.completed', 'DONE')}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs">
                   <Clock className="w-3.5 h-3.5 text-amber-600" />
-                  STATUS: NOT DONE
+                  STATUS: {t('common.pending', 'NOT DONE')}
                 </span>
               )}
               <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono">
-                {progressPercent}% Complete
+                {progressPercent}% {t('common.completed', 'Complete')}
               </span>
               {project.projectRisk && (
                 <span
@@ -163,7 +165,7 @@ export function ExploreDetailClient() {
                   )}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  AI RISK: {project.projectRisk.riskScore}/100 ({project.projectRisk.riskLevel})
+                  {t('risk.aiRiskAudit', 'AI RISK')}: {project.projectRisk.riskScore}/100 ({project.projectRisk.riskLevel})
                 </span>
               )}
             </div>
@@ -173,14 +175,14 @@ export function ExploreDetailClient() {
               <Badge variant="neutral">{project.sector.replace(/_/g, ' ')}</Badge>
               <span className="text-sm text-slate-400 flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5" />
-                {[project.district, project.state].filter(Boolean).join(', ') || 'Location not available'}
+                {[project.district, project.state].filter(Boolean).join(', ') || t('map.noLocation', 'Location not available')}
               </span>
               {project.latitude != null && project.longitude != null && (
                 <Link
                   href={`/explore/map?focus=${project.id}`}
                   className="text-sm font-medium text-vojas-600 hover:underline"
                 >
-                  View on Map →
+                  {t('projects.viewOnMap', 'View on Map →')}
                 </Link>
               )}
             </div>
@@ -192,7 +194,7 @@ export function ExploreDetailClient() {
 
       <div className="border-b border-slate-200">
         <nav className="flex gap-1 -mb-px overflow-x-auto" aria-label="Project sections">
-          {tabs.map((tab) => (
+          {tabItems.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -367,25 +369,26 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
 }
 
 function OverviewTab({ project }: { project: PublicProjectDetail }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-5">
       <AiRiskAuditCard project={project} />
 
       <Card>
         <CardHeader>
-          <h2 className="text-base font-semibold text-slate-800">Project Details</h2>
+          <h2 className="text-base font-semibold text-slate-800">{t('projects.projectDetails', 'Project Details')}</h2>
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <DetailField label="Sector" value={project.sector.replace(/_/g, ' ')} />
-            <DetailField label="State" value={project.state || 'Not available'} />
-            <DetailField label="District" value={project.district || 'Not available'} />
-            <DetailField label="Constituency" value={project.constituency || 'Not available'} />
-            <DetailField label="Contractor" value={project.contractor || 'Not available'} />
-            <DetailField label="Data Source" value={project.source.replace(/_/g, ' ')} />
-            <DetailField label="Start Date" value={formatDate(project.startDate)} />
-            <DetailField label="Expected Completion" value={formatDate(project.expectedEndDate)} />
-            <DetailField label="Completed On" value={formatDate(project.completedAt)} />
+            <DetailField label={t('projects.projectSector', 'Sector')} value={project.sector.replace(/_/g, ' ')} />
+            <DetailField label={t('projects.state', 'State')} value={project.state || t('common.noData', 'Not available')} />
+            <DetailField label={t('projects.district', 'District')} value={project.district || t('common.noData', 'Not available')} />
+            <DetailField label={t('projects.constituency', 'Constituency')} value={project.constituency || t('common.noData', 'Not available')} />
+            <DetailField label={t('projects.projectContractor', 'Contractor')} value={project.contractor || t('common.noData', 'Not available')} />
+            <DetailField label={t('transparency.dataSource', 'Data Source')} value={project.source.replace(/_/g, ' ')} />
+            <DetailField label={t('projects.projectStartDate', 'Start Date')} value={formatDate(project.startDate)} />
+            <DetailField label={t('projects.projectEndDate', 'Expected Completion')} value={formatDate(project.expectedEndDate)} />
+            <DetailField label={t('projects.completedOn', 'Completed On')} value={formatDate(project.completedAt)} />
           </div>
         </CardBody>
       </Card>
@@ -396,7 +399,7 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
                 <UserCheck className="h-4 w-4 text-vojas-600" />
-                Member of Parliament (MP)
+                {t('navigation.mps', 'Member of Parliament (MP)')}
               </h2>
               {project.mp.party && (
                 <Badge variant="primary">{project.mp.party}</Badge>
@@ -405,10 +408,10 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
           </CardHeader>
           <CardBody>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <DetailField label="Representative" value={project.mp.name} />
-              <DetailField label="Constituency" value={project.mp.constituency} />
-              <DetailField label="House" value={project.mp.house === 'LOK_SABHA' ? 'Lok Sabha' : 'Rajya Sabha'} />
-              <DetailField label="Tenure" value={project.mp.term || '17th Lok Sabha'} />
+              <DetailField label={t('mp.representative', 'Representative')} value={project.mp.name} />
+              <DetailField label={t('projects.constituency', 'Constituency')} value={project.mp.constituency} />
+              <DetailField label={t('mp.house', 'House')} value={project.mp.house === 'LOK_SABHA' ? 'Lok Sabha' : 'Rajya Sabha'} />
+              <DetailField label={t('mp.tenure', 'Tenure')} value={project.mp.term || '17th Lok Sabha'} />
             </div>
           </CardBody>
         </Card>
@@ -417,7 +420,7 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
       {project.description && (
         <Card>
           <CardHeader>
-            <h2 className="text-base font-semibold text-slate-800">Description</h2>
+            <h2 className="text-base font-semibold text-slate-800">{t('common.description', 'Description')}</h2>
           </CardHeader>
           <CardBody>
             <p className="text-sm text-slate-600 leading-relaxed">{project.description}</p>
@@ -431,6 +434,7 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
 }
 
 function FinancialTab({ project }: { project: PublicProjectDetail }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-5">
       <PublicMoneyView approvedAmount={project.approvedAmount} spentAmount={project.spentAmount} />
@@ -439,13 +443,13 @@ function FinancialTab({ project }: { project: PublicProjectDetail }) {
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Fund Utilization Rate</p>
+                <p className="text-sm text-slate-500">{t('projects.utilizationRate', 'Fund Utilization Rate')}</p>
                 <p className="text-2xl font-bold text-slate-800 mt-1">
                   {((project.spentAmount / project.approvedAmount) * 100).toFixed(1)}%
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-slate-500">Unspent Balance</p>
+                <p className="text-sm text-slate-500">{t('projects.remainingAmount', 'Unspent Balance')}</p>
                 <p className="text-lg font-bold text-amber-600 mt-1">
                   {formatCurrency(project.approvedAmount - project.spentAmount)}
                 </p>
@@ -606,6 +610,7 @@ function RiskTab({
 }
 
 function CitizenReportsSection({ project }: { project: PublicProjectDetail }) {
+  const { t } = useLanguage();
   const { data, isLoading } = usePublicProjectReports(project.id);
   const reports = data?.reports ?? [];
 
@@ -615,10 +620,10 @@ function CitizenReportsSection({ project }: { project: PublicProjectDetail }) {
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-vojas-600" />
-            Citizen Oversight &amp; Reports
+            {t('citizen.reports', 'Citizen Oversight & Reports')}
           </h2>
           <Link href={`/report?projectId=${project.id}`}>
-            <Button variant="primary" size="sm">Submit a Report</Button>
+            <Button variant="primary" size="sm">{t('citizen.submitReport', 'Submit a Report')}</Button>
           </Link>
         </div>
       </CardHeader>
