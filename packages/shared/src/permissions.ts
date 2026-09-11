@@ -5,7 +5,7 @@
  * Permissions are resource.action strings (e.g., "project.read.internal").
  */
 
-import { UserRole } from './enums.js';
+import type { UserRole } from './enums.js';
 
 // ── Permission Constants ─────────────────────────────────────────────────────
 
@@ -25,6 +25,13 @@ export const PERMISSIONS = {
   CASE_ASSIGN: 'case.assign',
   CASE_VERIFY: 'case.verify',
   CASE_RESOLVE: 'case.resolve',
+
+  // Enforcement referral permissions (Phase 4) — CREATE and APPROVE are
+  // deliberately separated so no single role can both draft and approve a
+  // referral to an external authority without another authorized reviewer.
+  REFERRAL_READ: 'referral.read',
+  REFERRAL_CREATE: 'referral.create',
+  REFERRAL_APPROVE: 'referral.approve',
 
   // Document permissions
   DOCUMENT_READ: 'document.read',
@@ -74,6 +81,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.CASE_ASSIGN,
     PERMISSIONS.CASE_VERIFY,
     PERMISSIONS.CASE_RESOLVE,
+    PERMISSIONS.REFERRAL_READ,
+    PERMISSIONS.REFERRAL_CREATE,
+    PERMISSIONS.REFERRAL_APPROVE,
     PERMISSIONS.DOCUMENT_READ,
     PERMISSIONS.DOCUMENT_UPLOAD,
     PERMISSIONS.FINANCIAL_READ,
@@ -97,6 +107,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.CASE_ASSIGN,
     PERMISSIONS.CASE_VERIFY,
     PERMISSIONS.CASE_RESOLVE,
+    PERMISSIONS.REFERRAL_READ,
+    PERMISSIONS.REFERRAL_CREATE,
     PERMISSIONS.DOCUMENT_READ,
     PERMISSIONS.DOCUMENT_UPLOAD,
     PERMISSIONS.FINANCIAL_READ,
@@ -131,6 +143,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     PERMISSIONS.FINDING_REVIEW,
     PERMISSIONS.CASE_VERIFY,
     PERMISSIONS.CASE_RESOLVE,
+    PERMISSIONS.REFERRAL_READ,
+    PERMISSIONS.REFERRAL_APPROVE,
     PERMISSIONS.DOCUMENT_READ,
     PERMISSIONS.SECTOR_READ,
     PERMISSIONS.AUDIT_READ,
@@ -139,6 +153,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ANALYST: [
     PERMISSIONS.PROJECT_READ_INTERNAL,
     PERMISSIONS.FINDING_READ,
+    PERMISSIONS.REFERRAL_READ,
     PERMISSIONS.DOCUMENT_READ,
     PERMISSIONS.SECTOR_READ,
     PERMISSIONS.AUDIT_READ,

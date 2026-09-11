@@ -5,8 +5,9 @@
  */
 
 import { UserRole } from './enums.js';
+import type {
+  Permission} from './permissions.js';
 import {
-  Permission,
   PERMISSIONS,
   ROLE_PERMISSIONS,
   getPermissionsForRole,
