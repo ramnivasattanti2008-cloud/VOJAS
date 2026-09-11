@@ -27,13 +27,17 @@ services:
     name: vojas-backend
     plan: starter
     runtime: docker
-    rootDir: apps/api
-    dockerfilePath: ./Dockerfile
-    # NOTE: apps/api/Dockerfile does not exist yet. See DEPLOY-STATUS.md "Issue 6".
-    # Until then, set Render to use a "Node" runtime with:
-    #   Build Command: pnpm install --frozen-lockfile && pnpm --filter @vojas/api build
-    #   Start Command: cd apps/api && node dist/server.js
-    #   Health Check: /api/v1/health
+    # apps/api/Dockerfile now exists (built and verified locally via
+    # `docker build -f apps/api/Dockerfile .` from the repo root). It is a
+    # pnpm WORKSPACE package — @vojas/api depends on @vojas/db,
+    # @vojas/domain, @vojas/shared via workspace:* — so the Docker build
+    # context must be the repo root, not apps/api/, or it cannot see the
+    # other workspace packages or pnpm-workspace.yaml. rootDir is
+    # deliberately NOT set on this service (it would make Render use
+    # apps/api/ as the context and the build would fail); dockerContext and
+    # dockerfilePath are both relative to the repo root instead.
+    dockerContext: .
+    dockerfilePath: ./apps/api/Dockerfile
     region: oregon
     healthCheckPath: /api/v1/health
     envVars:
@@ -65,7 +69,17 @@ services:
         sync: false   # Set this manually in Render dashboard with your Upstash URL
     autoDeploy: true
 
-  # ── Frontend (static) ────────────────────────────────────────────────────
+  # ── Frontend (static) — STALE, describes a different app ─────────────────
+  # This block deploys a Vite/React SPA from `rootDir: frontend` (npm build,
+  # a `dist/` static output, VITE_* env vars). CLAUDE.md documents `frontend/`
+  # as "a leftover v1 directory with no package.json" — this build would
+  # fail outright, and even if it built something, it would not be the real
+  # app. The current frontend is `apps/web`, a Next.js 15 app with server
+  # rendering and middleware (not a static site), and it deploys via Vercel
+  # — see `vercel.json` at the repo root, which is correct and current
+  # (verified 2026-09-11). Left in place rather than silently rewritten;
+  # decide deliberately whether to delete this block or repoint it.
+  # ───────────────────────────────────────────────────────────────────────
   - type: web
     name: vojas-frontend
     plan: free

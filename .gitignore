@@ -76,7 +76,9 @@ backend/mps_list.csv
 backend/data/
 
 # Docker
-.dockerignore
+# .dockerignore is NOT ignored — it belongs in the repo so every build
+# environment (local, CI, Render) excludes node_modules/.env/etc. from the
+# build context consistently. Ignoring it here silently defeated that.
 docker-compose.*.override.yml
 
 # Misc

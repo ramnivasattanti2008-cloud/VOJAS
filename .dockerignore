@@ -1,0 +1,36 @@
+# Docker build context exclusions — repo root is the build context for
+# apps/api/Dockerfile (a pnpm workspace needs the whole monorepo tree to
+# resolve workspace:* dependencies), so this matters for both build speed
+# and for not leaking secrets/local state into an image layer.
+
+# Dependencies (reinstalled inside the image)
+node_modules
+**/node_modules
+
+# Build outputs (rebuilt inside the image)
+**/dist
+**/.next
+**/build
+**/coverage
+
+# Local/dev state — never belongs in an image
+.env
+.env.*
+!.env.example
+uploads
+*.log
+**/*.log
+
+# Not part of the deployed app
+.git
+legacy
+frontend
+docs
+*.md
+!README.md
+
+# Editor/OS cruft
+.vscode
+.idea
+.DS_Store
+Thumbs.db
