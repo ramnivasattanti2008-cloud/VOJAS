@@ -7,12 +7,21 @@
   --vojas-color-fg: 15 23 42;
   --vojas-color-muted: 100 116 139;
   --vojas-color-border: 226 232 240;
+  --vojas-color-bg: 242 242 247;
+  --vojas-color-fg: 28 28 30;
+  --vojas-color-muted: 142 142 147;
+  --vojas-color-border: 229 229 234;
   --vojas-color-surface: 255 255 255;
   --vojas-color-primary: 37 99 235;
   --vojas-color-primary-hover: 29 78 216;
   --vojas-color-success: 16 185 129;
   --vojas-color-warning: 245 158 11;
   --vojas-color-danger: 225 29 72;
+  --vojas-color-primary: 0 122 255;
+  --vojas-color-primary-hover: 0 100 215;
+  --vojas-color-success: 52 199 89;
+  --vojas-color-warning: 255 149 0;
+  --vojas-color-danger: 255 59 48;
 }
 
 html,
@@ -21,16 +30,58 @@ body {
   background-color: rgb(var(--vojas-color-bg));
   color: rgb(var(--vojas-color-fg));
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  min-height: 100%;
+  background-color: #F2F2F7;
+  color: #1C1C1E;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", -apple-system-subheadline, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
 }
 
 * {
   border-color: rgb(var(--vojas-color-border));
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Apple iOS HIG Tap Target Standard (min 44x44pt) */
+.ios-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Apple iOS Blur Materials */
+.ios-blur {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.ios-material-thin {
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+}
+
+.ios-material-thick {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(190%) blur(28px);
+  -webkit-backdrop-filter: saturate(190%) blur(28px);
+}
+
+/* Apple Inset Grouped Cell Border Hairlines */
+.ios-hairline-b {
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.12);
+}
+
+.ios-hairline-t {
+  border-top: 0.5px solid rgba(60, 60, 67, 0.12);
 }
 
 :focus-visible {
   outline: 2px solid rgb(var(--vojas-color-primary));
+  outline: 2px solid #007AFF;
   outline-offset: 2px;
 }
 
@@ -38,10 +89,13 @@ body {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
 .gradient-civic-hero {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2942 100%);
+  background: linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 60%, #0A2540 100%);
 }
 
 .sr-only {

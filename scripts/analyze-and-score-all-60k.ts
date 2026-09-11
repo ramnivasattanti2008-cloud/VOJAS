@@ -188,11 +188,31 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
   if (!hasCoords && approved > 2500000) {
     score += 15;
     geoScore += 20;
+  // 5. High Allocation with Missing Coordinates / Geofence Anomaly
+  if (!hasCoords && approved > 2000000) {
+    const geoPts = approved > 5000000 ? 25 : 15;
+    score += geoPts;
+    geoScore += geoPts + 10;
     driversList.push({
       name: 'Geospatial Verifiability Gap',
       contribution: 15,
       evidence: `High-value capital project (₹${(approved / 100000).toFixed(1)}L) lacking mandatory geospatial coordinates.`,
       solution: 'Enforce mandatory GPS coordinate upload by implementing agency.',
+      contribution: geoPts,
+      evidence: `High-value capital project (₹${(approved / 100000).toFixed(1)}L) lacking mandatory statutory GPS geofence coordinates.`,
+      solution: 'Enforce mandatory geotagged inspection and satellite bounding polygon upload before subsequent tranche release.',
+    });
+  }
+
+  // 6. Contractor Concentration & Execution Velocity Check
+  if (!hasContractor && spent > 1000000 && !isDone) {
+    score += 18;
+    contScore += 30;
+    driversList.push({
+      name: 'Unassigned Contractor Vulnerability',
+      contribution: 18,
+      evidence: `Active capital disbursements of ₹${(spent / 100000).toFixed(1)}L recorded without verified contractor assignment.`,
+      solution: 'Audit implementing agency tender records and enforce GEM/statutory portal procurement registration.',
     });
   }
 
@@ -201,6 +221,9 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
     score = p.status === 'IN_PROGRESS' ? 24 : p.status === 'APPROVED' ? 18 : 32;
     finScore = 15;
     progScore = 15;
+    score = p.status === 'IN_PROGRESS' ? 22 : p.status === 'APPROVED' ? 16 : 28;
+    finScore = 12;
+    progScore = 12;
   }
 
   score = Math.min(95, Math.max(5, Math.round(score)));
@@ -236,6 +259,7 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
     primaryDriver,
     drivers: driversList as unknown as import('@vojas/db').Prisma.InputJsonValue,
     algorithmVersion: 'vojas-ai-engine-v3.0',
+    algorithmVersion: 'vojas-ai-engine-v4.0-sentinel',
   };
 }
 

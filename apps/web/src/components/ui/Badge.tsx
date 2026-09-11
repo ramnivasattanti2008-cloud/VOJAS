@@ -10,24 +10,44 @@ interface BadgeProps {
   className?: string;
 }
 
-const variantClasses: Record<BadgeVariant, string> = {
-  success: 'bg-green-50 text-green-700 border-green-200',
-  warning: 'bg-amber-50 text-amber-700 border-amber-200',
-  danger: 'bg-red-50 text-red-700 border-red-200',
-  info: 'bg-blue-50 text-blue-700 border-blue-200',
-  neutral: 'bg-slate-100 text-slate-600 border-slate-200',
-  primary: 'bg-vojas-50 text-vojas-700 border-vojas-200',
+const variantClasses: Record<BadgeVariant, { pill: string; dot: string }> = {
+  success: {
+    pill: 'bg-[#34C759]/10 text-[#248A3D] border-[#34C759]/20',
+    dot: 'bg-[#34C759]',
+  },
+  warning: {
+    pill: 'bg-[#FF9500]/10 text-[#C96B00] border-[#FF9500]/20',
+    dot: 'bg-[#FF9500]',
+  },
+  danger: {
+    pill: 'bg-[#FF3B30]/10 text-[#D70015] border-[#FF3B30]/20',
+    dot: 'bg-[#FF3B30]',
+  },
+  info: {
+    pill: 'bg-[#007AFF]/10 text-[#0062CC] border-[#007AFF]/20',
+    dot: 'bg-[#007AFF]',
+  },
+  neutral: {
+    pill: 'bg-[#8E8E93]/10 text-[#48484A] border-[#8E8E93]/20',
+    dot: 'bg-[#8E8E93]',
+  },
+  primary: {
+    pill: 'bg-[#007AFF]/12 text-[#007AFF] border-[#007AFF]/25 font-semibold',
+    dot: 'bg-[#007AFF]',
+  },
 };
 
 export function Badge({ variant = 'neutral', children, className }: BadgeProps) {
+  const conf = variantClasses[variant] ?? variantClasses.neutral;
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
-        variantClasses[variant],
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-tight select-none shadow-2xs',
+        conf.pill,
         className
       )}
     >
+      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', conf.dot)} aria-hidden="true" />
       {children}
     </span>
   );

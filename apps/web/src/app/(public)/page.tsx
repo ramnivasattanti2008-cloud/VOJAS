@@ -1,18 +1,15 @@
-import Link from 'next/link';
 import {
-  Search,
-  MapPin,
-  ShieldCheck,
-  Satellite,
-  FileWarning,
   ArrowRight,
-  Wallet,
   BarChart3,
-  Layers,
+  FileWarning,
+  MapPin,
+  Satellite,
+  Search,
+  ShieldCheck,
   Sparkles,
-  CheckCircle2,
-  Building2,
+  Wallet
 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (

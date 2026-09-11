@@ -45,7 +45,7 @@ export function PublicNavBar() {
   ];
 
   return (
-    <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
+    <nav className="hidden md:flex items-center gap-1 bg-black/[0.03] p-1 rounded-full border border-black/[0.04]" aria-label="Main Navigation">
       {links.map((link) => {
         const Icon = link.icon;
         const isActive = link.exact
@@ -57,13 +57,13 @@ export function PublicNavBar() {
             key={link.href}
             href={link.href}
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all',
+              'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-150 select-none active:scale-[0.97]',
               isActive
-                ? 'text-blue-600 bg-blue-50/80'
-                : 'text-slate-700 hover:text-blue-600 hover:bg-slate-100/80'
+                ? 'text-[#007AFF] bg-white shadow-ios-sm font-bold'
+                : 'text-[#3C3C43]/80 hover:text-[#007AFF] hover:bg-white/60'
             )}
           >
-            <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-blue-600' : 'text-slate-500')} />
+            <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-[#007AFF]' : 'text-[#8E8E93]')} />
             <span>{link.label}</span>
           </Link>
         );
@@ -86,7 +86,7 @@ export function PublicMobileNavBar() {
   ];
 
   return (
-    <div className="md:hidden flex items-center gap-1 px-4 py-2 bg-slate-100/80 border-t border-slate-200 overflow-x-auto text-xs font-medium text-slate-600 no-scrollbar">
+    <div className="md:hidden flex items-center gap-1 px-4 py-2 ios-material-thick border-t border-black/[0.05] overflow-x-auto text-xs font-medium text-[#3C3C43] no-scrollbar">
       {links.map((link) => {
         const isActive = pathname === link.href;
         return (
@@ -94,8 +94,8 @@ export function PublicMobileNavBar() {
             key={link.href}
             href={link.href}
             className={cn(
-              'px-2.5 py-1 rounded-md shrink-0 transition-colors',
-              isActive ? 'bg-white text-blue-600 font-semibold shadow-2xs' : 'hover:bg-white'
+              'min-h-[36px] inline-flex items-center px-3 py-1 rounded-full shrink-0 transition-all text-xs font-semibold select-none active:scale-95',
+              isActive ? 'bg-[#007AFF] text-white shadow-ios-sm' : 'hover:bg-black/5 text-[#3C3C43]'
             )}
           >
             {link.label}
