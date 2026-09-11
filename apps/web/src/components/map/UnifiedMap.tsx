@@ -71,6 +71,10 @@ const BASEMAP_CONFIGS: Record<BasemapMode, { name: string; style: any }> = {
           maxzoom: 19,
         },
       },
+      // Required by MapLibre whenever any layer (ours or one it adds internally,
+      // e.g. the cluster-count symbol layer below) uses text-field — without it
+      // addLayer() throws a style validation error and the whole map fails to render.
+      glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       layers: [
         { id: 'esri-layer', type: 'raster', source: 'esri' },
         { id: 'labels-layer', type: 'raster', source: 'carto_labels' },
@@ -90,6 +94,7 @@ const BASEMAP_CONFIGS: Record<BasemapMode, { name: string; style: any }> = {
           maxzoom: 19,
         },
       },
+      glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       layers: [{ id: 'esri-layer', type: 'raster', source: 'esri' }],
     },
   },
@@ -109,6 +114,7 @@ const BASEMAP_CONFIGS: Record<BasemapMode, { name: string; style: any }> = {
           maxzoom: 19,
         },
       },
+      glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       layers: [{ id: 'carto-light-layer', type: 'raster', source: 'carto_light' }],
     },
   },
@@ -128,6 +134,7 @@ const BASEMAP_CONFIGS: Record<BasemapMode, { name: string; style: any }> = {
           maxzoom: 19,
         },
       },
+      glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
       layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto_dark' }],
     },
   },
@@ -357,8 +364,17 @@ export function UnifiedMap({
     if (!containerRef.current || mapRef.current) return;
     isMountedRef.current = true;
 
+    // isMountedRef is shared across React StrictMode's mount->cleanup->remount dev
+    // cycle, so it can't tell this effect invocation apart from a stale one: if the
+    // dynamic import resolves after a stale invocation's cleanup already ran, the
+    // ref has since been flipped back to true by the *new* invocation and the guard
+    // above passes anyway, silently constructing a second maplibre-gl Map on top of
+    // the same container. Only a variable local to this specific invocation's
+    // closure can detect that this run was the one cleaned up.
+    let cancelled = false;
+
     getMapLibre().then((ml) => {
-      if (!isMountedRef.current || !containerRef.current) return;
+      if (cancelled || !isMountedRef.current || !containerRef.current || mapRef.current) return;
 
       const map = new ml.Map({
         container: containerRef.current,
@@ -375,6 +391,12 @@ export function UnifiedMap({
       // Universal click & touch handler for dots and clusters
       let lastHandledTime = 0;
       const handleMapInteraction = (e: any) => {
+        // ensureLayers only runs once the map fires 'load', but click/touchend
+        // are bound immediately below — a click before then would query layers
+        // that don't exist yet and throw. 'clusters' is always added together
+        // with the rest, so its presence is a reliable proxy for "layers ready".
+        if (!map.getLayer('clusters')) return;
+
         const now = Date.now();
         if (now - lastHandledTime < 350) return;
         lastHandledTime = now;
@@ -451,6 +473,8 @@ export function UnifiedMap({
 
       // Hover pointer cursor
       map.on('mousemove', (e) => {
+        if (!map.getLayer('clusters')) return;
+
         const bbox: [[number, number], [number, number]] = [
           [e.point.x - 12, e.point.y - 12],
           [e.point.x + 12, e.point.y + 12],
@@ -471,6 +495,7 @@ export function UnifiedMap({
     });
 
     return () => {
+      cancelled = true;
       isMountedRef.current = false;
       popupRef.current?.remove();
       mapRef.current?.remove();
