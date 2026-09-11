@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
-import { Search, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import type { MapProjectItem } from '@/components/map/InteractiveGisMap';
+import { Card } from '@/components/ui/Card';
+import { usePublicProjects } from '@/hooks/usePublicProjects';
+import { apiClient } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { createProjectsApi } from '@vojas/api-client';
-import { apiClient } from '@/lib/api';
-import { usePublicProjects } from '@/hooks/usePublicProjects';
-import { Card } from '@/components/ui/Card';
-import type { MapProjectItem } from '@/components/map/InteractiveGisMap';
+import { AlertTriangle, Loader2, RefreshCw, Search } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
 const projectsApi = createProjectsApi(apiClient);
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import type { PublicProjectListItem } from '@vojas/api-client';
+import { useEffect, useRef, useState } from 'react';
 // Bundled locally rather than fetched from a CDN at runtime — the CDN
 // approach used elsewhere in this codebase (see components/satellite/
 // SatelliteMap.tsx) hardcodes a maplibre-gl version that doesn't match the

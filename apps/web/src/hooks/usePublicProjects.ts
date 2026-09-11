@@ -1,9 +1,9 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { createProjectsApi } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 import type { PublicProjectFilters } from '@vojas/api-client';
+import { createProjectsApi } from '@vojas/api-client';
 
 const projectsApi = createProjectsApi(apiClient);
 
