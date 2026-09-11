@@ -95,7 +95,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         document.cookie = `${STORAGE_KEY}=en; path=/; max-age=31536000; SameSite=Lax`;
         document.documentElement.lang = 'en';
         document.documentElement.dir = 'ltr';
-      } catch {}
+      } catch {
+        // localStorage/cookies can throw in private browsing or when
+        // blocked by the user's browser settings — language still applies
+        // for this page load, it just won't persist across visits.
+      }
       return;
     }
 
@@ -107,7 +111,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         document.cookie = `${STORAGE_KEY}=${code}; path=/; max-age=31536000; SameSite=Lax`;
         document.documentElement.lang = code;
         document.documentElement.dir = langConfig.direction;
-      } catch {}
+      } catch {
+        // See the 'en' branch above — non-fatal, persistence only.
+      }
       return;
     }
 
@@ -115,16 +121,20 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (loader) {
       setIsLoading(true);
       try {
-        const module = await loader();
-        translationCache[code] = module.default;
+        // Not named 'module' -- that shadows Next.js's module-system global
+        // (@next/next/no-assign-module-variable) and breaks the build.
+        const loadedLocale = await loader();
+        translationCache[code] = loadedLocale.default;
         setLanguageState(code);
-        setTranslations(module.default);
+        setTranslations(loadedLocale.default);
         try {
           localStorage.setItem(STORAGE_KEY, code);
           document.cookie = `${STORAGE_KEY}=${code}; path=/; max-age=31536000; SameSite=Lax`;
           document.documentElement.lang = code;
           document.documentElement.dir = langConfig.direction;
-        } catch {}
+        } catch {
+          // See the 'en' branch above — non-fatal, persistence only.
+        }
       } catch (err) {
         console.warn(`Failed to load locale chunk for ${code}, falling back to en`, err);
         setLanguageState('en');
