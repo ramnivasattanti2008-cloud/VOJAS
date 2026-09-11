@@ -80,14 +80,18 @@ app.use(
       if (!origin) return callback(null, true);
       if (
         allowedOrigins.includes(origin) ||
-        process.env.NODE_ENV !== 'production' ||
-        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
-        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
-        /^https?:\/\/(192\.168|10|172\.\d+)\.\d+\.\d+(:\d+)?$/.test(origin)
+        (process.env.NODE_ENV !== 'production' &&
+          (/^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+            /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
+            /^https?:\/\/(192\.168|10|172\.\d+)\.\d+\.\d+(:\d+)?$/.test(origin)))
       ) {
         return callback(null, true);
       }
-      return callback(null, true);
+      // credentials: true means the browser sends cookies on cross-origin requests
+      // that pass this check. Falling through to callback(null, true) here — as a
+      // prior version briefly did — would let ANY website issue authenticated
+      // requests against this API using a logged-in visitor's session cookie.
+      return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
   })

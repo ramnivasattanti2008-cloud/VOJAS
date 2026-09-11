@@ -23,9 +23,8 @@ import {
   type SignalType,
 } from './changeAnalysisProvider.js';
 
-// EE uses `export =` syntax — eslint-disable needed
- 
-let ee: any = null;
+// EE uses `export =` syntax, so its import shape is only expressible via `typeof import(...)`.
+let ee: typeof import('ee') | null = null;
 let eeInitialized = false;
 
 /** Lazy-load and initialise the Earth Engine library once. */
@@ -68,7 +67,12 @@ async function getEE(): Promise<typeof import('ee') | null> {
     });
 
     logger.info(`[gee] Authenticated for project: ${projectId}`);
-    return earthengine;
+    // Cache the authenticated client. Without this, every call after the
+    // first hit `if (eeInitialized) return ee` and got back the initial
+    // `null` forever — GEE would look permanently unavailable after a
+    // successful auth instead of being reused.
+    ee = earthengine;
+    return ee;
   } catch (err) {
     logger.error('[gee] Failed to initialize Earth Engine', { error: String(err) });
     return null;

@@ -161,33 +161,17 @@ export class MediaValidationService {
   }
 
   /**
-   * Extract metadata from file. For now simulates extraction.
-   * In production, use sharp (images), ffprobe (video/audio), or pdf-parse.
+   * Extract metadata from an uploaded file.
+   *
+   * No EXIF/ffprobe/pdf-parse integration exists yet, so this does not invent
+   * a capture date from the temp file's mtime — that is when the upload was
+   * processed on this server, not when the photo or video was actually taken,
+   * and evidenceService surfaces `captureDate` as a forensic timeline fact.
+   * Leaving it unset lets callers fall back to the honest `uploadedAt`/
+   * `createdAt` timestamp instead of a fabricated one.
    */
-  extractMetadata(filePath: string, mimeType: string): MediaMetadata {
-    const stats = fs.statSync(filePath);
-    const metadata: MediaMetadata = {};
-
-    if (mimeType.startsWith('image/')) {
-      // Placeholder: in production use sharp to extract EXIF
-      // width, height, exif date, GPS, make/model
-      metadata.captureDate = stats.mtime.toISOString();
-      // Simulated fields - real impl would call sharp.metadata()
-      metadata.width = undefined;
-      metadata.height = undefined;
-    } else if (mimeType.startsWith('video/')) {
-      // In production use ffprobe
-      metadata.captureDate = stats.mtime.toISOString();
-      metadata.duration = undefined;
-    } else if (mimeType.startsWith('audio/')) {
-      metadata.captureDate = stats.mtime.toISOString();
-      metadata.duration = undefined;
-    } else if (mimeType === 'application/pdf') {
-      // In production use pdf-parse or similar
-      metadata.captureDate = stats.mtime.toISOString();
-    }
-
-    return metadata;
+  extractMetadata(_filePath: string, _mimeType: string): MediaMetadata {
+    return {};
   }
 
   /**

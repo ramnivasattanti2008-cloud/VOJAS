@@ -42,7 +42,13 @@ export default [
     },
     rules: {
       ...eslint.configs.recommended.rules,
-      ...tseslint.configs.recommended.rules,
+      // tseslint.configs.recommended is an ARRAY of flat-config objects (typescript-eslint
+      // v8), not a single object — `.rules` on an array is undefined, so a plain
+      // `...tseslint.configs.recommended.rules` spread here was a silent no-op. It meant
+      // the entire typescript-eslint recommended ruleset, including `no-explicit-any`,
+      // was never actually active despite the lint gate reporting 0 errors. Flatten the
+      // array's rule objects explicitly instead.
+      ...Object.assign({}, ...tseslint.configs.recommended.map((c) => c.rules ?? {})),
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
       'react-hooks/rules-of-hooks': 'error',
@@ -59,6 +65,14 @@ export default [
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/consistent-type-imports': 'warn',
+      // Now genuinely enforced for the first time (see note above). There is an
+      // existing backlog of `any` usage the gate never caught, so this starts at
+      // 'warn' — same tier as the other pre-existing hygiene rules above — rather
+      // than 'error', which would fail the build on debt this change newly surfaces
+      // rather than debt introduced now. Tighten to 'error' once that backlog is
+      // triaged; CLAUDE.md's "never use `any` to silence an error" bar still applies
+      // to new code in the meantime.
+      '@typescript-eslint/no-explicit-any': 'warn',
       // Note: no-misused-promises requires type-aware linting (parserOptions.project),
       // which isn't set up across this monorepo's multiple tsconfigs. Not adding it
       // here rather than bolting on typed-linting infra as a side effect of the lint gate.

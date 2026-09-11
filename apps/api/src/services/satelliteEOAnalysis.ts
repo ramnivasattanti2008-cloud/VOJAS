@@ -422,7 +422,7 @@ export function compareProgress(
 
   let status: ProgressComparisonResult['status'];
   let evidence: string;
-  let limitations = 'Comparison based on satellite-observable change only. Sub-10m features, underground work, and interior work are not visible. Cloud cover may have affected the observation.';
+  const limitations = 'Comparison based on satellite-observable change only. Sub-10m features, underground work, and interior work are not visible. Cloud cover may have affected the observation.';
 
   if (classification === 'INSUFFICIENT_DATA') {
     status = 'INSUFFICIENT_DATA';

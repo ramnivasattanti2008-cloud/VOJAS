@@ -15,8 +15,13 @@ import type { JWTPayload } from '../auth/jwt.js';
 const router = Router();
 const auditService = new AuditService(prisma);
 
-// Cookie options for session and refresh tokens
-const isSecure = process.env.COOKIE_SECURE === 'true';
+// Cookie options for session and refresh tokens.
+// COOKIE_SECURE lets an operator force the flag on for a non-standard deploy
+// (e.g. HTTPS behind a proxy that doesn't set NODE_ENV), but it must never be
+// the ONLY thing that makes production cookies Secure — nothing in render.yaml
+// or the .env.example files sets it, so relying on it alone silently ships
+// production session cookies without the Secure flag.
+const isSecure = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
 
 const ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,

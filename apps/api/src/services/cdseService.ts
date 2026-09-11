@@ -503,8 +503,10 @@ async function upsertObservation(
 
 class CDSEService {
   private get prisma(): PrismaClient {
-    // Lazy import to avoid circular deps
-     
+    // Lazy CommonJS require to avoid a circular dependency with @vojas/db at
+    // module load time. A dynamic `import()` would make this getter async and
+    // change every call site; not worth it for a workaround this contained.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { prisma: p } = require('@vojas/db');
     return p;
   }

@@ -71,7 +71,7 @@ function evaluateProject(p: ProjectRow, now: Date): ScoredRisk {
   let score = 0;
   let finScore = 0;
   let progScore = 0;
-  let satScore = hasCoords ? 10 : 35;
+  const satScore = hasCoords ? 10 : 35;
   let contScore = hasContractor ? 5 : 25;
   let geoScore = hasCoords ? 5 : 30;
 

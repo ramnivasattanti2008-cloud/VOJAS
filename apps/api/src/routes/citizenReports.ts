@@ -351,8 +351,11 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
  */
 router.get('/public', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = Number(req.query.page ?? 1);
-    const limit = Number(req.query.limit ?? 20);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    // Clamped: this is an unauthenticated route over a table that can hold
+    // tens of thousands of rows, so an unbounded limit is both a resource-
+    // exhaustion risk and a way to bulk-harvest report references.
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
     const category = req.query.category as string | undefined;
 
     const where: Record<string, unknown> = {
