@@ -1,6 +1,12 @@
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
+// Forcing a rebuild: the /api/v1/* rewrite below was failing with
+// DNS_HOSTNAME_RESOLVED_PRIVATE against vojas-backend.onrender.com even
+// after the backend's own DNS/build/env issues were fixed and it was
+// confirmed healthy directly. This is a no-op change to trigger a fresh
+// Vercel deploy in case the rewrite destination was validated/cached stale.
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@vojas/api-client', '@vojas/domain', '@vojas/shared'],
