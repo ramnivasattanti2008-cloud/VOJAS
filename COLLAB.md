@@ -12,22 +12,14 @@
 
 ## Live Status Board
 
-- **Active Agent Right Now**: `Claude` (Phase 1 ESLint gate closed, analytics filter bugs fixed) ➔ open question for `Antigravity` below
+- **Active Agent Right Now**: `Claude` (security regressions, lint config bug, and a data-fabrication issue all closed this cycle) ➔ open items for `Antigravity` below
 - **⚠️ IMPORTANT — read before you push anything**: `origin/master` was restored to real history via `git push --force-with-lease`. Never force-push over master.
-- **🔴 SECURITY — blocking review on uncommitted work in `apps/api/src/routes/citizenReports.ts`**:
-  The new unauthenticated `POST /reports/track/:reportReference/update` lets anyone
-  holding a report reference (a) set `status` to an arbitrary string via
-  `newStatus as ReportStatus` — no enum validation, so a corruption report can be
-  driven to `DISMISSED`/`RESOLVED` by an attacker, and (b) read back the **full**
-  Prisma `Report` row in the response, including `reporterName` / `reporterEmail` /
-  `reporterPhone`, which deanonymises `ANONYMOUS` and `CONFIDENTIAL` whistleblowers.
-  Express routes under `apps/api` are Claude's domain per the protocol. Claude did
-  not edit the file because the work is still uncommitted — please hand it over or
-  commit it so it can be fixed. Suggested fix: drop `newStatus` from the public
-  endpoint entirely (status transitions are an officer action), validate with the
-  `ReportStatus` zod enum rather than a cast, return only the safe public projection
-  already used by `GET /track/:reportReference`, and put the route behind the
-  report-submit rate limiter.
+- **RESOLVED — the report-update security hole flagged below is fixed** (`0acda0f`, `26c4e63`):
+  `POST /reports/track/:reportReference/update` no longer accepts `newStatus` at
+  all (status transitions are an officer-only action via the authenticated route),
+  returns only `{ reportReference, status, noteRecorded }` instead of the full
+  Prisma row, requires a 10+ character note, and sits behind the report-submit
+  rate limiter. 3 regression tests added — the endpoint previously had none.
 - **Commits in this cycle**:
   - Claude: `ed7ae8a`, `ea45851`, `07c41e8`, `0314f4a`, `54a4a10`
   - Antigravity: `426bd74` (Map suite), `bad9ea8` (CORS, 60k row query optimization, mapped project query, and budget tracker fixes), `13254dd` (Import formatting). All pushed to `origin/master`.
@@ -61,12 +53,62 @@
      `QUEUED`; `PATCH /risk/findings/:id/status` discarded reviewer notes, which now
      land on the `riskEvent` audit entry as documented. Also removed an `as any`.
   4. Verified: 6/6 typecheck, 0 lint errors, 20/20 test suites, `@vojas/web` build.
+- **Done by Claude this cycle** (`0acda0f`, `26c4e63`), all independently audited first:
+  1. **AI engine no longer fabricates evidence** (`apps/api/src/services/llmDetectionService.ts`)
+     — it never actually ran an LLM or read a single satellite row despite being
+     named "Neural-LLM Core" and citing NDVI/NDBI. A hardcoded string match on
+     `project.description.includes('barren scrubland')` (a literal from the demo
+     seed data) alone forced a CRITICAL "ghost work" verdict with fabricated
+     Sentinel-2 evidence and hardcoded confidence scores. Now reads real
+     `SatelliteObservation` rows, returns `NO_USABLE_OBSERVATION` when none exist,
+     derives confidence from actual evidence present, and words verdicts as
+     indicators for human verification rather than fraud findings.
+  2. **Report follow-up endpoint hardened** — see resolved item above.
+  3. **CORS allowlist was dead code**: the origin callback's final branch
+     unconditionally returned `callback(null, true)`, so with `credentials: true`
+     any website could make authenticated requests using a visitor's session
+     cookie. Restored real rejection.
+  4. **Production cookies were losing `Secure`**: `secure` depended solely on
+     `COOKIE_SECURE`, which is set nowhere in `render.yaml` or any `.env.example`.
+     Now also defaults true when `NODE_ENV === 'production'`.
+  5. **`GET /reports/public` had an unclamped `limit`** — unauthenticated,
+     unbounded query over a 60k+ row table. Clamped to 100.
+  6. **`ReportMedia.captureDate` was fabricated** from the uploaded file's
+     server-side mtime and surfaced as forensic evidence timing. Now returns no
+     value rather than a placeholder, so callers fall back to the honest
+     `uploadedAt`.
+  7. **`eslint.config.mjs` had a silent no-op**: `tseslint.configs.recommended` is
+     an array in typescript-eslint v8, and `.rules` on an array is `undefined` —
+     `...tseslint.configs.recommended.rules` spread nothing. The entire
+     typescript-eslint recommended ruleset (including `no-explicit-any` and
+     `prefer-const`) was never actually enforced despite `pnpm lint` showing 0
+     errors. Fixed the spread; `no-explicit-any` starts at `warn` (real existing
+     backlog, same tier as this file's other pre-existing hygiene rules) rather
+     than `error`, so it's visible without breaking the gate on debt it newly
+     surfaces. This also caught a real bug: `geeProvider.ts`'s `let ee = null`
+     was never reassigned on the success path — the dead-module-state bug
+     `CLAUDE.md` documents by name. Fixed with proper caching + typing.
+  8. Verified every item above: 6/6 typecheck, 0 lint errors (694 now-visible
+     warnings, up from 397 — genuinely inert rules turning on, not new debt),
+     20/20 test suites (3 new), `@vojas/web` production build.
 - **Next for Claude**:
-  - Resolve the security item above once the citizen-report work is committed.
-  - 399 lint **warnings** remain (349 unused vars, 26 `react-hooks/exhaustive-deps`,
-    28 type-import style). None block the gate. The unused-var ones in route handlers
-    are worth reading individually — that is how the bugs in item 3 surfaced.
+  - 694 lint **warnings** now visible (was 397 — mostly newly-active
+    `no-explicit-any` that the config bug above was hiding). None block the gate.
+    Triage toward tightening `no-explicit-any` back to `error` once addressed.
   - Check deployment status on Vercel/Render.
+  - Audit turned up two more findings not yet acted on, both worth a look:
+    `ReportMedia`/report-submission does 4 separate writes with no transaction
+    (an anonymous whistleblower's access token can be orphaned on partial
+    failure), and the `reportReference` format (`VOJAS-YYYY-XXXX`, 4 alphanumeric
+    chars) has only ~1.68M values per year.
+- **Flagged for Antigravity (apps/web, not touched — outside Claude's domain)**:
+  - `ReportForm.tsx`/citizen-report web form: an earlier audit pass flagged GPS
+    coordinates and the project link being sent even when a citizen opts out via
+    an "I don't know" control — but that control doesn't appear to exist in the
+    current `ReportForm.tsx` (just a silent `navigator.geolocation` call on
+    mount, no visible opt-out toggle). Worth checking whether this claim was
+    about stale code or a different component.
+  - Category picker duplicate React key on `OTHER` was flagged by the same audit.
 
 ---
 
