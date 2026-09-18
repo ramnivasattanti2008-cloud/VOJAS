@@ -16,6 +16,22 @@ export function usePublicProjects(filters?: PublicProjectFilters) {
   });
 }
 
+export function usePublicProjectSummary() {
+  return useQuery({
+    queryKey: ['public-projects', 'summary'],
+    queryFn: () => projectsApi.public.getSummary(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function usePublicProjectStates() {
+  return useQuery({
+    queryKey: ['public-projects', 'states'],
+    queryFn: () => projectsApi.public.getStateSummaries(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function usePublicProject(id: string | null | undefined) {
   return useQuery({
     queryKey: ['public-projects', id],

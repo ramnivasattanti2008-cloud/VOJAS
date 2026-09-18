@@ -54,6 +54,80 @@ export const LANGUAGES: Language[] = [
 export const DEFAULT_LANGUAGE = "en";
 export const STORAGE_KEY = "vojas_language";
 
+/**
+ * Languages surfaced first in the picker. These are the ones the platform has
+ * the deepest dictionary coverage for, so they are the honest default suggestions.
+ */
+export const SUGGESTED_LANGUAGE_CODES = ["en", "hi", "bn", "mr", "ta", "te", "kn", "gu"] as const;
+
+const LANGUAGE_BY_CODE: ReadonlyMap<string, Language> = new Map(
+  LANGUAGES.map((language) => [language.code, language])
+);
+
+/**
+ * Other codes that should land on one of ours.
+ *
+ * Browsers and older systems report ISO 639-2/3 codes ("ori", "kok"), region
+ * tags ("hi-IN") and script tags ("mni-Mtei"). Without this map a user whose
+ * browser says "ory-IN" silently gets English.
+ *
+ * Only exact language equivalences are listed — never a "close enough"
+ * neighbour. Serving Bhojpuri or Awadhi speakers Hindi would be a guess about
+ * someone's language, which is not ours to make.
+ */
+const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
+  eng: "en",
+  hin: "hi",
+  ben: "bn",
+  bng: "bn",
+  tel: "te",
+  mar: "mr",
+  tam: "ta",
+  guj: "gu",
+  urd: "ur",
+  kan: "kn",
+  ori: "or",
+  ory: "or",
+  odia: "or",
+  mal: "ml",
+  pan: "pa",
+  pnb: "pa",
+  asm: "as",
+  san: "sa",
+  kok: "gom",
+  knn: "gom",
+  snd: "sd",
+  dgo: "doi",
+  nep: "ne",
+  npi: "ne",
+  kas: "ks",
+  mtei: "mni",
+  sant: "sat",
+  brx: "brx",
+};
+
 export function getLanguage(code: string): Language | undefined {
-  return LANGUAGES.find((l) => l.code === code);
+  return LANGUAGE_BY_CODE.get(code);
+}
+
+/**
+ * Normalise any user/browser/storage supplied tag to a supported code.
+ * Returns undefined when nothing matches, so callers fall back to English
+ * deliberately rather than by accident.
+ */
+export function resolveLanguageCode(input: string | null | undefined): string | undefined {
+  if (!input) return undefined;
+
+  const normalised = input.trim().toLowerCase().replace(/_/g, "-");
+  if (!normalised) return undefined;
+
+  const candidates = [normalised, normalised.split("-")[0]];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (LANGUAGE_BY_CODE.has(candidate)) return candidate;
+    const alias = LANGUAGE_ALIASES[candidate];
+    if (alias && LANGUAGE_BY_CODE.has(alias)) return alias;
+  }
+
+  return undefined;
 }

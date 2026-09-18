@@ -1,10 +1,11 @@
 'use client';
 
+import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
 import { LanguageSelector } from '@/components/ui/LanguageSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotificationCount } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
-import { Bell, ChevronDown, LogOut, User as UserIcon } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Sparkles, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -13,6 +14,7 @@ export function Header() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = 'user-menu-dropdown';
   const { data: notifCount } = useNotificationCount();
@@ -47,6 +49,17 @@ export function Header() {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
       <div className="px-6 py-3 flex items-center justify-end gap-3">
+        {/* AI Copilot Trigger */}
+        <button
+          type="button"
+          onClick={() => setCopilotOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/80 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+          aria-label="Open AI Copilot"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+          <span className="hidden sm:inline">AI Copilot</span>
+        </button>
+
         {/* Language selector */}
         <LanguageSelector variant="compact" />
 
@@ -113,6 +126,8 @@ export function Header() {
           )}
         </div>
       </div>
+
+      <AICopilotDrawer isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </header>
   );
 }

@@ -1,21 +1,29 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  MapPin, AlertCircle, FileText, Eye, Sparkles,
-  TrendingUp, Building2, CheckCircle2, Clock,
-  ChevronRight, MessageSquare, Shield, BarChart3
-} from 'lucide-react';
-import { Card, CardBody } from '@/components/ui/Card';
+import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card, CardBody } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useCitizenReports } from '@/hooks/useCitizenReports';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
-import { REPORT_STATUS_LABELS, REPORT_CATEGORY_LABELS } from '@vojas/api-client';
-import { formatDate, formatCurrency, cn } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
+import { REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS } from '@vojas/api-client';
+import {
+    AlertCircle,
+    Building2, CheckCircle2,
+    ChevronRight,
+    Clock,
+    Eye,
+    FileText,
+    MapPin,
+    MessageSquare, Shield,
+    Sparkles,
+    TrendingUp
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
   SUBMITTED: 'info',
@@ -185,6 +193,7 @@ function PageSkeleton() {
 export default function CitizenHomePage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   // Fetch citizen reports
   const { data: reportsData, isLoading: reportsLoading } = useCitizenReports({ limit: 5 });
@@ -434,12 +443,15 @@ export default function CitizenHomePage() {
           <Button
             variant="secondary"
             leftIcon={<MessageSquare className="h-4 w-4" />}
-            className="hidden md:inline-flex"
+            onClick={() => setCopilotOpen(true)}
+            className="hidden md:inline-flex cursor-pointer"
           >
             Chat Now
           </Button>
         </CardBody>
       </Card>
+
+      <AICopilotDrawer isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </div>
   );
 }

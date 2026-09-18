@@ -28,6 +28,7 @@ This repository is actively co-developed by **Claude** and **Antigravity (Gemini
 ### 2. Live Synchronization & Hand-off
 
 - Always check `COLLAB.md` for live progress, locked directories, and handover messages.
+- Consult `/docs/AI_CONTEXT.md` for high-density persistent AI architecture, database structure, tool definitions, and agent memory.
 - Always commit work atomically (`git commit -m "feat/fix: ..."`) after testing so the other agent has a clean working tree.
 - Never force push or overwrite each other's in-progress changes.
 

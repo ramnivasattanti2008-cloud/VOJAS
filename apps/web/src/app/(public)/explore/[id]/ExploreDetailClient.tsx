@@ -1,5 +1,6 @@
 'use client';
 
+import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
 import { InformationClassificationBanner } from '@/components/transparency/InformationClassificationBanner';
 import { PublicMoneyView } from '@/components/transparency/PublicMoneyView';
 import { SourcePanel } from '@/components/transparency/SourcePanel';
@@ -25,6 +26,7 @@ import {
     Clock,
     Cpu,
     DollarSign,
+    Download,
     FileSearch,
     FileText,
     Loader2,
@@ -88,6 +90,21 @@ export function ExploreDetailClient() {
   ];
 
   const { data: project, isLoading, isError } = usePublicProject(id);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!project) return;
+    setPdfBusy(true);
+    try {
+      const { generateProjectReportPdf } = await import('@/lib/pdf');
+      await generateProjectReportPdf({ project });
+    } catch (err) {
+      console.error('Failed to generate project PDF:', err);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -192,8 +209,38 @@ export function ExploreDetailClient() {
               )}
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCopilotOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition-all active:scale-95 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+              <span>Ask AI Copilot</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={pdfBusy}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-2xs transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+            >
+              {pdfBusy ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-vojas-600" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-vojas-600" />
+              )}
+              <span>{pdfBusy ? 'Generating PDF...' : 'Download Report (PDF)'}</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      <AICopilotDrawer
+        isOpen={copilotOpen}
+        onClose={() => setCopilotOpen(false)}
+        contextProjectId={project.id}
+        contextProjectName={project.name}
+      />
 
       <InformationClassificationBanner />
 

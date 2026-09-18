@@ -1,13 +1,24 @@
 'use client';
 
-import { useMemo } from 'react';
-import { TrendingUp, TrendingDown, PieChart as PieIcon, BarChart3, Activity, IndianRupee, AlertTriangle, FileText, Building2 } from 'lucide-react';
-import { Card, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { useProjects } from '@/hooks/useProjects';
+import { Card, CardBody } from '@/components/ui/Card';
 import { useAnomalyStats } from '@/hooks/useAnomalies';
+import { usePublicProjectStates, usePublicProjectSummary } from '@/hooks/usePublicProjects';
+import { useSectorSummary } from '@/hooks/useSectors';
 import { formatCurrency } from '@/lib/utils';
-import { ProjectStatus } from '@vojas/shared';
+import {
+    Activity,
+    AlertTriangle,
+    BarChart3,
+    Building2,
+    Download,
+    FileText,
+    IndianRupee,
+    Loader2,
+    PieChart as PieIcon,
+    TrendingUp
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 interface SectorGroup {
   sector: string;
@@ -65,75 +76,112 @@ function BarRow({ label, value, max, color }: { label: string; value: number; ma
 }
 
 export function AnalyticsClient() {
-  const { data: projectsData, isLoading: projectsLoading } = useProjects({ limit: 500 });
-  const { data: anomalyStats } = useAnomalyStats();
+  const { data: summary, isLoading: summaryLoading } = usePublicProjectSummary();
+  const { data: states = [], isLoading: statesLoading } = usePublicProjectStates();
+  const { data: sectorSummary = [], isLoading: sectorsLoading } = useSectorSummary();
+  const { data: anomalyStats, isLoading: anomalyLoading } = useAnomalyStats();
 
-  const projects = projectsData?.data ?? [];
+  const [pdfBusy, setPdfBusy] = useState(false);
 
-  // By status
+  const handleDownloadPdf = async () => {
+    setPdfBusy(true);
+    try {
+      const { generateAnalyticsReportPdf } = await import('@/lib/pdf');
+      await generateAnalyticsReportPdf({
+        summary,
+        states,
+        sectors: sectorSummary,
+        anomalies: anomalyStats,
+      });
+    } catch (err) {
+      console.error('Failed to generate analytics report:', err);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
+  const isLoading = summaryLoading || statesLoading || sectorsLoading || anomalyLoading;
+
+  // By status from real totals
   const byStatus = useMemo(() => {
-    const map: Record<string, number> = {};
-    projects.forEach((p) => {
-      map[p.status] = (map[p.status] ?? 0) + 1;
-    });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [projects]);
+    if (!summary) return [];
+    const completed = summary.completedProjects ?? 0;
+    const inProgress = summary.inProgressProjects ?? 0;
+    const delayed = summary.delayedProjects ?? 0;
+    const unsanctioned = Math.max(0, summary.totalProjects - completed - inProgress - delayed);
+    return [
+      ['COMPLETED', completed],
+      ['IN_PROGRESS', inProgress],
+      ['DELAYED', delayed],
+      ['UNSANCTIONED', unsanctioned],
+    ].filter(([, count]) => (count as number) > 0);
+  }, [summary]);
 
-  // By sector
+  // By sector from real sector aggregates
   const bySector = useMemo<SectorGroup[]>(() => {
-    const map: Record<string, SectorGroup> = {};
-    projects.forEach((p) => {
-      const key = p.sector as string;
-      if (!map[key]) {
-        map[key] = { sector: key, count: 0, sanctioned: 0, spent: 0, utilization: 0 };
-      }
-      map[key].count += 1;
-      map[key].sanctioned += p.sanctionedAmount ?? 0;
-      map[key].spent += p.spentAmount ?? 0;
-    });
-    return Object.values(map)
-      .map((s) => ({
-        ...s,
-        utilization: s.sanctioned > 0 ? Math.round((s.spent / s.sanctioned) * 100) : 0,
-      }))
+    if (!Array.isArray(sectorSummary)) return [];
+    return sectorSummary
+      .map((s: any) => {
+        const sanctioned = Number(s.totalSanctioned ?? s.approvedAmount ?? 0);
+        const spent = Number(s.totalSpent ?? s.spentAmount ?? 0);
+        const count = Number(s.count ?? s.projectCount ?? s.totalProjects ?? 0);
+        return {
+          sector: s.sector || s.name,
+          count,
+          sanctioned,
+          spent,
+          utilization: sanctioned > 0 ? Math.round((spent / sanctioned) * 100) : 0,
+        };
+      })
       .sort((a, b) => b.count - a.count);
-  }, [projects]);
+  }, [sectorSummary]);
 
-  // By state
+  // By state from real state aggregates
   const byState = useMemo<StateGroup[]>(() => {
-    const map: Record<string, StateGroup> = {};
-    projects.forEach((p) => {
-      const key = p.state ?? 'Unknown';
-      if (!map[key]) {
-        map[key] = { state: key, count: 0, sanctioned: 0, flagged: 0 };
-      }
-      map[key].count += 1;
-      map[key].sanctioned += p.sanctionedAmount ?? 0;
-      if (p.riskLevel === 'HIGH' || p.riskLevel === 'CRITICAL') {
-        map[key].flagged += 1;
-      }
-    });
-    return Object.values(map)
+    if (!Array.isArray(states)) return [];
+    return states
+      .map((st: any) => ({
+        state: st.state || st.name,
+        count: Number(st.totalProjects ?? st.count ?? 0),
+        sanctioned: Number(st.totalSanctioned ?? 0),
+        flagged: Number(st.delayedProjects ?? 0),
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [projects]);
+  }, [states]);
 
-  // Totals
-  const totalSanctioned = projects.reduce((s, p) => s + (p.sanctionedAmount ?? 0), 0);
-  const totalSpent = projects.reduce((s, p) => s + (p.spentAmount ?? 0), 0);
+  // Totals from real summary
+  const totalProjects = summary?.totalProjects ?? 0;
+  const totalSanctioned = summary?.totalSanctioned ?? 0;
+  const totalSpent = summary?.totalSpent ?? 0;
   const utilizationPct = totalSanctioned > 0 ? Math.round((totalSpent / totalSanctioned) * 100) : 0;
-  const flaggedCount = projects.filter((p) => p.riskLevel === 'HIGH' || p.riskLevel === 'CRITICAL').length;
+  const flaggedCount = summary?.delayedProjects ?? 0;
 
   const criticalAnomalies = anomalyStats?.bySeverity?.find((s) => s.severity === 'CRITICAL')?._count?._all ?? 0;
   const openAnomalies = anomalyStats?.byStatus?.find((s) => s.status === 'OPEN')?._count?._all ?? 0;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-        <p className="text-slate-500 text-sm mt-0.5">
-          Platform-wide insights and trends
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            Platform-wide insights and trends across all {summary?.totalProjects ? summary.totalProjects.toLocaleString() : '60,000+'} MPLADS works
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleDownloadPdf}
+          disabled={pdfBusy || isLoading}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition-all active:scale-95 disabled:opacity-60"
+        >
+          {pdfBusy ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+          ) : (
+            <Download className="w-3.5 h-3.5" />
+          )}
+          <span>{pdfBusy ? 'Generating PDF...' : 'Download PDF Report'}</span>
+        </button>
       </div>
 
       {/* Top stats */}
@@ -145,7 +193,7 @@ export function AnalyticsClient() {
               <Building2 className="h-4 w-4 text-slate-400" />
             </div>
             <p className="text-2xl font-bold text-slate-900">
-              {projectsLoading ? '—' : projects.length}
+              {isLoading ? '—' : totalProjects.toLocaleString()}
             </p>
             <p className="text-xs text-slate-500 mt-1">across all states</p>
           </CardBody>
@@ -185,7 +233,7 @@ export function AnalyticsClient() {
             </div>
             <p className="text-2xl font-bold text-slate-900">{flaggedCount}</p>
             <p className="text-xs text-slate-500 mt-1">
-              {projects.length > 0 ? Math.round((flaggedCount / projects.length) * 100) : 0}% of total
+              {totalProjects > 0 ? Math.round((flaggedCount / totalProjects) * 100) : 0}% of total
             </p>
           </CardBody>
         </Card>

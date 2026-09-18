@@ -45,7 +45,22 @@ async function main() {
       create: { ...u, passwordHash, isActive: true },
     });
   }
-  console.log(`  ${users.length} users created`);
+
+  // Evaluator demo citizen account
+  const demoHash = await bcrypt.hash('VojasDemo2026', 12);
+  await prisma.user.upsert({
+    where: { email: 'demo@vojas.gov' },
+    update: { passwordHash: demoHash, isActive: true },
+    create: {
+      email: 'demo@vojas.gov',
+      name: 'Demo Citizen',
+      role: UserRole.CITIZEN,
+      passwordHash: demoHash,
+      isActive: true,
+    },
+  });
+
+  console.log(`  ${users.length + 1} users created`);
 
   // 2. States (test fixtures)
   const states = [

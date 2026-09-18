@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requirePermission } from '../middleware/auth.js';
 import adminRoutes from './admin.js';
+import aiAssistantRoutes from './aiAssistant.js';
 import analyticsRoutes from './analytics.js';
 import anomalyRoutes from './anomalies.js';
 import auditRoutes from './audit.js';
@@ -89,6 +90,9 @@ router.use('/mps', mpRoutes);
 
 // Risk routes (project-scoped: /projects/:id/risk; global: /summary, /findings, etc.)
 router.use('/', riskRoutes);
+
+// AI Assistant & Copilot routes (role-aware, controlled tools)
+router.use('/ai', aiAssistantRoutes);
 
 // M13: Sector framework routes
 router.use('/sectors', sectorsRoutes);

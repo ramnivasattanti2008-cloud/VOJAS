@@ -8,41 +8,35 @@
  * and an interactive Live LLM Forensic Audit Sandbox for judges and evaluators.
  */
 
-import { useState, useEffect } from 'react';
-import {
-  Brain,
-  Cpu,
-  Sparkles,
-  Shield,
-  ShieldAlert,
-  AlertTriangle,
-  CheckCircle2,
-  Satellite,
-  Activity,
-  FileText,
-  RefreshCw,
-  KeyRound,
-  Sliders,
-  Globe,
-  Lock,
-  Scale,
-  Terminal,
-  ExternalLink,
-  Check,
-  Copy,
-  ChevronRight,
-  Info,
-  Eye,
-  EyeOff,
-  Zap,
-  Building2,
-  Loader2,
-} from 'lucide-react';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { useAIProviders, useAIProviderStats, useSatelliteProviders } from '@/hooks/useAdmin';
+import { cn } from '@/lib/utils';
+import {
+    Activity,
+    AlertTriangle,
+    Brain,
+    Building2,
+    Check,
+    CheckCircle2,
+    Cpu,
+    Eye,
+    EyeOff,
+    Globe,
+    KeyRound,
+    Loader2,
+    Lock,
+    RefreshCw,
+    Satellite,
+    Scale,
+    Shield,
+    ShieldAlert,
+    Sliders,
+    Sparkles,
+    Zap
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface StatutoryRedFlag {
   rule: string;
