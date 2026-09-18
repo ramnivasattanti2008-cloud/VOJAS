@@ -1,6 +1,7 @@
 'use client';
 
 import { PublicProjectCard } from '@/components/transparency/PublicProjectCard';
+import { ShowcaseBanner } from '@/components/transparency/ShowcaseBanner';
 import { Button } from '@/components/ui/Button';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -185,6 +186,9 @@ export function ExploreClient() {
           </button>
         </div>
       </div>
+
+      {/* Featured SIH Evaluator Showcase Banner */}
+      <ShowcaseBanner />
 
       {/* Search + filters */}
       <div className="flex flex-wrap items-center gap-3">

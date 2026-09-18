@@ -1,13 +1,14 @@
+import { ShowcaseBanner } from '@/components/transparency/ShowcaseBanner';
 import {
-  ArrowRight,
-  BarChart3,
-  FileWarning,
-  MapPin,
-  Satellite,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Wallet
+    ArrowRight,
+    BarChart3,
+    FileWarning,
+    MapPin,
+    Satellite,
+    Search,
+    ShieldCheck,
+    Sparkles,
+    Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -71,6 +72,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Featured Forensic Showcase Banner for SIH Evaluators */}
+      <ShowcaseBanner />
 
       {/* Core Platform Pillars */}
       <section className="space-y-6">

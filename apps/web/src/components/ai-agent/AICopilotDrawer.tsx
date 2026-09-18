@@ -11,12 +11,16 @@ import {
     FileCheck2,
     Info,
     Loader2,
+    Mic,
+    MicOff,
+    Scale,
     Send,
     ShieldCheck,
     Sparkles,
-    X
+    X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { RTIDraftModal } from './RTIDraftModal';
 
 export interface AICopilotDrawerProps {
   isOpen: boolean;
@@ -46,8 +50,13 @@ export function AICopilotDrawer({
   contextProjectName,
 }: AICopilotDrawerProps) {
   const [input, setInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const [showRtiModal, setShowRtiModal] = useState(false);
+
   const { messages, isLoading, sendMessage, clearMessages } = useAIAssistant(contextProjectId);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -55,9 +64,92 @@ export function AICopilotDrawer({
     }
   }, [messages, isLoading]);
 
+  // Clean up speech recognition on unmount or drawer close
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, []);
+
   if (!isOpen) return null;
 
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setSpeechError('Voice input not supported in this browser. Please use Chrome or Edge.');
+      setTimeout(() => setSpeechError(null), 3500);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN'; // Works for Indian English and Hindi transliteration
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechError(null);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+        setInput(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        if (event.error !== 'no-speech') {
+          setSpeechError(`Voice recognition: ${event.error}`);
+          setTimeout(() => setSpeechError(null), 3000);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      setIsListening(false);
+    }
+  };
+
   const handleSend = async (textToSend?: string) => {
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+      setIsListening(false);
+    }
+
     const q = textToSend || input;
     if (!q.trim() || isLoading) return;
     setInput('');
@@ -100,15 +192,26 @@ export function AICopilotDrawer({
 
           {/* Context Banner */}
           {contextProjectId && (
-            <div className="bg-purple-50/70 border-b border-purple-100/80 px-4 py-2 flex items-center justify-between text-xs text-purple-900">
+            <div className="bg-purple-50/80 border-b border-purple-100/90 px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-purple-900">
               <div className="flex items-center gap-1.5 truncate">
                 <Building2 className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                <span className="font-medium">Active Project Context:</span>
+                <span className="font-medium">Active Project:</span>
                 <span className="font-semibold truncate">{contextProjectName || contextProjectId}</span>
               </div>
-              <span className="text-[10px] font-mono text-purple-600 shrink-0 bg-purple-100/60 px-1.5 py-0.5 rounded">
-                Attached
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowRtiModal(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition-all cursor-pointer"
+                  title="Generate official Right to Information application"
+                >
+                  <Scale className="w-3 h-3" />
+                  <span>Draft RTI (Sec 6)</span>
+                </button>
+                <span className="text-[10px] font-mono text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+                  Attached
+                </span>
+              </div>
             </div>
           )}
 
@@ -138,7 +241,7 @@ export function AICopilotDrawer({
                         key={idx}
                         type="button"
                         onClick={() => handleSend(s)}
-                        className="text-left p-3 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/40 text-xs font-medium text-slate-700 transition-all flex items-center justify-between group"
+                        className="text-left p-3 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/40 text-xs font-medium text-slate-700 transition-all flex items-center justify-between group cursor-pointer"
                       >
                         <span>{s}</span>
                         <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-purple-600 transition-colors shrink-0 ml-2" />
@@ -210,15 +313,28 @@ export function AICopilotDrawer({
 
                         {/* Recommended Actions */}
                         {m.responsePayload.recommendedActions && m.responsePayload.recommendedActions.length > 0 && (
-                          <div className="space-y-1 bg-blue-50/60 p-2 rounded-lg border border-blue-100/70">
+                          <div className="space-y-1.5 bg-blue-50/60 p-2.5 rounded-lg border border-blue-100/70">
                             <span className="font-bold text-blue-800 flex items-center gap-1 text-[11px] uppercase tracking-wider">
-                              <FileCheck2 className="w-3 h-3 text-blue-600" /> Recommended Action
+                              <FileCheck2 className="w-3 h-3 text-blue-600" /> Recommended Actions
                             </span>
                             <ul className="list-disc pl-4 space-y-0.5 text-blue-900 text-[11px]">
                               {m.responsePayload.recommendedActions.map((act, i) => (
                                 <li key={i}>{act}</li>
                               ))}
                             </ul>
+
+                            {contextProjectId && (
+                              <div className="pt-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowRtiModal(true)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition-all cursor-pointer"
+                                >
+                                  <Scale className="w-3 h-3" />
+                                  <span>Draft RTI Application for this Project</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -245,6 +361,29 @@ export function AICopilotDrawer({
             )}
           </div>
 
+          {/* Voice status banner */}
+          {isListening && (
+            <div className="bg-red-50 border-t border-red-200 px-4 py-1.5 flex items-center justify-between text-xs text-red-700 animate-pulse">
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-ping inline-block" />
+                Listening to speech... Speak in Hindi or English
+              </span>
+              <button
+                type="button"
+                onClick={toggleListening}
+                className="text-[11px] font-semibold underline text-red-800 hover:text-red-950"
+              >
+                Stop
+              </button>
+            </div>
+          )}
+
+          {speechError && (
+            <div className="bg-amber-50 border-t border-amber-200 px-4 py-1.5 text-xs text-amber-800">
+              {speechError}
+            </div>
+          )}
+
           {/* Input Area */}
           <div className="p-3 sm:p-4 border-t border-slate-200 bg-white space-y-2">
             <form
@@ -259,17 +398,35 @@ export function AICopilotDrawer({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={
-                  contextProjectId
+                  isListening
+                    ? 'Listening... speak now'
+                    : contextProjectId
                     ? 'Ask about this project (funds, satellite, risk)...'
                     : 'Ask about public works, delays, or sectors...'
                 }
                 disabled={isLoading}
                 className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs sm:text-sm placeholder:text-slate-400 disabled:opacity-60"
               />
+
+              {/* Voice Microphone Button */}
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                  isListening
+                    ? 'bg-red-500 text-white border-red-600 shadow-md ring-2 ring-red-300 animate-pulse'
+                    : 'bg-slate-100 hover:bg-purple-50 text-slate-600 hover:text-purple-600 border-slate-200 shadow-2xs'
+                }`}
+                title={isListening ? 'Stop listening' : 'Voice Input (Hindi/English)'}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+
+              {/* Send Button */}
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs sm:text-sm flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs sm:text-sm flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer shrink-0 shadow-2xs"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
@@ -291,7 +448,18 @@ export function AICopilotDrawer({
           </div>
         </div>
       </div>
+
+      {/* 1-Click RTI Draft Modal */}
+      {showRtiModal && (
+        <RTIDraftModal
+          isOpen={showRtiModal}
+          onClose={() => setShowRtiModal(false)}
+          projectDetails={{
+            id: contextProjectId || 'VOJAS-PROJECT',
+            name: contextProjectName || 'Public Infrastructure Work',
+          }}
+        />
+      )}
     </div>
   );
 }
-
