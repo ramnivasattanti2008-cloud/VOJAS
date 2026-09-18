@@ -186,8 +186,13 @@ export function canAccessProject(
     return perms.includes(PERMISSIONS.PROJECT_READ_INTERNAL);
   }
 
-  // MPs require public project-read permission for constituency projects.
-  if (user.role === UserRole.MP && project.constituency) {
+  // MPs are scoped to their own constituency. `user.constituency` must
+  // actually be populated and match before granting MP-specific access — an
+  // MP with no resolvable constituency (the current default, since nothing
+  // yet links a User to an MP record) falls through to the same public/
+  // internal check as any other role below, rather than being treated as
+  // having oversight of every project nationwide.
+  if (user.role === UserRole.MP && project.constituency && user.constituency === project.constituency) {
     return perms.includes(PERMISSIONS.PROJECT_READ_PUBLIC);
   }
 

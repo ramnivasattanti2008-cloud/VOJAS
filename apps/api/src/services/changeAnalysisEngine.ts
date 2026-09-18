@@ -461,15 +461,21 @@ class ChangeAnalysisEngine {
     // Resolution suitability
     const resolutionSuitability: Confidence = 'MEDIUM'; // 10m is fixed for Sentinel-2
 
-    // Control area comparison
+    // Control area comparison. Not every provider implements real
+    // control-area sampling (see cdsePixelProvider.ts) — deltaRatio is null
+    // rather than a fabricated number in that case, and an unmeasured factor
+    // must not inflate confidence, so it scores LOW rather than being
+    // silently excluded or defaulted to a middle value.
     const controlAreaComparison: Confidence =
-      raw.deltaRatio === 0
-        ? 'HIGH' // No project-specific change vs. control
-        : raw.deltaRatio > 2
-          ? 'HIGH'
-          : raw.deltaRatio >= 1
-            ? 'MEDIUM'
-            : 'LOW';
+      raw.deltaRatio === null
+        ? 'LOW'
+        : raw.deltaRatio === 0
+          ? 'HIGH' // No project-specific change vs. control
+          : raw.deltaRatio > 2
+            ? 'HIGH'
+            : raw.deltaRatio >= 1
+              ? 'MEDIUM'
+              : 'LOW';
 
     return {
       imageQuality,
@@ -585,7 +591,7 @@ class ChangeAnalysisEngine {
 
     if (classification === 'INCONCLUSIVE') {
       story += ' This analysis cannot reliably distinguish project-related change from broader environmental effects. Field verification is required.';
-    } else if (raw.controlAreaChangePercent > 0 && raw.changePercent > 0) {
+    } else if (raw.controlAreaChangePercent !== null && raw.controlAreaChangePercent > 0 && raw.changePercent > 0) {
       const ratio = (raw.changePercent / raw.controlAreaChangePercent).toFixed(2);
       story += ` For context, the surrounding control area shows ${raw.controlAreaChangePercent.toFixed(1)}% change (ratio ${ratio}).`;
     }

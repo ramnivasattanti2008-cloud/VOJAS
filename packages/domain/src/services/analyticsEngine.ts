@@ -27,8 +27,9 @@ export interface ProjectAnalytics {
   spentAmount: number;
   utilizationPct: number;
   reportedProgressPct: number;
-  riskScore: number;
-  riskLevel: string;
+  /** Null when the project has never been risk-scored — not the same as a confirmed zero. */
+  riskScore: number | null;
+  riskLevel: string | null;
   openFindingsCount: number;
   unresolvedFindingsCount: number;
   plannedEndDate: Date | null;
@@ -73,7 +74,8 @@ export interface AggregatedMetrics {
   totalSanctioned: number;
   totalSpent: number;
   avgUtilization: number;
-  avgRiskScore: number;
+  /** Null when none of the entity's projects have been risk-scored yet. */
+  avgRiskScore: number | null;
   highRiskCount: number;
   criticalRiskCount: number;
   openFindings: number;
@@ -318,8 +320,8 @@ export class AnalyticsEngine {
       spentAmount: project.spentAmount,
       utilizationPct: project.approvedAmount > 0 ? Math.round((project.spentAmount / project.approvedAmount) * 100) : 0,
       reportedProgressPct,
-      riskScore: project.projectRisk?.riskScore ?? 0,
-      riskLevel: project.projectRisk?.riskLevel ?? 'LOW',
+      riskScore: project.projectRisk?.riskScore ?? null,
+      riskLevel: project.projectRisk?.riskLevel ?? null,
       openFindingsCount: project.riskFindings.length,
       unresolvedFindingsCount: project.riskFindings.filter(f => f.status !== 'RESOLVED').length,
       plannedEndDate: plannedEnd,
@@ -378,7 +380,7 @@ export class AnalyticsEngine {
         totalSanctioned: 0,
         totalSpent: 0,
         avgUtilization: 0,
-        avgRiskScore: 0,
+        avgRiskScore: null,
         highRiskCount: 0,
         criticalRiskCount: 0,
         openFindings: 0,
@@ -408,8 +410,12 @@ export class AnalyticsEngine {
       return plannedEnd < new Date() && p.status === 'IN_PROGRESS';
     }).length;
 
-    const riskScores = projects.map(p => p.projectRisk?.riskScore ?? 0);
-    const avgRiskScore = riskScores.length > 0 ? Math.round(riskScores.reduce((s, r) => s + r, 0) / riskScores.length) : 0;
+    // Average, and the high/critical counts, only over projects that actually
+    // have a risk score — an un-analyzed project is not the same as a
+    // confirmed zero-risk one, and must not dilute the average toward zero.
+    const scoredProjects = projects.filter(p => p.projectRisk != null);
+    const riskScores = scoredProjects.map(p => p.projectRisk!.riskScore);
+    const avgRiskScore = riskScores.length > 0 ? Math.round(riskScores.reduce((s, r) => s + r, 0) / riskScores.length) : null;
     const highRiskCount = riskScores.filter(r => r >= 50 && r < 70).length;
     const criticalRiskCount = riskScores.filter(r => r >= 70).length;
 
@@ -421,7 +427,7 @@ export class AnalyticsEngine {
 
     const coverage: Record<string, number> = {
       satellite: satelliteCoverage / 100,
-      risk: avgRiskScore > 0 ? 1 : 0,
+      risk: projects.length > 0 ? scoredProjects.length / projects.length : 0,
     };
     const dataQuality = assessDataQuality(coverage);
 
@@ -614,7 +620,7 @@ export class AnalyticsEngine {
     locationId: string,
     locationName: string,
     metric: string
-  ): Promise<{ intensity: number; severity: string; projectCount: number; avgRiskScore: number; confidence: ConfidenceLevel }> {
+  ): Promise<{ intensity: number; severity: string; projectCount: number; avgRiskScore: number | null; confidence: ConfidenceLevel }> {
     const where: Record<string, unknown> = {};
     if (locationType === 'DISTRICT') where.districtId = locationId;
     if (locationType === 'STATE') where.state = locationId;
@@ -629,14 +635,20 @@ export class AnalyticsEngine {
     });
 
     if (projects.length === 0) {
-      return { intensity: 0, severity: 'LOW', projectCount: 0, avgRiskScore: 0, confidence: 'INSUFFICIENT' };
+      return { intensity: 0, severity: 'LOW', projectCount: 0, avgRiskScore: null, confidence: 'INSUFFICIENT' };
     }
+
+    const scoredProjects = projects.filter(p => p.projectRisk != null);
 
     let intensity = 0;
     switch (metric) {
       case 'RISK': {
-        const avgRisk = projects.reduce((s, p) => s + (p.projectRisk?.riskScore ?? 0), 0) / projects.length;
-        const highRisk = projects.filter(p => (p.projectRisk?.riskScore ?? 0) >= 50).length;
+        // Average only over projects that actually have a risk score — an
+        // un-analyzed location must not read as confidently low-risk.
+        const avgRisk = scoredProjects.length > 0
+          ? scoredProjects.reduce((s, p) => s + p.projectRisk!.riskScore, 0) / scoredProjects.length
+          : 0;
+        const highRisk = scoredProjects.filter(p => p.projectRisk!.riskScore >= 50).length;
         intensity = Math.round(avgRisk + highRisk * 10);
         break;
       }
@@ -654,10 +666,15 @@ export class AnalyticsEngine {
         intensity = 0;
     }
 
-    const avgRiskScore = projects.reduce((s, p) => s + (p.projectRisk?.riskScore ?? 0), 0) / projects.length;
+    const avgRiskScore = scoredProjects.length > 0
+      ? Math.round(scoredProjects.reduce((s, p) => s + p.projectRisk!.riskScore, 0) / scoredProjects.length)
+      : null;
     const severity = intensity >= 70 ? 'CRITICAL' : intensity >= 50 ? 'HIGH' : intensity >= 30 ? 'MEDIUM' : 'LOW';
-    const confidence: ConfidenceLevel = projects.length >= 10 ? 'HIGH' : projects.length >= 5 ? 'MEDIUM' : 'LOW';
+    // Confidence must reflect how many projects were actually risk-scored,
+    // not just how many exist — a location full of un-analyzed projects is
+    // not a HIGH-confidence read.
+    const confidence: ConfidenceLevel = scoredProjects.length >= 10 ? 'HIGH' : scoredProjects.length >= 5 ? 'MEDIUM' : scoredProjects.length > 0 ? 'LOW' : 'INSUFFICIENT';
 
-    return { intensity: Math.min(100, intensity), severity, projectCount: projects.length, avgRiskScore: Math.round(avgRiskScore), confidence };
+    return { intensity: Math.min(100, intensity), severity, projectCount: projects.length, avgRiskScore, confidence };
   }
 }

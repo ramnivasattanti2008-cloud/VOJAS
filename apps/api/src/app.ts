@@ -238,6 +238,14 @@ app.use('/api/v1/risk', aiLimiter);
 app.use('/api/v1/projects/:id/risk/analyze', aiLimiter);
 app.use('/api/v1/projects/:id/forecast', aiLimiter);
 app.use('/api/v1/projects/:id/scenario', aiLimiter);
+// ai-audit calls a paid LLM (Gemini/OpenAI) and falls back to VOJAS's own
+// API keys when the caller doesn't supply one — uncapped, this is a direct
+// budget-abuse vector. Neither path matched the patterns above (this one is
+// /projects/:id/ai-audit with no /risk segment, and the public variant is
+// under /projects/public/:id). keyGenerator falls back to IP for the fully
+// unauthenticated public route.
+app.use('/api/v1/projects/:id/ai-audit', aiLimiter);
+app.use('/api/v1/projects/public/:id/ai-audit', aiLimiter);
 
 // 5) General limiter — fallback for everything else
 const generalLimiter = rateLimit({

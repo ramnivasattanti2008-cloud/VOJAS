@@ -3,8 +3,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
 import { NotFoundError, ValidationError, FinancialIntelligenceService } from '@vojas/domain';
-import { UserRole } from '@vojas/shared';
-import { authenticate } from '../middleware/auth.js';
+import { PERMISSIONS, UserRole } from '@vojas/shared';
+import { authenticate, requirePermission } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
 
@@ -37,6 +37,7 @@ const intelligenceService = new FinancialIntelligenceService(prisma);
 router.get(
   '/projects/:id/financial',
   authenticate,
+  requirePermission(PERMISSIONS.FINANCIAL_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -117,6 +118,7 @@ router.post(
 router.get(
   '/projects/:id/financial/summary',
   authenticate,
+  requirePermission(PERMISSIONS.FINANCIAL_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -135,6 +137,7 @@ router.get(
 router.get(
   '/projects/:id/financial/reconciliation',
   authenticate,
+  requirePermission(PERMISSIONS.FINANCIAL_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -154,6 +157,7 @@ router.get(
 router.get(
   '/projects/:id/financial/benchmarks',
   authenticate,
+  requirePermission(PERMISSIONS.FINANCIAL_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -176,6 +180,7 @@ router.get(
 router.get(
   '/projects/:id/financial/signals',
   authenticate,
+  requirePermission(PERMISSIONS.FINANCIAL_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -193,6 +198,7 @@ router.get(
 router.get(
   '/projects/:id/financial/timeline',
   authenticate,
+  requirePermission(PERMISSIONS.FINANCIAL_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -210,6 +216,7 @@ router.get(
 router.get(
   '/projects/:id/financial/correlation',
   authenticate,
+  requirePermission(PERMISSIONS.FINANCIAL_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;

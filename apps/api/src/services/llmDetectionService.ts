@@ -174,7 +174,6 @@ export class LLMDetectionService {
     let verdictTitle = 'Standard Public Asset Delivery';
     let riskScore = 14;
     let riskLevel: RiskLevel = RiskLevel.LOW;
-    let spectralChange = isCompleted;
     let disbursalAnomaly = false;
 
     // Ground every satellite statement in rows that actually exist. A usable
@@ -197,6 +196,17 @@ export class LLMDetectionService {
         : observationDates[0] ?? 'an unrecorded date';
 
     const latestChange = project.changeAnalyses?.[0];
+    // Derived once from the real change analysis (never from project status)
+    // so every verdict branch reports the same honest signal — previously
+    // this was left at its initial administrative-status value in three of
+    // the five branches below, mislabeling a status flag as a satellite finding.
+    const spectralChange = Boolean(
+      latestChange &&
+      latestChange.changeClassification &&
+      latestChange.changeClassification !== 'NO_DETECTABLE_CHANGE' &&
+      latestChange.changePercent !== null &&
+      latestChange.changePercent !== 0
+    );
     // A ghost-work signal may only be raised from a real change analysis. It must
     // never be inferred from project prose: matching on description text would let
     // seed copy dictate a CRITICAL fraud verdict with no underlying evidence.
@@ -217,7 +227,6 @@ export class LLMDetectionService {
       riskScore = isGhostBySatellite ? 96 : 88;
       riskLevel = RiskLevel.CRITICAL;
       disbursalAnomaly = true;
-      spectralChange = false;
 
       redFlags.push({
         rule: 'GFR 2017 Rule 139 & CPWD Section 10',
@@ -333,7 +342,6 @@ export class LLMDetectionService {
       verdictTitle = 'Optimal Civic Delivery: Fund Absorption Matches Physical Asset';
       riskScore = 11;
       riskLevel = RiskLevel.LOW;
-      spectralChange = hasCoords;
 
       actionPlan.push(
         {

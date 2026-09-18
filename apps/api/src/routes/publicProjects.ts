@@ -227,11 +227,18 @@ router.get('/states', async (_req: Request, res: Response, next: NextFunction) =
 
     // Get counts by status per state via fast aggregation
     const stateNames = states.map((s) => s.state).filter(Boolean) as string[];
-    const statusCounts = await prisma.project.groupBy({
-      by: ['state', 'status'],
-      _count: { id: true },
-      where: { state: { in: stateNames } },
-    });
+    const [statusCounts, delayedCounts] = await Promise.all([
+      prisma.project.groupBy({
+        by: ['state', 'status'],
+        _count: { id: true },
+        where: { state: { in: stateNames } },
+      }),
+      prisma.project.groupBy({
+        by: ['state'],
+        _count: { id: true },
+        where: { state: { in: stateNames }, status: 'IN_PROGRESS', expectedEndDate: { lt: new Date() } },
+      }),
+    ]);
 
     const byState: Record<string, { completed: number; inProgress: number; delayed: number }> = {};
     for (const row of statusCounts) {
@@ -241,6 +248,11 @@ router.get('/states', async (_req: Request, res: Response, next: NextFunction) =
       else if (row.status === 'IN_PROGRESS') {
         byState[row.state].inProgress += row._count.id;
       }
+    }
+    for (const row of delayedCounts) {
+      if (!row.state) continue;
+      if (!byState[row.state]) byState[row.state] = { completed: 0, inProgress: 0, delayed: 0 };
+      byState[row.state].delayed = row._count.id;
     }
 
     const summaries = states.map((s) => ({
@@ -277,20 +289,45 @@ router.get('/districts', async (req: Request, res: Response, next: NextFunction)
       return success(res, cached);
     }
 
-    const districts = await prisma.project.groupBy({
-      by: ['district', 'state'],
-      where: { state },
-      _count: { id: true },
-      _sum: { approvedAmount: true, spentAmount: true },
-    });
+    const [districts, statusCounts, delayedCounts] = await Promise.all([
+      prisma.project.groupBy({
+        by: ['district', 'state'],
+        where: { state },
+        _count: { id: true },
+        _sum: { approvedAmount: true, spentAmount: true },
+      }),
+      prisma.project.groupBy({
+        by: ['district', 'state', 'status'],
+        where: { state },
+        _count: { id: true },
+      }),
+      prisma.project.groupBy({
+        by: ['district', 'state'],
+        where: { state, status: 'IN_PROGRESS', expectedEndDate: { lt: new Date() } },
+        _count: { id: true },
+      }),
+    ]);
+
+    const byDistrict: Record<string, { completed: number; inProgress: number; delayed: number }> = {};
+    for (const row of statusCounts) {
+      const key = row.district ?? '';
+      if (!byDistrict[key]) byDistrict[key] = { completed: 0, inProgress: 0, delayed: 0 };
+      if (row.status === 'COMPLETED') byDistrict[key].completed += row._count.id;
+      else if (row.status === 'IN_PROGRESS') byDistrict[key].inProgress += row._count.id;
+    }
+    for (const row of delayedCounts) {
+      const key = row.district ?? '';
+      if (!byDistrict[key]) byDistrict[key] = { completed: 0, inProgress: 0, delayed: 0 };
+      byDistrict[key].delayed = row._count.id;
+    }
 
     const stateDistricts = districts.map((d) => ({
       state: d.state ?? state,
       district: d.district ?? 'Unknown',
       totalProjects: d._count.id,
-      completedProjects: 0, // would need a separate query
-      inProgressProjects: 0,
-      delayedProjects: 0,
+      completedProjects: byDistrict[d.district ?? '']?.completed ?? 0,
+      inProgressProjects: byDistrict[d.district ?? '']?.inProgress ?? 0,
+      delayedProjects: byDistrict[d.district ?? '']?.delayed ?? 0,
       totalSanctioned: d._sum.approvedAmount ?? 0,
       totalSpent: d._sum.spentAmount ?? 0,
     }));
@@ -542,39 +579,12 @@ router.post('/:id/ai-audit', async (req: Request, res: Response, next: NextFunct
 
     const audit = await llmDetectionService.auditProject(id, geminiApiKey, openaiApiKey);
 
-    // Update risk record in DB with latest live forensic data
-    await prisma.projectRisk.upsert({
-      where: { projectId: id },
-      create: {
-        projectId: id,
-        riskScore: audit.riskScore,
-        riskLevel: audit.riskLevel,
-        confidence: audit.confidenceScore >= 80 ? 'HIGH' : audit.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
-        primaryDriver: audit.verdictTitle,
-        drivers: audit.statutoryRedFlags.map((rf) => ({
-          name: rf.rule,
-          contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
-          evidence: rf.evidence,
-          solution: rf.violation,
-        })),
-        algorithmVersion: audit.modelUsed,
-      },
-      update: {
-        riskScore: audit.riskScore,
-        riskLevel: audit.riskLevel,
-        confidence: audit.confidenceScore >= 80 ? 'HIGH' : audit.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
-        primaryDriver: audit.verdictTitle,
-        drivers: audit.statutoryRedFlags.map((rf) => ({
-          name: rf.rule,
-          contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
-          evidence: rf.evidence,
-          solution: rf.violation,
-        })),
-        algorithmVersion: audit.modelUsed,
-        updatedAt: new Date(),
-      },
-    });
-
+    // This route is fully unauthenticated by design (public forensic
+    // sandbox) — it must never write to the authoritative ProjectRisk
+    // record, or any anonymous caller could overwrite a project's official
+    // risk verdict on demand. The permission-gated write lives on
+    // POST /projects/:id/ai-audit in risk.ts for callers who actually hold
+    // risk.trigger.
     success(res, audit);
   } catch (err) {
     next(err);

@@ -100,15 +100,20 @@ export class SignalGenerator {
     const { project, latestSatelliteObs } = data;
 
     if (!latestSatelliteObs) return signals;
+    // Without a real sanctioned amount, spentAmount/approvedAmount is
+    // undefined, not "no utilization" — the `|| 1` fallback used below would
+    // otherwise turn a merely-unset approvedAmount into a fabricated
+    // multi-million-percent "deviation" labeled HIGH severity/confidence.
+    if (!project.approvedAmount || project.approvedAmount === 0) return signals;
 
     // Check if we have change classification from M7 analysis
     if (latestSatelliteObs.changeClassification) {
       const changeClass = latestSatelliteObs.changeClassification;
       const hasLowChange = ['NO_OBSERVABLE_CHANGE', 'LOW_OBSERVABLE_CHANGE'].includes(changeClass);
-      const hasHighProgress = (project.spentAmount || 0) / (project.approvedAmount || 1) > 0.5;
+      const hasHighProgress = (project.spentAmount || 0) / project.approvedAmount > 0.5;
 
       if (hasLowChange && hasHighProgress) {
-        const deviation = ((project.spentAmount || 0) / (project.approvedAmount || 1)) * 100;
+        const deviation = ((project.spentAmount || 0) / project.approvedAmount) * 100;
         signals.push({
           id: `signal-${project.id}-sat-${now.getTime()}`,
           projectId: project.id,

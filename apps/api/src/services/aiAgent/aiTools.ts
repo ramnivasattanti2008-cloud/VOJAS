@@ -522,6 +522,10 @@ export class AIToolRegistry {
           take: 5,
         },
         changeAnalyses: {
+          // Only completed analyses — a failed/invalid run has changeStory:
+          // null and classification 'INVALID', which the fallback text
+          // below would otherwise turn into a fabricated affirmative claim.
+          where: { processingStatus: 'COMPLETED' },
           orderBy: { createdAt: 'desc' },
           take: 2,
         },
@@ -573,7 +577,7 @@ export class AIToolRegistry {
               changeClassification: latestChange.changeClassification,
               changePercent: latestChange.changePercent,
               confidence: latestChange.confidence,
-              interpretation: latestChange.changeStory || 'Surface change detected over target bounding polygon.',
+              interpretation: latestChange.changeStory || 'Change analysis completed but produced no narrative interpretation.',
             }
           : 'NO_CHANGE_ANALYSIS_COMPUTED',
         observations: project.satelliteObservations.map((o) => ({
@@ -627,8 +631,12 @@ export class AIToolRegistry {
       toolName: 'getProjectRisk',
       data: {
         projectId: project.id,
-        riskScore: projectRisk?.riskScore ?? 14,
-        riskLevel: projectRisk?.riskLevel ?? 'LOW',
+        // null, not a plausible-looking invented number, when the project
+        // has never been risk-scored — the caller (aiAgentService.ts) must
+        // not report an un-assessed project as a confirmed LOW risk finding.
+        riskScore: projectRisk?.riskScore ?? null,
+        riskLevel: projectRisk?.riskLevel ?? null,
+        assessed: projectRisk != null,
         activeFindingsCount: riskFindings.length,
         findings: riskFindings.map((f) => ({
           id: f.id,

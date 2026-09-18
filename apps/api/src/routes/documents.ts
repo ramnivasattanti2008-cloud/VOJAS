@@ -5,8 +5,8 @@ import fs from 'fs';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
 import { NotFoundError, ValidationError } from '@vojas/domain';
-import { AuditAction, UserRole } from '@vojas/shared';
-import { authenticate } from '../middleware/auth.js';
+import { AuditAction, PERMISSIONS, UserRole } from '@vojas/shared';
+import { authenticate, requirePermission } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
 import {
@@ -55,7 +55,7 @@ const uploadSchema = z.object({
 /**
  * GET /documents — list all documents (with optional filters)
  */
-router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', authenticate, requirePermission(PERMISSIONS.DOCUMENT_READ), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = Number(req.query.page ?? 1);
     const limit = Number(req.query.limit ?? 20);
@@ -91,7 +91,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 /**
  * GET /documents/:id
  */
-router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', authenticate, requirePermission(PERMISSIONS.DOCUMENT_READ), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const doc = await prisma.document.findUnique({
@@ -201,6 +201,7 @@ router.post(
 router.get(
   '/:id/extraction',
   authenticate,
+  requirePermission(PERMISSIONS.DOCUMENT_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -229,6 +230,7 @@ router.get(
 router.get(
   '/:id/cross-check',
   authenticate,
+  requirePermission(PERMISSIONS.DOCUMENT_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = req.params.id as string;
@@ -263,6 +265,7 @@ router.get(
 router.get(
   '/search/query',
   authenticate,
+  requirePermission(PERMISSIONS.DOCUMENT_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = searchSchema.safeParse(req.query);
@@ -284,6 +287,7 @@ router.get(
 router.get(
   '/by-project/:projectId',
   authenticate,
+  requirePermission(PERMISSIONS.DOCUMENT_READ),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const projectId = req.params.projectId as string;

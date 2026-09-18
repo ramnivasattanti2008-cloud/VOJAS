@@ -229,7 +229,13 @@ router.get('/:id/evidence', authenticate, async (req: Request, res: Response, ne
     const visibleEvidence = evidenceService.filterForViewer(allEvidence, {
       userId: user.userId,
       role: user.role,
-      mpHasOversight: user.role === UserRole.MP,
+      // GOVERNMENT-tier evidence (inspection results, internal contractor
+      // updates) is a real elevated grant — it must require the caller's own
+      // constituency to actually match this project's, not just "is an MP."
+      // userCtx.constituency is never populated today (nothing yet links a
+      // User to an MP record), so this correctly evaluates to false until
+      // that linkage exists, rather than granting every MP nationwide oversight.
+      mpHasOversight: user.role === UserRole.MP && !!project.constituency && userCtx.constituency === project.constituency,
     });
 
     success(res, {

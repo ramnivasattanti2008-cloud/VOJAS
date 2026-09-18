@@ -117,9 +117,10 @@ export interface RawAnalysisResult {
   changedAreaM2: number;
   changePercent: number;
 
-  // Control area (for false-positive detection)
-  controlAreaChangePercent: number;
-  deltaRatio: number; // projectChangePercent / controlAreaChangePercent
+  // Control area (for false-positive detection). Null when a provider has no
+  // real control-area sampling implemented — never a fabricated placeholder.
+  controlAreaChangePercent: number | null;
+  deltaRatio: number | null; // projectChangePercent / controlAreaChangePercent
 
   // Quality
   cloudPercentBefore: number;

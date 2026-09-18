@@ -40,6 +40,40 @@ import { logger } from '../utils/logger.js';
 
 const router = Router();
 
+const PRIVILEGED_REPORT_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.OFFICER, UserRole.ANALYST];
+
+/**
+ * Strips reporter PII (name/email/phone), submission metadata (IP/user-agent),
+ * and the whistleblower token from a report for anyone who isn't privileged
+ * staff. The token is never returned here regardless of role — it's a
+ * one-time secret handed to the anonymous submitter at creation time for use
+ * on GET /reports/track/:reference, not something staff browse via report
+ * listings; leaking it lets anyone impersonate that reporter's tracking
+ * session and de-anonymize a report explicitly marked anonymous/confidential.
+ */
+function sanitizeReport<
+  T extends {
+    reporterName: string | null;
+    reporterEmail: string | null;
+    reporterPhone: string | null;
+    isAnonymous: boolean;
+    ipAddress: string | null;
+    userAgent: string | null;
+    whistleblowerToken: string | null;
+  },
+>(report: T, requesterRole: UserRole | undefined): Omit<T, 'whistleblowerToken'> {
+  const isPrivileged = requesterRole !== undefined && PRIVILEGED_REPORT_ROLES.includes(requesterRole);
+  const { whistleblowerToken: _whistleblowerToken, ...rest } = report;
+  return {
+    ...rest,
+    reporterName: isPrivileged ? report.reporterName : report.isAnonymous ? null : report.reporterName,
+    reporterEmail: isPrivileged ? report.reporterEmail : null,
+    reporterPhone: isPrivileged ? report.reporterPhone : null,
+    ipAddress: isPrivileged ? report.ipAddress : null,
+    userAgent: isPrivileged ? report.userAgent : null,
+  };
+}
+
 // ─── Service instances ───────────────────────────────────────────────────────
 
 const auditService = new AuditService(prisma);
@@ -471,7 +505,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     ]);
 
     success(res, {
-      data: data.map(r => ({ ...r, mediaCount: r._count.media, claimsCount: r._count.claims })),
+      data: data.map(r => ({ ...sanitizeReport(r, req.user?.role), mediaCount: r._count.media, claimsCount: r._count.claims })),
       total,
       page: p.page,
       limit: p.limit,
@@ -501,18 +535,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
     });
     if (!report) throw new NotFoundError('Report');
 
-    // Redact reporter identity if not authorized
-    const user = (req as any).user;
-    const isPrivileged = [UserRole.ADMIN, UserRole.OFFICER, UserRole.ANALYST].includes(user?.role);
-
-    const sanitized = {
-      ...report,
-      reporterName: isPrivileged ? report.reporterName : (report.isAnonymous ? null : report.reporterName),
-      reporterEmail: isPrivileged ? report.reporterEmail : null,
-      reporterPhone: isPrivileged ? report.reporterPhone : null,
-    };
-
-    success(res, sanitized);
+    success(res, sanitizeReport(report, req.user?.role));
   } catch (err) {
     next(err);
   }
@@ -548,7 +571,7 @@ router.get('/:id/evidence', authenticate, async (req: Request, res: Response, ne
     });
     if (!report) throw new NotFoundError('Report');
 
-    success(res, report);
+    success(res, sanitizeReport(report, req.user?.role));
   } catch (err) {
     next(err);
   }
@@ -578,7 +601,7 @@ router.get('/by-project/:projectId', authenticate, async (req: Request, res: Res
     ]);
 
     success(res, {
-      data: data.map(r => ({ ...r, mediaCount: r._count.media, claimsCount: r._count.claims })),
+      data: data.map(r => ({ ...sanitizeReport(r, req.user?.role), mediaCount: r._count.media, claimsCount: r._count.claims })),
       total, page, limit, totalPages: Math.ceil(total / limit),
     });
   } catch (err) {

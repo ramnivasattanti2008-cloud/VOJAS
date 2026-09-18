@@ -380,7 +380,11 @@ CORE DIRECTIVES:
       }
 
       if (risk) {
-        facts.push(`Forensic Risk Score: ${risk.riskScore}/100 (Level: ${risk.riskLevel})`);
+        if (risk.assessed) {
+          facts.push(`Forensic Risk Score: ${risk.riskScore}/100 (Level: ${risk.riskLevel})`);
+        } else {
+          missingData.push('This project has not yet been risk-scored — no forensic risk assessment exists on record.');
+        }
         if (risk.findings?.length > 0) {
           risk.findings.forEach((f: any) => {
             analysis.push(`Statutory Indicator: [${f.severity}] ${f.title} (${f.ruleCode})`);

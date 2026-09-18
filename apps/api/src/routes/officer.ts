@@ -1141,8 +1141,11 @@ router.get('/map/layers', authenticate, requireRole(UserRole.ADMIN, UserRole.OFF
   try {
     const { sector, district, state } = req.query as Record<string, string | undefined>;
 
-    // Get projects with location
-    const projectWhere: Record<string, unknown> = {};
+    // Get projects with location. latitude/longitude are required here —
+    // without this filter, a project with no real coordinates would plot at
+    // (0, 0) (a real point in the Atlantic), indistinguishable on the map
+    // from a genuinely geocoded project.
+    const projectWhere: Record<string, unknown> = { latitude: { not: null }, longitude: { not: null } };
     if (sector) projectWhere.sector = sector;
     if (district) projectWhere.district = district;
     if (state) projectWhere.state = state;
@@ -1201,33 +1204,42 @@ router.get('/map/layers', authenticate, requireRole(UserRole.ADMIN, UserRole.OFF
       take: 50,
     });
 
+    // The where filters above already require real coordinates, but that
+    // isn't visible to the type checker through the relation — filter again
+    // here rather than falling back to (0, 0) for anything that slips through.
     success(res, {
-      projects: projects.map((p) => ({
-        id: p.id,
-        name: p.name,
-        lat: p.latitude ?? 0,
-        lng: p.longitude ?? 0,
-        sector: p.sector,
-        status: p.status,
-      })),
-      riskFindings: riskFindings.map((f) => ({
-        id: f.id,
-        title: f.title,
-        lat: f.project?.latitude ?? 0,
-        lng: f.project?.longitude ?? 0,
-        severity: f.severity,
-        projectId: f.project?.id,
-      })),
-      cases: anomalies.map((a) => ({
-        id: a.id,
-        title: a.title,
-        lat: a.project?.latitude ?? 0,
-        lng: a.project?.longitude ?? 0,
-        severity: a.severity,
-        projectId: a.project?.id,
-        priority: a.severity,
-        status: 'NEW',
-      })),
+      projects: projects
+        .filter((p) => p.latitude != null && p.longitude != null)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          lat: p.latitude as number,
+          lng: p.longitude as number,
+          sector: p.sector,
+          status: p.status,
+        })),
+      riskFindings: riskFindings
+        .filter((f) => f.project?.latitude != null && f.project?.longitude != null)
+        .map((f) => ({
+          id: f.id,
+          title: f.title,
+          lat: f.project!.latitude as number,
+          lng: f.project!.longitude as number,
+          severity: f.severity,
+          projectId: f.project?.id,
+        })),
+      cases: anomalies
+        .filter((a) => a.project?.latitude != null && a.project?.longitude != null)
+        .map((a) => ({
+          id: a.id,
+          title: a.title,
+          lat: a.project!.latitude as number,
+          lng: a.project!.longitude as number,
+          severity: a.severity,
+          projectId: a.project?.id,
+          priority: a.severity,
+          status: 'NEW',
+        })),
       citizenSignals: [],
       satelliteEvidence: [],
       fieldInspections: [],

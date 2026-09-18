@@ -92,7 +92,7 @@ export type DocumentClassification = {
 export type CrossCheckResult = {
   documentId: string;
   checks: Array<{
-    checkType: 'AMOUNT_MATCH' | 'CONTRACTOR_MATCH' | 'DATE_REASONABLENESS' | 'LOCATION_MATCH' | 'DUPLICATE' | 'MILESTONE_SEQUENCE';
+    checkType: 'AMOUNT_MATCH' | 'CONTRACTOR_MATCH' | 'DATE_REASONABLENESS' | 'LOCATION_MATCH' | 'DUPLICATE' | 'MILESTONE_SEQUENCE' | 'INSUFFICIENT_DATA';
     passed: boolean;
     severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     finding: string;
@@ -356,6 +356,27 @@ export class DocumentIntelligenceService {
    *   - Project data (location, dates)
    */
   async crossCheck(document: Document, extraction: DocumentExtraction): Promise<CrossCheckResult> {
+    // No OCR exists (see extractText()), so without real extracted text
+    // every field-based check below is unreachable and the duplicate check
+    // trivially "passes" by hashing an empty string — the combination
+    // previously produced a confident 100% "fully cross-verified" score for
+    // a document nothing was actually checked against. Report honestly
+    // instead of running checks that can't do real work.
+    if (!extraction.extractedText) {
+      return {
+        documentId: document.id,
+        checks: [{
+          checkType: 'INSUFFICIENT_DATA',
+          passed: false,
+          severity: 'MEDIUM',
+          finding: 'No text could be extracted from this document (no OCR is currently available), so amount, contractor, date, and duplicate cross-checks could not be performed.',
+        }],
+        overallPassed: false,
+        overallScore: 0,
+        recommendations: ['Extract or manually transcribe this document\'s content before relying on any cross-check result.'],
+      };
+    }
+
     const checks: CrossCheckResult['checks'] = [];
     let passedCount = 0;
 

@@ -26,9 +26,13 @@ import { NotFoundError, ValidationError } from '../errors/index.js';
 
 export type FundLifecycle = {
   sanctioned: number;
-  allocated: number;
-  released: number;
-  committed: number;
+  // Null when no real ALLOCATION/RELEASE/COMMITMENT observations exist for
+  // this project — never backfilled from the sanctioned amount. A project
+  // with zero real disbursement records is not "100% allocated/released/
+  // committed"; it's a project with no expenditure data ingested yet.
+  allocated: number | null;
+  released: number | null;
+  committed: number | null;
   expended: number;
   remaining: number;
   utilizationPercent: number;
@@ -206,22 +210,22 @@ export class FinancialIntelligenceService {
     });
 
     const sanctioned = project.approvedAmount;
-    let allocated = 0;
-    let released = 0;
-    let committed = 0;
+    let allocated: number | null = null;
+    let released: number | null = null;
+    let committed: number | null = null;
     let expended = 0;
 
     for (const obs of observations) {
       switch (obs.type.toUpperCase()) {
         case 'ALLOCATION':
-          allocated += obs.amount;
+          allocated = (allocated ?? 0) + obs.amount;
           break;
         case 'RELEASE':
-          released += obs.amount;
+          released = (released ?? 0) + obs.amount;
           break;
         case 'COMMITMENT':
         case 'COMMITTED':
-          committed += obs.amount;
+          committed = (committed ?? 0) + obs.amount;
           break;
         case 'EXPENDITURE':
         case 'EXPENDED':
@@ -232,11 +236,6 @@ export class FinancialIntelligenceService {
         // SANCTION, BALANCE, UTILIZATION records are informational
       }
     }
-
-    // If no allocation/release records, approximate from expenditure chain
-    if (allocated === 0) allocated = sanctioned;
-    if (released === 0 && allocated > 0) released = allocated;
-    if (committed === 0 && released > 0) committed = released;
 
     const remaining = Math.max(0, sanctioned - expended);
     const utilizationPercent = sanctioned > 0 ? Math.min(100, (expended / sanctioned) * 100) : 0;

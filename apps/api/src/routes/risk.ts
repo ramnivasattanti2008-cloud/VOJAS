@@ -23,7 +23,7 @@ import {
     RiskAnalysisOrchestrator,
     ValidationError,
 } from '@vojas/domain';
-import { UserRole, buildUserContext, canAccessProject, getPermissionsForRole } from '@vojas/shared';
+import { PERMISSIONS, UserRole, buildUserContext, canAccessProject, getPermissionsForRole, roleHasPermission } from '@vojas/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
@@ -117,38 +117,45 @@ router.post(
 
       const result = await llmDetectionService.auditProject(projectId, geminiApiKey, openaiApiKey);
 
-      // Persist or update the risk score and primary driver in DB
-      await prisma.projectRisk.upsert({
-        where: { projectId },
-        create: {
-          projectId,
-          riskScore: result.riskScore,
-          riskLevel: result.riskLevel,
-          confidence: result.confidenceScore >= 80 ? 'HIGH' : result.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
-          primaryDriver: result.verdictTitle,
-          drivers: result.statutoryRedFlags.map((rf) => ({
-            name: rf.rule,
-            contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
-            evidence: rf.evidence,
-            solution: rf.violation,
-          })),
-          algorithmVersion: result.modelUsed,
-        },
-        update: {
-          riskScore: result.riskScore,
-          riskLevel: result.riskLevel,
-          confidence: result.confidenceScore >= 80 ? 'HIGH' : result.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
-          primaryDriver: result.verdictTitle,
-          drivers: result.statutoryRedFlags.map((rf) => ({
-            name: rf.rule,
-            contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
-            evidence: rf.evidence,
-            solution: rf.violation,
-          })),
-          algorithmVersion: result.modelUsed,
-          updatedAt: new Date(),
-        },
-      });
+      // This route is optionalAuth so anyone can run a live audit (e.g. the
+      // public forensic sandbox), but only a caller who actually holds
+      // risk.trigger may overwrite the authoritative ProjectRisk record that
+      // referrals/investigations/officer dashboards rely on — otherwise an
+      // anonymous or unprivileged caller could silently overwrite a project's
+      // official risk verdict on demand.
+      if (req.user && roleHasPermission(req.user.role, PERMISSIONS.RISK_TRIGGER)) {
+        await prisma.projectRisk.upsert({
+          where: { projectId },
+          create: {
+            projectId,
+            riskScore: result.riskScore,
+            riskLevel: result.riskLevel,
+            confidence: result.confidenceScore >= 80 ? 'HIGH' : result.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
+            primaryDriver: result.verdictTitle,
+            drivers: result.statutoryRedFlags.map((rf) => ({
+              name: rf.rule,
+              contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
+              evidence: rf.evidence,
+              solution: rf.violation,
+            })),
+            algorithmVersion: result.modelUsed,
+          },
+          update: {
+            riskScore: result.riskScore,
+            riskLevel: result.riskLevel,
+            confidence: result.confidenceScore >= 80 ? 'HIGH' : result.confidenceScore >= 50 ? 'MEDIUM' : 'LOW',
+            primaryDriver: result.verdictTitle,
+            drivers: result.statutoryRedFlags.map((rf) => ({
+              name: rf.rule,
+              contribution: rf.severity === 'CRITICAL' ? 35 : rf.severity === 'HIGH' ? 25 : 15,
+              evidence: rf.evidence,
+              solution: rf.violation,
+            })),
+            algorithmVersion: result.modelUsed,
+            updatedAt: new Date(),
+          },
+        });
+      }
 
       success(res, result);
     } catch (err) {
@@ -326,7 +333,10 @@ router.get(
       const intelligence = await intelligenceService.getProjectIntelligence(projectId, {
         userId: user.userId,
         role: user.role,
-        mpHasOversight: user.role === UserRole.MP,
+        // See projects.ts's GET /:id/evidence for why this must check a real
+        // constituency match rather than just "is an MP" — userCtx.constituency
+        // is never populated today, so this correctly evaluates to false.
+        mpHasOversight: user.role === UserRole.MP && !!project.constituency && userCtx.constituency === project.constituency,
       });
 
       if (!intelligence) throw new NotFoundError('Project');

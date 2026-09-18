@@ -66,8 +66,7 @@ interface BandData {
 async function fetchBand(
   sceneId: string,
   band: string,
-  token: string,
-  region: { minLng: number; minLat: number; maxLng: number; maxLat: number }
+  token: string
 ): Promise<BandData | null> {
   // CDSE Catalogue STAC API — get the item with asset links
   const catalogueUrl = `https://catalogue.dataspace.copernicus.eu/stac/collections/SENTINEL-2/items/${sceneId}`;
@@ -110,21 +109,22 @@ async function fetchBand(
       return null;
     }
 
-    // Parse JPEG2000 / COG response as binary
-    // For simplicity, we parse as raw Float32 little-endian if content-type is application/octet-stream
-    // In practice, CDSE assets are JPEG2000 — we use a simplified sampling approach
-    // by parsing the first N bytes as binary. A production implementation would use
-    // a COG library. Here we do a placeholder read that returns a synthetic
-    // Float32Array for the grid cells.
+    // CDSE Sentinel-2 band assets are JPEG2000. No JP2/COG decoder is wired
+    // up here, so real pixel values can only be read when the response
+    // happens to already be raw Float32 (application/octet-stream).
     //
-    // TODO: Integrate a lightweight COG parser (e.g., 'geotiff' npm package) for production.
-    // For now, we construct a synthetic band based on the region bounds and grid.
+    // TODO: Integrate a lightweight COG parser (e.g., the 'geotiff' npm
+    // package) to actually decode JP2 assets for production use.
     const contentType = assetResponse.headers.get('content-type') ?? '';
 
     if (contentType.includes('image/jp2') || contentType.includes('image/jpeg2000')) {
-      // JP2 requires a real parser — return null and fall back to synthetic approximation
-      logger.info(`[cdse-pixel] ${band} is JP2 format — using simplified sampling for ${sceneId}`);
-      return buildSimplifiedBand(band, region, SAMPLE_GRID_SIZE);
+      // Real Sentinel-2 band assets are JP2, and no JP2/COG decoder is
+      // wired up here (see the TODO below) — return null so the caller's
+      // hasRealBands gate reports INSUFFICIENT_IMAGE_QUALITY. Never fabricate
+      // a synthetic band in place of a real one: an invented reflectance
+      // grid would silently feed fake NDVI/NDBI/BSI into change detection.
+      logger.info(`[cdse-pixel] ${band} is JP2 format — no real decoder available for ${sceneId}, reporting unavailable`);
+      return null;
     }
 
     // Try to read as raw Float32
@@ -140,45 +140,6 @@ async function fetchBand(
     logger.error(`[cdse-pixel] Error fetching band ${band} for ${sceneId}`, { error: String(err) });
     return null;
   }
-}
-
-/**
- * Build a simplified synthetic band for sampling when real band data is unavailable.
- * Uses a deterministic pseudo-random pattern based on scene ID hash for reproducibility.
- * This ensures the same scene always produces the same result.
- */
-function buildSimplifiedBand(
-  band: string,
-  region: { minLng: number; minLat: number; maxLng: number; maxLat: number },
-  gridSize: number
-): BandData {
-  const total = gridSize * gridSize;
-  const data = new Float32Array(total);
-  const hash = hashString(band + region.minLng + region.minLat + region.maxLng + region.maxLat);
-
-  for (let i = 0; i < total; i++) {
-    // Deterministic pseudo-random using hash + index
-    const x = i % gridSize;
-    const y = Math.floor(i / gridSize);
-    const noise = ((hash * (x + 1) * (y + 1) * 9301 + 49297) % 233280) / 233280;
-    // Centre of band value ranges (simplified)
-    const baseValues: Record<string, number> = {
-      B02: 0.10, B03: 0.12, B04: 0.08, B08: 0.30, B11: 0.05,
-    };
-    data[i] = Math.max(0, Math.min(1, (baseValues[band] ?? 0.1) + (noise - 0.5) * 0.2));
-  }
-
-  return { name: band, data, width: gridSize, height: gridSize };
-}
-
-function hashString(s: string): number {
-  let hash = 0;
-  for (let i = 0; i < s.length; i++) {
-    const char = s.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash);
 }
 
 // ── NDVI / NDBI / BSI computation ───────────────────────────────────────────
@@ -278,7 +239,8 @@ function extractChangeRegions(
   ndviThreshold: number,
   ndbiThreshold: number,
   bsiThreshold: number,
-  minRegionAreaM2: number
+  minRegionAreaM2: number,
+  imageQuality: RawAnalysisResult['imageQuality']
 ): ChangeRegion[] {
   const regions: ChangeRegion[] = [];
   const bbox = [
@@ -356,7 +318,7 @@ function extractChangeRegions(
           meanNdviDelta, meanNdbiDelta, meanBsiDelta,
           ndviThreshold, ndbiThreshold, bsiThreshold
         ),
-        confidence: 'MEDIUM',
+        confidence: imageQuality,
         bbox: [
           bbox[0] + regionBbox.minX * cellWidthDeg,
           bbox[1] + regionBbox.minY * cellHeightDeg,
@@ -406,30 +368,24 @@ class CDSEDPixelProvider {
       } satisfies ProviderError;
     }
 
-    const region = {
-      minLng: Math.min(...geometry.coordinates[0].map((c) => c[0])),
-      minLat: Math.min(...geometry.coordinates[0].map((c) => c[1])),
-      maxLng: Math.max(...geometry.coordinates[0].map((c) => c[0])),
-      maxLat: Math.max(...geometry.coordinates[0].map((c) => c[1])),
-    };
-
     // 2. Fetch bands for both observations
     notes.push(`Fetching bands for before=${beforeSceneId} after=${afterSceneId}`);
     const [beforeB02, beforeB04, beforeB08, beforeB11] = await Promise.all([
-      fetchBand(beforeSceneId, 'B02', token, region),
-      fetchBand(beforeSceneId, 'B04', token, region),
-      fetchBand(beforeSceneId, 'B08', token, region),
-      fetchBand(beforeSceneId, 'B11', token, region),
+      fetchBand(beforeSceneId, 'B02', token),
+      fetchBand(beforeSceneId, 'B04', token),
+      fetchBand(beforeSceneId, 'B08', token),
+      fetchBand(beforeSceneId, 'B11', token),
     ]);
 
     const [afterB02, afterB04, afterB08, afterB11] = await Promise.all([
-      fetchBand(afterSceneId, 'B02', token, region),
-      fetchBand(afterSceneId, 'B04', token, region),
-      fetchBand(afterSceneId, 'B08', token, region),
-      fetchBand(afterSceneId, 'B11', token, region),
+      fetchBand(afterSceneId, 'B02', token),
+      fetchBand(afterSceneId, 'B04', token),
+      fetchBand(afterSceneId, 'B08', token),
+      fetchBand(afterSceneId, 'B11', token),
     ]);
 
-    // Fallback: if bands aren't available, use simplified sampling
+    // Real bands only — hasRealBands gates the honest INSUFFICIENT_IMAGE_QUALITY
+    // response below; nothing is synthesized when a band is missing.
     const hasRealBandsBefore = beforeB02 && beforeB04 && beforeB08 && beforeB11;
     const hasRealBandsAfter = afterB02 && afterB04 && afterB08 && afterB11;
     const hasRealBands = hasRealBandsBefore && hasRealBandsAfter;
@@ -486,10 +442,14 @@ class CDSEDPixelProvider {
     }
     const changePercent = totalAreaM2 > 0 ? (changedAreaM2 / totalAreaM2) * 100 : 0;
 
-    // 7. Control area — estimate using a fixed fraction of total area
-    const controlAreaChangePercent = Math.max(0, changePercent * 0.8); // Placeholder
-    const deltaRatio =
-      controlAreaChangePercent > 0 ? changePercent / controlAreaChangePercent : 0;
+    // 7. Control area — unlike geeProvider (which samples a real Earth
+    // Engine control polygon), this provider has no real control-area
+    // sampling implemented. Report not-measured rather than fabricating a
+    // ratio from the project's own change percentage — a fixed multiple of
+    // changePercent would guarantee a "control comparison" that isn't one.
+    const controlAreaChangePercent: number | null = null;
+    const deltaRatio: number | null = null;
+    notes.push('Control-area comparison not implemented for this provider — reported as not measured.');
 
     // 8. Primary signal
     const primarySignal = this.resolvePrimarySignal(analysisType, meanNdviDelta, meanNdbiDelta);
@@ -512,7 +472,8 @@ class CDSEDPixelProvider {
       ndviThreshold,
       ndbiThreshold,
       bsiThreshold,
-      minRegionAreaM2
+      minRegionAreaM2,
+      imageQuality
     );
 
     notes.push(`CDSE pixel analysis completed in ${Date.now() - start}ms`);
