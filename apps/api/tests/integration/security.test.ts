@@ -8,6 +8,7 @@
  * Without a database, auth tests that create users will be skipped.
  */
 
+import { prisma } from '@vojas/db';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 import app from '../../src/app';
@@ -802,6 +803,171 @@ runIfDb('Public report follow-up endpoint', () => {
       .post(`/api/v1/reports/track/${reference}/update`)
       .send({ note: 'short' });
     expect(res.status).toBe(400);
+  });
+});
+
+// ── Authenticated Report Read Redaction ─────────────────────────────────────────
+// Regression coverage for a fix where GET /reports, /reports/:id/evidence, and
+// /reports/by-project/:projectId returned reporter PII and the whistleblower
+// token to any authenticated user, regardless of role.
+
+runIfDb('Authenticated report reads redact reporter identity', () => {
+  let citizenToken: string;
+  let officerToken: string;
+  let reportId: string;
+  let projectId: string;
+
+  beforeAll(async () => {
+    citizenToken = await tokenForRole('CITIZEN', genEmail(), 'CitizenPass123!');
+    officerToken = await tokenForRole('OFFICER', genEmail(), 'OfficerPass123!');
+    const creator = await createUserWithRole('ADMIN', { email: genEmail() });
+
+    const project = await prisma.project.create({
+      data: {
+        name: 'Redaction regression fixture project',
+        sector: 'EDUCATION',
+        district: 'Test District',
+        state: 'Test State',
+        approvedAmount: 100000,
+        createdById: creator.userId,
+      },
+    });
+    projectId = project.id;
+
+    const report = await prisma.report.create({
+      data: {
+        reportReference: `VOJAS-TEST-${Date.now()}`,
+        title: 'Redaction regression fixture report',
+        description: 'Fixture used to assert reporter identity and the whistleblower token never leak through authenticated read routes.',
+        category: 'CONSTRUCTION_QUALITY',
+        reporterName: 'Redaction Fixture Reporter',
+        reporterEmail: 'redaction-fixture@test.example.com',
+        reporterPhone: '+911234567890',
+        ipAddress: '203.0.113.42',
+        userAgent: 'RedactionFixtureAgent/1.0',
+        whistleblowerToken: 'wb-secret-token-should-never-leak',
+        isAnonymous: true,
+        projectId,
+      },
+    });
+    reportId = report.id;
+  });
+
+  it('GET /reports (list) never returns reporter identity or the whistleblower token to a CITIZEN', async () => {
+    const res = await request(app)
+      .get('/api/v1/reports?limit=100')
+      .set(authHeader(citizenToken));
+    expect(res.status).toBe(200);
+
+    const bodyStr = JSON.stringify(res.body);
+    expect(bodyStr).not.toMatch(/redaction-fixture@test\.example\.com/);
+    expect(bodyStr).not.toMatch(/wb-secret-token-should-never-leak/);
+    expect(bodyStr).not.toMatch(/RedactionFixtureAgent/);
+
+    const found = res.body.data.data.find((r: { id: string }) => r.id === reportId);
+    expect(found).toBeDefined();
+    expect(found.reporterName).toBeNull();
+    expect(found.reporterEmail).toBeNull();
+    expect(found.reporterPhone).toBeNull();
+    expect(found.ipAddress).toBeNull();
+    expect(found.userAgent).toBeNull();
+    expect(found.whistleblowerToken).toBeUndefined();
+  });
+
+  it('GET /reports/:id/evidence never returns reporter identity or the whistleblower token to a CITIZEN', async () => {
+    const res = await request(app)
+      .get(`/api/v1/reports/${reportId}/evidence`)
+      .set(authHeader(citizenToken));
+    expect(res.status).toBe(200);
+    expect(res.body.data.reporterEmail).toBeNull();
+    expect(res.body.data.reporterPhone).toBeNull();
+    expect(res.body.data.ipAddress).toBeNull();
+    expect(res.body.data.userAgent).toBeNull();
+    expect(res.body.data.whistleblowerToken).toBeUndefined();
+  });
+
+  it('GET /reports/by-project/:projectId never returns reporter identity or the whistleblower token to a CITIZEN', async () => {
+    const res = await request(app)
+      .get(`/api/v1/reports/by-project/${projectId}`)
+      .set(authHeader(citizenToken));
+    expect(res.status).toBe(200);
+    const found = res.body.data.data.find((r: { id: string }) => r.id === reportId);
+    expect(found).toBeDefined();
+    expect(found.reporterEmail).toBeNull();
+    expect(found.whistleblowerToken).toBeUndefined();
+  });
+
+  it('GET /reports (list) reveals reporter identity to a privileged OFFICER, but never the whistleblower token', async () => {
+    const res = await request(app)
+      .get('/api/v1/reports?limit=100')
+      .set(authHeader(officerToken));
+    expect(res.status).toBe(200);
+    const found = res.body.data.data.find((r: { id: string }) => r.id === reportId);
+    expect(found).toBeDefined();
+    expect(found.reporterEmail).toBe('redaction-fixture@test.example.com');
+    expect(found.whistleblowerToken).toBeUndefined();
+  });
+});
+
+// ── AI Audit Authoritative-Write Gating ──────────────────────────────────────────
+// Regression coverage for a fix where an unauthenticated caller could overwrite
+// a project's authoritative ProjectRisk verdict on demand via the public/
+// optionalAuth ai-audit endpoints.
+
+runIfDb('AI audit does not let unauthorized callers overwrite the risk verdict', () => {
+  let citizenToken: string;
+  let adminToken: string;
+  let projectId: string;
+
+  beforeAll(async () => {
+    citizenToken = await tokenForRole('CITIZEN', genEmail(), 'CitizenPass123!');
+    adminToken = await tokenForRole('ADMIN', genEmail(), 'AdminPass123!');
+    const creator = await createUserWithRole('ADMIN', { email: genEmail() });
+
+    const project = await prisma.project.create({
+      data: {
+        name: 'AI audit gating fixture project',
+        sector: 'EDUCATION',
+        district: 'Test District',
+        state: 'Test State',
+        approvedAmount: 100000,
+        createdById: creator.userId,
+      },
+    });
+    projectId = project.id;
+  });
+
+  it('unauthenticated POST /projects/public/:id/ai-audit runs the audit but does not persist a ProjectRisk row', async () => {
+    const res = await request(app).post(`/api/v1/projects/public/${projectId}/ai-audit`).send({});
+    expect(res.status).toBe(200);
+    expect(res.body.data.riskScore).toBeDefined();
+
+    const persisted = await prisma.projectRisk.findUnique({ where: { projectId } });
+    expect(persisted).toBeNull();
+  });
+
+  it('POST /projects/:id/ai-audit as a CITIZEN (no risk.trigger) runs the audit but does not persist', async () => {
+    const res = await request(app)
+      .post(`/api/v1/projects/${projectId}/ai-audit`)
+      .set(authHeader(citizenToken))
+      .send({});
+    expect(res.status).toBe(200);
+    expect(res.body.data.riskScore).toBeDefined();
+
+    const persisted = await prisma.projectRisk.findUnique({ where: { projectId } });
+    expect(persisted).toBeNull();
+  });
+
+  it('POST /projects/:id/ai-audit as an ADMIN (holds risk.trigger) does persist the verdict', async () => {
+    const res = await request(app)
+      .post(`/api/v1/projects/${projectId}/ai-audit`)
+      .set(authHeader(adminToken))
+      .send({});
+    expect(res.status).toBe(200);
+
+    const persisted = await prisma.projectRisk.findUnique({ where: { projectId } });
+    expect(persisted).not.toBeNull();
+    expect(persisted?.riskScore).toBe(res.body.data.riskScore);
   });
 });
 
