@@ -22,14 +22,16 @@ const auditService = new AuditService(prisma);
 // or the .env.example files sets it, so relying on it alone silently ships
 // production session cookies without the Secure flag.
 const isSecure = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
-// The frontend currently calls this API cross-origin (apps/web/src/lib/api.ts
-// bypasses the Vercel same-origin rewrite, which is broken independently of
-// this service — see that file's comment). A SameSite=Lax cookie is never
-// sent on a cross-site request, so login would appear to succeed but the
-// session would never persist. SameSite=None requires Secure, which is only
-// true in production/HTTPS — in local dev (same-origin via Next's rewrite)
-// this stays Lax, since None without HTTPS is rejected by browsers outright.
-const crossSiteSameSite = isSecure ? ('none' as const) : ('lax' as const);
+// 2026-09-18: apps/web/src/lib/api.ts now calls this API same-origin (through
+// the Vercel rewrite, root-caused and fixed the same day), so SameSite=Lax
+// works in both production and local dev — it's always sent same-origin,
+// and the CORS allowlist (see app.ts) only permits the frontend's own
+// origin(s) to begin with. Lax also closes a real CSRF gap None left open:
+// multipart/form-data upload routes bypass the JSON-only body parser, so a
+// malicious cross-site form could otherwise ride an ADMIN/OFFICER's cookie.
+// Do not go back to None without a genuine cross-origin caller — see the
+// history of this line if that's ever needed again.
+const crossSiteSameSite = 'lax' as const;
 
 const ACCESS_COOKIE_OPTIONS = {
   httpOnly: true,

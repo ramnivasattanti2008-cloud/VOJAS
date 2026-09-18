@@ -30,7 +30,17 @@ function toCsv<T extends Record<string, unknown>>(rows: T[]): string {
 
 function escapeCsv(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const str = String(value);
+  let str = String(value);
+  // CSV/formula injection: several of these columns are free text a citizen
+  // fully controls (report title/description via public, unauthenticated
+  // submission) and reach an ADMIN's spreadsheet application unreviewed via
+  // this export. A cell whose content starts with =, +, -, or @ is
+  // interpreted as a formula by Excel/Sheets/LibreOffice, not as plain text.
+  // Prefixing a single quote forces text interpretation without changing
+  // what's displayed.
+  if (/^[=+\-@]/.test(str)) {
+    str = `'${str}`;
+  }
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }

@@ -971,6 +971,40 @@ runIfDb('AI audit does not let unauthorized callers overwrite the risk verdict',
   });
 });
 
+// ── CSV Export Formula-Injection Guard ──────────────────────────────────────────
+// Regression coverage for a fix where a citizen-controlled field (report
+// title/description, submitted publicly with no review) that starts with
+// =, +, -, or @ would be interpreted as a formula by Excel/Sheets when an
+// ADMIN opened the export — classic CSV/formula injection.
+
+runIfDb('CSV export neutralizes formula-injection payloads', () => {
+  let adminToken: string;
+  const payload = '=1+1';
+
+  beforeAll(async () => {
+    adminToken = await tokenForRole('ADMIN', genEmail(), 'AdminPass123!');
+    await request(app)
+      .post('/api/v1/reports')
+      .send({
+        title: payload,
+        description: 'Fixture report asserting the CSV export neutralizes a formula-injection title.',
+        category: 'CONSTRUCTION_QUALITY',
+      });
+  });
+
+  it('GET /export/reports never emits a raw formula-leading cell', async () => {
+    const res = await request(app)
+      .get('/api/v1/export/reports?limit=5000')
+      .set(authHeader(adminToken));
+    expect(res.status).toBe(200);
+
+    const csv = res.text;
+    const idx = csv.indexOf(payload);
+    expect(idx).toBeGreaterThan(0); // payload text is present...
+    expect(csv[idx - 1]).toBe("'"); // ...but always immediately preceded by the defusing quote
+  });
+});
+
 // ── Error Message Safety Tests ─────────────────────────────────────────────────
 
 runIfDb('Error Message Safety', () => {
