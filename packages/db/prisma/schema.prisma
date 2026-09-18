@@ -326,6 +326,14 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  // Explicit, admin-controlled link to the MP record this user account
+  // represents. Never set by the user themselves — only PATCH /users/:id as
+  // ADMIN may write it (see routes/users.ts). @unique enforces one user per
+  // MP record. Nullable: most users (and even most MP-role users, until an
+  // admin performs the link) have no linked MP.
+  mpId String? @unique @map("mp_id")
+  mp   MP?     @relation(fields: [mpId], references: [id])
+
   sessions                 Session[]
   createdProjects          Project[]           @relation("ProjectCreatedBy")
   fieldVerifications       FieldVerification[] @relation("FieldVerificationAssigned")
@@ -431,6 +439,7 @@ model MP {
 
   stateRecord State?    @relation("MPState", fields: [stateId], references: [id])
   projects    Project[]
+  linkedUser  User?
 
   // Ingest idempotency key (see scripts/ingest/README.md and vonter.ts/
   // dataful.ts/opencity.ts, which upsert on this exact tuple). This was

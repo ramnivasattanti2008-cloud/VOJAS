@@ -12,12 +12,15 @@ import type { ProjectSector, ProjectStatus } from '@vojas/shared';
 const mpApi = createMPCommandApi(apiClient);
 
 // ── My Constituency ─────────────────────────────────────────────────────────────
+// Resolved entirely server-side from the authenticated user's admin-linked
+// MP record — no mpId is passed from the client. Callers should check
+// `data.linked` and render a "not linked" state when it's false, rather
+// than falling back to placeholder data.
 
-export function useMPConstituency(mpId: string | null | undefined) {
+export function useMPConstituency() {
   return useQuery({
-    queryKey: ['mp', mpId, 'constituency'],
-    queryFn: () => mpApi.getMyConstituency(mpId!),
-    enabled: !!mpId,
+    queryKey: ['mp', 'me', 'constituency'],
+    queryFn: () => mpApi.getMyConstituency(),
   });
 }
 
@@ -41,12 +44,13 @@ export function useMPProjects(mpId: string | null | undefined, filters?: MPProje
 }
 
 // ── MP Financials ───────────────────────────────────────────────────────────────
+// Same server-side resolution as useMPConstituency above — check
+// `data.linked` before rendering financial figures.
 
-export function useMPFinancials(mpId: string | null | undefined) {
+export function useMPFinancials() {
   return useQuery({
-    queryKey: ['mp', mpId, 'financials'],
-    queryFn: () => mpApi.getFinancials(mpId!),
-    enabled: !!mpId,
+    queryKey: ['mp', 'me', 'financials'],
+    queryFn: () => mpApi.getFinancials(),
   });
 }
 

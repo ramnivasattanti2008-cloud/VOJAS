@@ -14,7 +14,6 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ExportButton } from '@/components/ui/ExportButton';
 import { useMPFinancials } from '@/hooks/useMP';
-import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
 
@@ -39,34 +38,45 @@ const SECTOR_LABELS: Partial<Record<ProjectSector, string>> = {
 };
 
 export default function MPFinancePage() {
-  const { user } = useAuth();
-  const mpId = (user as any)?.mpId ?? 'current-mp';
-  const { data: financials, isLoading } = useMPFinancials(mpId);
+  // Resolved server-side from the authenticated user's admin-linked MP
+  // record (see apps/api/src/routes/mp.ts) — no client-supplied id, and no
+  // placeholder/fabricated data when unlinked or still loading.
+  const { data: financials, isLoading } = useMPFinancials();
 
-  // Default values for demo
-  const summary = financials ?? {
-    totalSanctioned: 500000000,
-    totalReleased: 425000000,
-    totalSpent: 312500000,
-    utilizationPercent: 62.5,
-    bySector: Object.entries(SECTOR_LABELS).map(([key]) => ({
-      sector: key,
-      sanctioned: Math.floor(Math.random() * 50000000) + 10000000,
-      spent: Math.floor(Math.random() * 30000000) + 5000000,
-      utilization: Math.floor(Math.random() * 40) + 40,
-    })),
-    byMonth: [
-      { month: 'Jan', sanctioned: 40000000, spent: 28000000 },
-      { month: 'Feb', sanctioned: 35000000, spent: 32000000 },
-      { month: 'Mar', sanctioned: 45000000, spent: 38000000 },
-      { month: 'Apr', sanctioned: 38000000, spent: 29000000 },
-      { month: 'May', sanctioned: 42000000, spent: 35000000 },
-      { month: 'Jun', sanctioned: 40000000, spent: 42000000 },
-      { month: 'Jul', sanctioned: 45000000, spent: 32000000 },
-      { month: 'Aug', sanctioned: 40000000, spent: 38500000 },
-    ],
-  };
+  // Hooks must run unconditionally on every render — compute this before
+  // the early returns below rather than after, or React's rules-of-hooks
+  // breaks the moment isLoading/linked flips between renders.
+  const topSectors = useMemo(() => {
+    return [...(financials?.bySector ?? [])]
+      .sort((a, b) => b.sanctioned - a.sanctioned)
+      .slice(0, 6);
+  }, [financials]);
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24 text-sm text-slate-500">
+        Loading financial overview…
+      </div>
+    );
+  }
+
+  if (!financials?.linked) {
+    return (
+      <Card>
+        <CardBody className="py-16 text-center">
+          <DollarSign className="h-8 w-8 text-slate-300 mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-slate-900">MP account not linked</h2>
+          <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+            Your account isn&apos;t yet linked to an MP record, so no
+            constituency financial data is available. Ask an administrator
+            to link your account to the correct MP record.
+          </p>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  const summary = financials;
   const totalSanctioned = summary.totalSanctioned;
   // totalReleased is null when no real RELEASE-type observation exists yet
   // for this MP's projects (see apps/api/src/routes/mp.ts) — 0 here is just
@@ -76,12 +86,6 @@ export default function MPFinancePage() {
   const totalSpent = summary.totalSpent;
   const utilizationRate = summary.utilizationPercent;
   const remaining = totalSanctioned - totalSpent;
-
-  const topSectors = useMemo(() => {
-    return [...(summary.bySector ?? [])]
-      .sort((a, b) => b.sanctioned - a.sanctioned)
-      .slice(0, 6);
-  }, [summary.bySector]);
 
   const stats = [
     {
@@ -136,7 +140,6 @@ export default function MPFinancePage() {
         </div>
         <ExportButton
           csvEndpoint={`${process.env.NEXT_PUBLIC_API_URL}/api/v1/export/financials`}
-          csvParams={{ mpId }}
           filenameHint="mp-financials"
         />
       </div>

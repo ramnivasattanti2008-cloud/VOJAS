@@ -6,10 +6,12 @@ import type { Project } from './projects.js';
 // ── MP Command Center API ──────────────────────────────────────────────────────
 
 export interface MPConstituencySummary {
-  mpId: string;
-  constituency: string;
-  state: string;
-  house: string;
+  /** False when the authenticated user has no admin-linked MP record yet. */
+  linked: boolean;
+  mpId: string | null;
+  constituency: string | null;
+  state: string | null;
+  house: string | null;
   totalProjects: number;
   completedProjects: number;
   inProgressProjects: number;
@@ -26,6 +28,8 @@ export interface MPConstituencySummary {
 }
 
 export interface MPFinancialSummary {
+  /** False when the authenticated user has no admin-linked MP record yet. */
+  linked: boolean;
   totalSanctioned: number;
   /** Null when no real RELEASE-type observation exists yet for this MP's projects. */
   totalReleased: number | null;
@@ -77,9 +81,11 @@ export interface MPCitizenSignal {
 
 export function createMpApi(client: ApiClient) {
   return {
-    // Get MP's own constituency summary
-    getMyConstituency(mpId: string) {
-      return client.get<MPConstituencySummary>(`/mp/${mpId}/constituency`);
+    // Get the authenticated user's own MP constituency summary. Resolved
+    // entirely server-side from the admin-controlled User<->MP link —
+    // there is no client-supplied MP id to pass.
+    getMyConstituency() {
+      return client.get<MPConstituencySummary>('/mp/me/constituency');
     },
 
     // Get MP's project portfolio
@@ -94,9 +100,10 @@ export function createMpApi(client: ApiClient) {
       return client.get<PaginatedResponse<Project>>(`/mp/${mpId}/projects`, params);
     },
 
-    // Get MP's financial overview
-    getFinancials(mpId: string) {
-      return client.get<MPFinancialSummary>(`/mp/${mpId}/financials`);
+    // Get the authenticated user's own MP financial overview. Resolved
+    // entirely server-side from the admin-controlled User<->MP link.
+    getFinancials() {
+      return client.get<MPFinancialSummary>('/mp/me/financials');
     },
 
     // Get citizen demand clusters

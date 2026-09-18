@@ -16,7 +16,6 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useMPConstituency } from '@/hooks/useMP';
-import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
 
@@ -41,12 +40,9 @@ const SECTOR_LABELS: Record<string, string> = {
 };
 
 export default function MPHomePage() {
-  const { user } = useAuth();
-
-  // Get MP ID from user context (would come from user's linked MP record)
-  const mpId = (user as any)?.mpId ?? 'current-mp';
-
-  const { data: constituency, isLoading } = useMPConstituency(mpId);
+  // Resolved server-side from the authenticated user's admin-linked MP
+  // record (see apps/api/src/routes/mp.ts) — no client-supplied id.
+  const { data: constituency, isLoading } = useMPConstituency();
 
   // Quick stats
   const stats = useMemo(() => [

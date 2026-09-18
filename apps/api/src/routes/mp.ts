@@ -1,16 +1,22 @@
 /**
- * MP Command Center — real aggregates for a single MP's own project portfolio.
+ * MP Command Center — real aggregates for the authenticated user's own
+ * linked MP.
  *
  * Backs the frontend's createMpApi (packages/api-client/src/mp.ts), which
  * previously had no backend route at all — GET /mp/:id/financials and
  * /mp/:id/constituency always 404'd, and the frontend's fallback rendered
- * Math.random() fabricated rupee figures. Every field here is a real
- * aggregate over Project/FinancialObservation/ProjectEvent rows for that MP;
- * fields with no real underlying data are null/empty, never backfilled.
+ * Math.random() fabricated rupee figures.
+ *
+ * Resolution is strictly server-side: the MP is derived from
+ * `User.mpId`, an explicit, admin-controlled link (see routes/users.ts) —
+ * never from a client-supplied :id. A user with no linked MP gets an
+ * honest `linked: false` in the response, never another user's data and
+ * never a fabricated fallback. mpId is re-read from the database on every
+ * request (not the JWT) so an admin's link/unlink takes effect immediately,
+ * without requiring the MP to log out and back in.
  */
 
 import { prisma } from '@vojas/db';
-import { NotFoundError } from '@vojas/domain';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
@@ -25,20 +31,39 @@ const EVENT_TYPE_MAP: Record<string, 'REPORT' | 'VERIFICATION' | 'ANOMALY' | 'UP
   AI_ALERT: 'ANOMALY',
 };
 
-async function getMpOrThrow(id: string) {
-  const mp = await prisma.mP.findUnique({ where: { id } });
-  if (!mp) throw new NotFoundError('MP');
-  return mp;
+async function resolveLinkedMp(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { mpId: true } });
+  if (!user?.mpId) return null;
+  return prisma.mP.findUnique({ where: { id: user.mpId } });
 }
 
 /**
- * GET /mp/:id/constituency — real project-portfolio summary for one MP.
+ * GET /mp/me/constituency — real project-portfolio summary for the
+ * authenticated user's own linked MP.
  */
-router.get('/:id/constituency', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/me/constituency', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
-    const mp = await getMpOrThrow(id);
+    const mp = await resolveLinkedMp(req.user!.userId);
+    if (!mp) {
+      return success(res, {
+        linked: false,
+        mpId: null,
+        constituency: null,
+        state: null,
+        house: null,
+        totalProjects: 0,
+        completedProjects: 0,
+        inProgressProjects: 0,
+        delayedProjects: 0,
+        attentionNeeded: 0,
+        totalSanctioned: 0,
+        totalSpent: 0,
+        utilizationRate: 0,
+        recentActivity: [],
+      });
+    }
 
+    const id = mp.id;
     const [total, completed, inProgress, delayed, financial, attentionNeeded, recentEvents] = await Promise.all([
       prisma.project.count({ where: { mpId: id } }),
       prisma.project.count({ where: { mpId: id, status: 'COMPLETED' } }),
@@ -68,6 +93,7 @@ router.get('/:id/constituency', authenticate, async (req: Request, res: Response
     const totalSpent = financial._sum.spentAmount ?? 0;
 
     success(res, {
+      linked: true,
       mpId: mp.id,
       constituency: mp.constituency,
       state: mp.state,
@@ -92,13 +118,25 @@ router.get('/:id/constituency', authenticate, async (req: Request, res: Response
 });
 
 /**
- * GET /mp/:id/financials — real financial rollup for one MP's projects.
+ * GET /mp/me/financials — real financial rollup for the authenticated
+ * user's own linked MP.
  */
-router.get('/:id/financials', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/me/financials', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id as string;
-    await getMpOrThrow(id);
+    const mp = await resolveLinkedMp(req.user!.userId);
+    if (!mp) {
+      return success(res, {
+        linked: false,
+        totalSanctioned: 0,
+        totalReleased: null,
+        totalSpent: 0,
+        utilizationPercent: 0,
+        bySector: [],
+        byMonth: [],
+      });
+    }
 
+    const id = mp.id;
     const [financial, bySector, releaseAgg] = await Promise.all([
       prisma.project.aggregate({ where: { mpId: id }, _sum: { approvedAmount: true, spentAmount: true } }),
       prisma.project.groupBy({
@@ -121,6 +159,7 @@ router.get('/:id/financials', authenticate, async (req: Request, res: Response, 
     const totalReleased = releaseAgg._count > 0 ? releaseAgg._sum.amount ?? 0 : null;
 
     success(res, {
+      linked: true,
       totalSanctioned,
       totalReleased,
       totalSpent,

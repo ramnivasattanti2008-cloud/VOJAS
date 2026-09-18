@@ -17,6 +17,10 @@ const updateUserSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   role: z.nativeEnum(UserRole).optional(),
   isActive: z.boolean().optional(),
+  // Admin-controlled link to the MP record this user account represents.
+  // null explicitly unlinks. Applied only when the actor is ADMIN — see the
+  // same-pattern role guard below. Never settable by a user on themselves.
+  mpId: z.string().min(1).nullable().optional(),
 }).strict();
 
 /**
@@ -37,6 +41,7 @@ router.get(
           isActive: true,
           lastLoginAt: true,
           createdAt: true,
+          mpId: true,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -72,6 +77,7 @@ router.get(
           isActive: true,
           lastLoginAt: true,
           createdAt: true,
+          mpId: true,
         },
       });
 
@@ -171,6 +177,29 @@ router.patch(
       if (parsed.data.role !== undefined && currentUser.role === UserRole.ADMIN) {
         data.role = parsed.data.role as any;
       }
+      if (parsed.data.mpId !== undefined && currentUser.role === UserRole.ADMIN) {
+        if (parsed.data.mpId === null) {
+          data.mpId = null;
+        } else {
+          const mp = await prisma.mP.findUnique({ where: { id: parsed.data.mpId } });
+          if (!mp) throw new ValidationError('mpId does not reference a real MP record');
+
+          const effectiveRole = parsed.data.role ?? existing.role;
+          if (effectiveRole !== UserRole.MP) {
+            throw new ValidationError('mpId can only be set on a user with role MP');
+          }
+
+          const alreadyLinked = await prisma.user.findFirst({
+            where: { mpId: parsed.data.mpId, id: { not: id } },
+            select: { id: true, email: true },
+          });
+          if (alreadyLinked) {
+            throw new ValidationError(`This MP record is already linked to another user (${alreadyLinked.email})`);
+          }
+
+          data.mpId = parsed.data.mpId;
+        }
+      }
 
       const user = await prisma.user.update({
         where: { id },
@@ -182,6 +211,7 @@ router.patch(
           role: true,
           isActive: true,
           createdAt: true,
+          mpId: true,
         },
       });
 
