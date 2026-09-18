@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createInvestigationsApi, createReferralsApi } from '@vojas/api-client';
 import type { Referral, ReferralStatus } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import {
   Shield, ArrowLeft, Gavel, X, AlertTriangle, CheckCircle, XCircle,
   FileText, Camera, HardHat, MessageSquare, Loader2, Clock,
@@ -113,6 +114,7 @@ function NewReferralModal({ caseId, onClose }: { caseId: string; onClose: () => 
 
 function ReferralCard({ referral, caseId }: { referral: Referral; caseId: string }) {
   const qc = useQueryClient();
+  const { role } = useAuth();
   const [rejectNotes, setRejectNotes] = useState('');
   const [showReject, setShowReject] = useState(false);
 
@@ -122,7 +124,14 @@ function ReferralCard({ referral, caseId }: { referral: Referral; caseId: string
   const reject = useMutation({ mutationFn: () => referralsApi.reject(referral.id, rejectNotes), onSuccess: () => { invalidate(); setShowReject(false); } });
   const advance = useMutation({ mutationFn: (status: ReferralStatus) => referralsApi.updateStatus(referral.id, status), onSuccess: invalidate });
 
-  const canReview = referral.status === 'DRAFT' || referral.status === 'PENDING_REVIEW';
+  // Approving/rejecting a referral requires referral.approve — only ADMIN and
+  // REVIEWER hold it (see packages/shared/src/permissions.ts, the backend's
+  // permission matrix; the frontend's @vojas/domain permission set has no
+  // referral.* concept at all, so this checks role directly). OFFICER can
+  // create referrals but not approve their own, so these controls must stay
+  // hidden rather than round-trip to a 403.
+  const canApprove = role === 'ADMIN' || role === 'REVIEWER';
+  const canReview = canApprove && (referral.status === 'DRAFT' || referral.status === 'PENDING_REVIEW');
   const nextOptions = NEXT_STATUSES[referral.status] ?? [];
 
   return (

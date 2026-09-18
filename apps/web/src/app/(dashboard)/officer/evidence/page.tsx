@@ -23,7 +23,7 @@ import {
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useOfficerEvidence, useOfficerVerifyEvidence } from '@/hooks/useOfficer';
+import { useOfficerEvidence, useOfficerVerifyEvidence, useOfficerCases, useOfficerAddEvidence } from '@/hooks/useOfficer';
 import { formatDate } from '@/lib/utils';
 
 const EVIDENCE_TYPES = [
@@ -59,6 +59,10 @@ export default function EvidenceCenterPage() {
 
   const { data, isLoading, error } = useOfficerEvidence(queryParams);
   const verifyEvidence = useOfficerVerifyEvidence();
+  const { data: casesData } = useOfficerCases({ limit: 100 });
+  const addEvidenceToCase = useOfficerAddEvidence();
+  const [showLinkPicker, setShowLinkPicker] = useState(false);
+  const [linkCaseId, setLinkCaseId] = useState('');
 
   const evidence = data?.data ?? [];
   const hasFilters = !!(typeFilter || sourceFilter || projectFilter || fromDate || toDate || search);
@@ -322,7 +326,7 @@ export default function EvidenceCenterPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h3 className="text-lg font-semibold text-slate-900">Evidence Details</h3>
               <button
-                onClick={() => setSelectedEvidence(null)}
+                onClick={() => { setSelectedEvidence(null); setShowLinkPicker(false); setLinkCaseId(''); }}
                 className="text-slate-400 hover:text-slate-600"
               >
                 <XCircle className="h-5 w-5" />
@@ -380,13 +384,60 @@ export default function EvidenceCenterPage() {
                     <p className="text-sm text-slate-600">{selectedEvidence.chainOfCustody}</p>
                   </div>
                 )}
+                {showLinkPicker && (
+                  <div className="pt-3 border-t border-slate-100 space-y-2">
+                    <label className="text-xs font-medium text-slate-600 mb-1 block">Link to case</label>
+                    <select
+                      value={linkCaseId}
+                      onChange={(e) => setLinkCaseId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-500"
+                    >
+                      <option value="">Select a case...</option>
+                      {casesData?.data.map((c) => (
+                        <option key={c.id} value={c.id}>{c.reference} — {c.title}</option>
+                      ))}
+                    </select>
+                    {addEvidenceToCase.isError && (
+                      <p className="text-xs text-red-600">
+                        {addEvidenceToCase.error instanceof Error ? addEvidenceToCase.error.message : 'Failed to link evidence'}
+                      </p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => { setShowLinkPicker(false); setLinkCaseId(''); }}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={!linkCaseId || addEvidenceToCase.isPending}
+                        onClick={() => {
+                          addEvidenceToCase.mutate(
+                            {
+                              caseId: linkCaseId,
+                              evidence: {
+                                type: selectedEvidence.type,
+                                title: selectedEvidence.title,
+                                description: selectedEvidence.description,
+                                url: selectedEvidence.url,
+                                source: selectedEvidence.source,
+                              },
+                            },
+                            { onSuccess: () => { setShowLinkPicker(false); setLinkCaseId(''); } }
+                          );
+                        }}
+                      >
+                        {addEvidenceToCase.isPending ? 'Linking...' : 'Confirm Link'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200">
               <Button
                 variant="secondary"
                 leftIcon={<LinkIcon className="h-4 w-4" />}
-                onClick={() => {/* Link to case */}}
+                onClick={() => setShowLinkPicker((s) => !s)}
               >
                 Link to Case
               </Button>

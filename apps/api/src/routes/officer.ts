@@ -108,6 +108,7 @@ router.get('/cases', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER,
       sector,
       district,
       age,
+      assigned,
       sortBy = 'priority',
       sortOrder = 'asc',
       page = '1',
@@ -118,6 +119,9 @@ router.get('/cases', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER,
 
     if (priority) where.severity = priority;
     if (status) where.status = status;
+    // Anomaly has no assignedToId column — acknowledgedById is the closest
+    // real "this officer owns this case" concept in the schema.
+    if (assigned) where.acknowledgedById = assigned;
 
     if (district || sector) {
       where.project = {};
@@ -134,6 +138,8 @@ router.get('/cases', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER,
     const orderBy: Record<string, string>[] = [];
     if (sortBy === 'priority') {
       orderBy.push({ severity: sortOrder === 'desc' ? 'desc' : 'asc' });
+    } else if (sortBy === 'confidence') {
+      orderBy.push({ aiConfidence: sortOrder === 'desc' ? 'desc' : 'asc' });
     }
     orderBy.push({ createdAt: sortOrder === 'desc' ? 'desc' : 'asc' });
 
@@ -163,7 +169,10 @@ router.get('/cases', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER,
       priority: a.severity,
       status: a.status,
       severity: a.severity,
-      confidence: 'MEDIUM' as const,
+      // Real value from Anomaly.aiConfidence, not a hardcoded placeholder.
+      // null (no AI confidence recorded for this anomaly) stays honest as
+      // 'UNKNOWN' rather than defaulting to a fabricated 'MEDIUM'.
+      confidence: a.aiConfidence == null ? 'UNKNOWN' : a.aiConfidence >= 80 ? 'HIGH' : a.aiConfidence >= 50 ? 'MEDIUM' : 'LOW',
       projectId: a.projectId,
       project: a.project,
       createdAt: a.createdAt.toISOString(),
@@ -638,10 +647,31 @@ router.get('/cases/:id/history', authenticate, requireRole(UserRole.ADMIN, UserR
  */
 router.get('/evidence', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { projectId, fromDate, toDate, page = '1', limit = '50' } = req.query as Record<string, string | undefined>;
+    const { projectId, fromDate, toDate, type, source, caseId, page = '1', limit = '50' } = req.query as Record<string, string | undefined>;
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+
+    // This handler currently only surfaces Document-backed evidence (see
+    // the file header note on the wider aggregation this Evidence Center
+    // page implies). A caller filtering for a different evidence type
+    // (SATELLITE/CITIZEN/FINANCIAL/FIELD/PHOTO/VIDEO) must get an honest
+    // empty result, not every Document silently ignoring their filter.
+    if (type && type !== 'DOCUMENT') {
+      return success(res, { data: [], total: 0, page: pageNum, limit: limitNum, totalPages: 0 });
+    }
 
     const where: Record<string, unknown> = {};
     if (projectId) where.projectId = projectId;
+    // `source` on the response maps to Document.type (e.g. SANCTION_ORDER,
+    // TENDER) — filter the same column it's read from.
+    if (source) where.type = source;
+    if (caseId) {
+      const verificationCase = await prisma.verificationCase.findUnique({ where: { id: caseId }, select: { projectId: true } });
+      // An honest empty result for an unknown/mismatched case, not a
+      // silently-unfiltered list.
+      where.projectId = verificationCase?.projectId ?? '__no_match__';
+    }
     if (fromDate) {
       const from = new Date(fromDate);
       where.createdAt = { gte: from };
@@ -650,9 +680,6 @@ router.get('/evidence', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFIC
       const to = new Date(toDate);
       where.createdAt = where.createdAt ? { ...(where.createdAt as object), lte: to } : { lte: to };
     }
-
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
 
     const [data, total] = await Promise.all([
       prisma.document.findMany({
@@ -760,7 +787,18 @@ router.patch('/evidence/:id', authenticate, requireRole(UserRole.ADMIN, UserRole
  */
 router.get('/contractor-responses', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { contractorId, status, page = '1', limit = '50' } = req.query as Record<string, string | undefined>;
+    const { contractorId, status, findingId, page = '1', limit = '50' } = req.query as Record<string, string | undefined>;
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+
+    // ContractorUpdate has no relation to RiskFinding/Anomaly in the current
+    // schema, so a finding-scoped filter can't honestly be satisfied — an
+    // explicit empty result is correct here, not silently ignoring the
+    // filter and returning every response regardless of finding.
+    if (findingId) {
+      return success(res, { data: [], total: 0, page: pageNum, limit: limitNum, totalPages: 0 });
+    }
 
     const where: Record<string, unknown> = {};
     if (contractorId) where.contractorId = contractorId;
@@ -768,9 +806,6 @@ router.get('/contractor-responses', authenticate, requireRole(UserRole.ADMIN, Us
       // PENDING_REVIEW covers both real PENDING and UNDER_REVIEW rows.
       where.status = status === 'PENDING_REVIEW' ? { in: ['PENDING', 'UNDER_REVIEW'] } : status;
     }
-
-    const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
 
     const [data, total] = await Promise.all([
       prisma.contractorUpdate.findMany({
