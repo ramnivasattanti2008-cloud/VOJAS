@@ -25,7 +25,15 @@ const nextConfig: NextConfig = {
     ]
   },
   async rewrites() {
-    const target = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+    // Root cause of the DNS_HOSTNAME_RESOLVED_PRIVATE Vercel error (see
+    // apps/web/src/lib/api.ts's DIRECT_BACKEND_FALLBACK comment): when
+    // API_INTERNAL_URL/NEXT_PUBLIC_API_URL aren't set at runtime, this used to
+    // fall back to http://127.0.0.1:5000 — a loopback address Vercel's edge
+    // refuses to proxy to as a rewrite destination. Fall back to the real
+    // public backend instead, same as the client-side fallback, so the
+    // same-origin rewrite works even if the env var is unset in this
+    // environment.
+    const target = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'https://vojas-backend.onrender.com';
     return [
       {
         source: '/api/v1/:path*',
