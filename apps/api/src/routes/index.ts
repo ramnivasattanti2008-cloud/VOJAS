@@ -8,6 +8,7 @@ import auditRoutes from './audit.js';
 import authRoutes from './auth.js';
 import changeAnalysisRoutes from './changeAnalysis.js';
 import citizenReportRoutes from './citizenReports.js';
+import contractorRoutes from './contractor.js';
 import documentRoutes from './documents.js';
 import exportRoutes from './export.js';
 import financialRoutes from './financial.js';
@@ -89,6 +90,7 @@ router.use('/documents', documentRoutes);
 // MP routes
 router.use('/mps', mpRoutes);
 router.use('/mp', mpCommandRoutes);
+router.use('/contractor', contractorRoutes);
 
 // Risk routes (project-scoped: /projects/:id/risk; global: /summary, /findings, etc.)
 router.use('/', riskRoutes);

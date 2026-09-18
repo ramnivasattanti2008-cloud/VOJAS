@@ -21,6 +21,8 @@ const updateUserSchema = z.object({
   // null explicitly unlinks. Applied only when the actor is ADMIN — see the
   // same-pattern role guard below. Never settable by a user on themselves.
   mpId: z.string().min(1).nullable().optional(),
+  // Same pattern, for the CONTRACTOR record this user account represents.
+  contractorId: z.string().min(1).nullable().optional(),
 }).strict();
 
 /**
@@ -42,6 +44,7 @@ router.get(
           lastLoginAt: true,
           createdAt: true,
           mpId: true,
+          contractorId: true,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -78,6 +81,7 @@ router.get(
           lastLoginAt: true,
           createdAt: true,
           mpId: true,
+          contractorId: true,
         },
       });
 
@@ -200,6 +204,29 @@ router.patch(
           data.mpId = parsed.data.mpId;
         }
       }
+      if (parsed.data.contractorId !== undefined && currentUser.role === UserRole.ADMIN) {
+        if (parsed.data.contractorId === null) {
+          data.contractorId = null;
+        } else {
+          const contractor = await prisma.contractor.findUnique({ where: { id: parsed.data.contractorId } });
+          if (!contractor) throw new ValidationError('contractorId does not reference a real Contractor record');
+
+          const effectiveRole = parsed.data.role ?? existing.role;
+          if (effectiveRole !== UserRole.CONTRACTOR) {
+            throw new ValidationError('contractorId can only be set on a user with role CONTRACTOR');
+          }
+
+          const alreadyLinked = await prisma.user.findFirst({
+            where: { contractorId: parsed.data.contractorId, id: { not: id } },
+            select: { id: true, email: true },
+          });
+          if (alreadyLinked) {
+            throw new ValidationError(`This contractor record is already linked to another user (${alreadyLinked.email})`);
+          }
+
+          data.contractorId = parsed.data.contractorId;
+        }
+      }
 
       const user = await prisma.user.update({
         where: { id },
@@ -212,6 +239,7 @@ router.patch(
           isActive: true,
           createdAt: true,
           mpId: true,
+          contractorId: true,
         },
       });
 

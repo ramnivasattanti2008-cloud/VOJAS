@@ -203,12 +203,27 @@ const validateSubmissionSchema = z.object({
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
+// Several tabs on /citizen/reports (Active, Under Review, Resolved) send a
+// comma-joined multi-value filter, e.g. status=SUBMITTED,RECEIVED,TRIAGED.
+// Passing that raw string straight to Prisma's `status` (an enum column)
+// isn't a valid value, and Prisma throws — surfaced to callers as a bare
+// 500. Split into a real `{ in: [...] }` filter instead.
+function multiValueFilter(raw: string | undefined): string[] | undefined {
+  if (!raw) return undefined;
+  const values = raw.split(',').map((v) => v.trim()).filter(Boolean);
+  return values.length > 0 ? values : undefined;
+}
+
 function buildReportWhere(filters: z.infer<typeof reportListSchema>): Record<string, unknown> {
   const where: Record<string, unknown> = {};
-  if (filters.status) where.status = filters.status;
-  if (filters.category) where.category = filters.category;
-  if (filters.severity) where.severity = filters.severity;
-  if (filters.triageStatus) where.triageStatus = filters.triageStatus;
+  const status = multiValueFilter(filters.status);
+  if (status) where.status = { in: status };
+  const category = multiValueFilter(filters.category);
+  if (category) where.category = { in: category };
+  const severity = multiValueFilter(filters.severity);
+  if (severity) where.severity = { in: severity };
+  const triageStatus = multiValueFilter(filters.triageStatus);
+  if (triageStatus) where.triageStatus = { in: triageStatus };
   if (filters.projectId) where.projectId = filters.projectId;
   if (filters.assignedToId) where.assignedToId = filters.assignedToId;
   return where;

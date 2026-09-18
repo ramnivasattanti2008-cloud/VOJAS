@@ -159,7 +159,12 @@ function toAuthError(err: unknown, fallback: string): Error {
  */
 export function defaultRouteForRole(role: UserRole | null | undefined): string {
   if (!role) return '/citizen';
-  if (isAdminRole(role) || isOfficerRole(role)) return '/dashboard';
+  // ANALYST/REVIEWER have no isAnalystRole/isReviewerRole helper in
+  // packages/domain — they're intelligence-dashboard roles, not officer-
+  // workspace roles (isOfficerRole covers a different, narrower concern:
+  // access to /officer/* routes), so checked explicitly here rather than
+  // folded into isOfficerRole.
+  if (isAdminRole(role) || isOfficerRole(role) || role === 'ANALYST' || role === 'REVIEWER') return '/dashboard';
   if (isMPRole(role)) return '/mp';
   if (isContractorRole(role)) return '/contractor';
   return '/citizen';

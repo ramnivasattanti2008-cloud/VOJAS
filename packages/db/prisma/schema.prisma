@@ -334,6 +334,10 @@ model User {
   mpId String? @unique @map("mp_id")
   mp   MP?     @relation(fields: [mpId], references: [id])
 
+  // Same admin-controlled pattern as mpId above, for CONTRACTOR-role users.
+  contractorId String?     @unique @map("contractor_id")
+  contractor   Contractor? @relation(fields: [contractorId], references: [id])
+
   sessions                 Session[]
   createdProjects          Project[]           @relation("ProjectCreatedBy")
   fieldVerifications       FieldVerification[] @relation("FieldVerificationAssigned")
@@ -1121,8 +1125,9 @@ model Contractor {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  updates  ContractorUpdate[]
-  payments FinancialObservation[]
+  updates    ContractorUpdate[]
+  payments   FinancialObservation[]
+  linkedUser User?
 
   @@unique([nameNormalized, state])
   @@index([nameNormalized])

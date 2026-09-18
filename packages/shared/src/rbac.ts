@@ -319,10 +319,18 @@ export function canAccessFinding(
 }
 
 /**
- * Build Prisma where clause for finding visibility.
+ * Build Prisma where clause for finding (Anomaly) visibility.
  *
- * Finding records have clearanceLevel in the current schema, so this filter
- * remains clearance-aware.
+ * The Anomaly model has no clearanceLevel column — this filter previously
+ * referenced one that doesn't exist in the current schema, which made every
+ * call to GET /anomalies for a role lacking finding.review throw a Prisma
+ * "Unknown argument clearanceLevel" error (surfaced to callers as a bare
+ * 500). Anomaly does carry real law-enforcement-escalation fields
+ * (lawEscalation/lawAuthority/lawReferenceNo/lawNotes), which are the
+ * closest real equivalent to a "restricted" tier — a case that's been
+ * referred to law enforcement is exactly the kind of record a non-reviewer
+ * role shouldn't see full detail on. Filter on that real column instead of
+ * resurrecting the removed one.
  */
 export function getFindingVisibilityFilter(
   user: UserContext,
@@ -340,9 +348,7 @@ export function getFindingVisibilityFilter(
   }
 
   return {
-    clearanceLevel: {
-      not: 'RESTRICTED',
-    },
+    lawEscalation: false,
   };
 }
 

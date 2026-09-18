@@ -102,6 +102,61 @@ router.get(
   }
 );
 
+// ── GET /projects/:id/analysis/history ─────────────────────────────────
+// Must be registered before /:analysisId below — Express matches routes in
+// registration order, and :analysisId is a wildcard segment that would
+// otherwise capture "history" as a literal analysis id first, making this
+// route permanently unreachable (it fails the CUID check and falls through
+// to that handler's "Invalid ID format" response instead).
+
+router.get(
+  '/projects/:id/analysis/history',
+  authenticate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projectId = req.params.id as string;
+      if (!isValidId(projectId)) return success(res, { history: [] });
+
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
+      const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? '100'))));
+
+      // Get all completed analyses with observation dates, ordered chronologically
+      const [analyses, total] = await prisma.$transaction([
+        prisma.changeAnalysis.findMany({
+          where: { projectId, processingStatus: 'COMPLETED' },
+          orderBy: { baselineDate: 'asc' },
+          select: {
+            id: true,
+            analysisDate: true,
+            baselineDate: true,
+            comparisonDate: true,
+            changeClassification: true,
+            changePercent: true,
+            confidence: true,
+            primarySignal: true,
+            provider: true,
+            ndviDelta: true,
+            ndbiDelta: true,
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.changeAnalysis.count({ where: { projectId, processingStatus: 'COMPLETED' } }),
+      ]);
+
+      return success(res, {
+        history: analyses,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // ── GET /projects/:id/analysis/:analysisId ────────────────────────────────
 
 router.get(
@@ -352,56 +407,6 @@ router.get(
         completedAt: job?.completedAt?.toISOString() ?? null,
         result: job?.result ?? null,
         error: job?.error ?? null,
-      });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-// ── GET /projects/:id/analysis/history ─────────────────────────────────
-
-router.get(
-  '/projects/:id/analysis/history',
-  authenticate,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const projectId = req.params.id as string;
-      if (!isValidId(projectId)) return success(res, { history: [] });
-
-      const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
-      const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit ?? '100'))));
-
-      // Get all completed analyses with observation dates, ordered chronologically
-      const [analyses, total] = await prisma.$transaction([
-        prisma.changeAnalysis.findMany({
-          where: { projectId, processingStatus: 'COMPLETED' },
-          orderBy: { baselineDate: 'asc' },
-          select: {
-            id: true,
-            analysisDate: true,
-            baselineDate: true,
-            comparisonDate: true,
-            changeClassification: true,
-            changePercent: true,
-            confidence: true,
-            primarySignal: true,
-            provider: true,
-            ndviDelta: true,
-            ndbiDelta: true,
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        prisma.changeAnalysis.count({ where: { projectId, processingStatus: 'COMPLETED' } }),
-      ]);
-
-      return success(res, {
-        history: analyses,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
       });
     } catch (err) {
       next(err);
