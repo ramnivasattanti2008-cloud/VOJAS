@@ -12,16 +12,12 @@
 
 ## Live Status Board
 
-- **Active Agent Right Now**: `Antigravity` — **Controlled Civic AI Agent Layer & AI Copilot Drawer Delivered**.
-- **AI Copilot & Controlled Agent Architecture Delivered**:
-  1. **Persistent Memory Established**: Created `/docs/AI_CONTEXT.md` documenting models, RBAC, tool contracts, statutory rules (GFR 2017 / CVC), and zero-fabrication guarantees. Updated `CLAUDE.md`.
-  2. **Controlled AI Tool Registry (`apps/api/src/services/aiAgent/aiTools.ts`)**: 10 controlled, read-only tools strictly isolated with server-side RBAC (`searchProjects`, `getProject`, `getProjectFinancials`, `getProjectTimeline`, `getProjectEvidence`, `getProjectSatellite`, `getProjectRisk`, `getOfficerQueue`, `getContractorProjects`, `getConstituencyProjects`). Deterministic balances, strict permissions check, honest `NO_USABLE_OBSERVATION` empty states.
-  3. **Role-Aware AI Assistant Service (`apps/api/src/services/aiAgent/aiAgentService.ts`)**: Multi-provider resilience (Gemini 2.0 Flash, OpenAI GPT-4o-mini, and deterministic GFR 2017 fallback). Returns structured JSON response (`answer`, `facts`, `analysis`, `missingData`, `sources`, `recommendedActions`).
-  4. **Backend API Endpoints**: Mounted `POST /api/v1/ai/assistant` and `GET /api/v1/ai/tools` with `optionalAuth` so both public and authenticated users receive customized intelligence.
-  5. **API Client & Web Frontend SDK**: `@vojas/api-client` exported `createAIAssistantApi`. `useAIAssistant` hook with conversation history and client-side Gemini key support.
-  6. **Glassmorphic AI Copilot Drawer (`apps/web/src/components/ai-agent/AICopilotDrawer.tsx`)**: Slide-over copilot with role badges, suggested prompts, ground-truth fact checklists, analytical findings, data limitations, and recommended verification actions. Integrated into `Header.tsx`, `PublicHeaderActions.tsx`, `citizen/page.tsx`, and `ExploreDetailClient.tsx`.
-  7. **Quality Gates Passed**: 6/6 packages clean typecheck (`tsc --noEmit`), 5/5 AI tools unit tests passing, production web build clean.
-  8. **Zero Git Push**: Respected user instruction ("dont push into git untill i tell").
+- **Active Agent Right Now**: `Antigravity` — **SIH Finals Enhancements Deployed: Showcase Banner, Voice Speech Input & 1-Click RTI Generator (Commit `4804789`)**.
+- **SIH Finals Enhancements Delivered (`4804789`)**:
+  1. **Showcase Projects Quick-Picker Banner (`apps/web/src/components/transparency/ShowcaseBanner.tsx`)**: Mounted prominently on both Homepage (`/`) and Explore Page (`/explore`). Features 4 premier cases (🚨 Ghost Canal Road `showcase-fraud-1`, ⚠️ Fiscal Anomaly `showcase-fin-1`, 🏗️ Ongoing Anganwadi `showcase-ong-1`, ✅ Bangalore Model High School `cmtwjxvip000n932octqrfpw7`).
+  2. **Voice Speech Recognition in AI Copilot**: Native Web Speech API integration in `AICopilotDrawer.tsx` allowing rural citizens and evaluators to speak queries in Hindi or English with real-time transcription and animated mic states.
+  3. **1-Click Statutory RTI Generator (`apps/web/src/components/ai-agent/RTIDraftModal.tsx`)**: Form A under Section 6(1) of the RTI Act 2005. Generates certified copy requests for Measurement Books (MB), Technical Sanctions, and GFR 171 Utilization Certificates with instant clipboard copy, print, and .txt download.
+  4. **Quality Gates Passed**: Clean typecheck (0 errors across 6 monorepo packages), 0 ESLint errors, clean production Next.js build (`15/15` routes), and pushed to `origin/master`.
 - **Previous AI/LLM Architecture Delivered**:
   1. `/settings` transformed into an interactive Settings & AI Configuration Center featuring:
      - Real-time provider statuses: VOJAS Sentinel Core v4.2 (Active, 18ms latency, in-process deterministic GFR 2017 reasoning), Google Gemini 2.0 Flash (Ready/Configured, 1M token context), OpenAI GPT-4o Mini (Standby).
