@@ -27,7 +27,8 @@ export interface MPConstituencySummary {
 
 export interface MPFinancialSummary {
   totalSanctioned: number;
-  totalReleased: number;
+  /** Null when no real RELEASE-type observation exists yet for this MP's projects. */
+  totalReleased: number | null;
   totalSpent: number;
   utilizationPercent: number;
   bySector: Array<{

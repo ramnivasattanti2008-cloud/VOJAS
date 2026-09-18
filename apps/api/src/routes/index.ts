@@ -13,6 +13,7 @@ import exportRoutes from './export.js';
 import financialRoutes from './financial.js';
 import investigationsRoutes from './investigations.js';
 import locationRoutes from './locations.js';
+import mpCommandRoutes from './mp.js';
 import mpRoutes from './mps.js';
 import notificationRoutes from './notifications.js';
 import officerRoutes from './officer.js';
@@ -87,6 +88,7 @@ router.use('/documents', documentRoutes);
 
 // MP routes
 router.use('/mps', mpRoutes);
+router.use('/mp', mpCommandRoutes);
 
 // Risk routes (project-scoped: /projects/:id/risk; global: /summary, /findings, etc.)
 router.use('/', riskRoutes);

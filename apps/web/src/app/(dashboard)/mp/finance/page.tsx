@@ -68,7 +68,11 @@ export default function MPFinancePage() {
   };
 
   const totalSanctioned = summary.totalSanctioned;
-  const totalReleased = summary.totalReleased;
+  // totalReleased is null when no real RELEASE-type observation exists yet
+  // for this MP's projects (see apps/api/src/routes/mp.ts) — 0 here is just
+  // a display-safe default for the arithmetic below, not a claim that
+  // release is confirmed zero.
+  const totalReleased = summary.totalReleased ?? 0;
   const totalSpent = summary.totalSpent;
   const utilizationRate = summary.utilizationPercent;
   const remaining = totalSanctioned - totalSpent;
