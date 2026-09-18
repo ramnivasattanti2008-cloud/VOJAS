@@ -27,22 +27,17 @@ function onUnauthorized() {
   window.location.href = '/login';
 }
 
-// TEMPORARY: the same-origin /api/v1/* rewrite was failing in production with
-// DNS_HOSTNAME_RESOLVED_PRIVATE. Root cause found 2026-09-18: next.config.ts's
-// rewrites() falls back to http://127.0.0.1:5000 when API_INTERNAL_URL /
-// NEXT_PUBLIC_API_URL aren't set at runtime, and Vercel's edge refuses to proxy
-// a rewrite to a loopback address. Fixed there (fallback now points at the
-// real backend), but call the backend directly here until that fix is
-// deployed and confirmed live. Revert this once confirmed — it exists
-// specifically to keep API calls same-origin for SameSite=Lax cookie auth.
-const DIRECT_BACKEND_FALLBACK = 'https://vojas-backend.onrender.com/api/v1';
-
+// The same-origin /api/v1/* rewrite (next.config.ts's rewrites(), proxying to
+// the Render backend) previously failed in production with
+// DNS_HOSTNAME_RESOLVED_PRIVATE because its fallback pointed at
+// http://127.0.0.1:5000 when API_INTERNAL_URL/NEXT_PUBLIC_API_URL weren't set
+// at runtime — Vercel's edge refuses to proxy to a loopback address. Fixed
+// 2026-09-18 and confirmed live (curl against the deployed rewrite returns
+// real backend data), so browser requests go through the same-origin rewrite
+// rather than calling the backend cross-origin.
 const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return `${window.location.origin}/api/v1`;
-    }
-    return DIRECT_BACKEND_FALLBACK;
+    return `${window.location.origin}/api/v1`;
   }
   return `${process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'https://vojas-backend.onrender.com'}/api/v1`;
 };
