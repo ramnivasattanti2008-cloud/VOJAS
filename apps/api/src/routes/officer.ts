@@ -11,7 +11,7 @@ import {
   canReopenAnomalyCase,
 } from '@vojas/domain';
 import type { ChecklistItem } from '@vojas/domain';
-import { UserRole, PERMISSIONS, AuditAction } from '@vojas/shared';
+import { UserRole, AuditAction } from '@vojas/shared';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';

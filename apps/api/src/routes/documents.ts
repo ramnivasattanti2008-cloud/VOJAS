@@ -5,7 +5,7 @@ import fs from 'fs';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
 import { NotFoundError, ValidationError } from '@vojas/domain';
-import { AuditAction, PERMISSIONS, UserRole } from '@vojas/shared';
+import { PERMISSIONS, UserRole } from '@vojas/shared';
 import { authenticate, requirePermission } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';

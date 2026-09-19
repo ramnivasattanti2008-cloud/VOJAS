@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
-import { NotFoundError, ValidationError } from '@vojas/domain';
+import { NotFoundError } from '@vojas/domain';
 import { authenticate } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 
