@@ -10,6 +10,7 @@
 
 import { prisma } from '@vojas/db';
 import { getChangeAnalysisEngine } from './changeAnalysisEngine.js';
+import type { SignalType } from './changeAnalysisProviders/changeAnalysisProvider.js';
 import { logger } from '../utils/logger.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -21,6 +22,8 @@ export interface ChangeAnalysisJob {
   projectId: string;
   observationBeforeId: string;
   observationAfterId: string;
+  sector?: string;
+  primarySignal?: string;
   status: JobStatus;
   startedAt: Date | null;
   completedAt: Date | null;
@@ -41,7 +44,7 @@ class ChangeAnalysisJobQueue {
     projectId: string,
     observationBeforeId: string,
     observationAfterId: string,
-    options?: { sector?: string; analysisType?: string }
+    options?: { sector?: string; primarySignal?: string }
   ): { jobId: string; status: JobStatus } {
     const jobId = `change-${projectId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -50,6 +53,8 @@ class ChangeAnalysisJobQueue {
       projectId,
       observationBeforeId,
       observationAfterId,
+      sector: options?.sector,
+      primarySignal: options?.primarySignal,
       status: 'QUEUED',
       startedAt: null,
       completedAt: null,
@@ -94,6 +99,8 @@ class ChangeAnalysisJobQueue {
       observationBeforeId: queued.observationBeforeId,
       observationAfterId: queued.observationAfterId,
       jobId: queued.jobId,
+      sector: queued.sector,
+      primarySignal: queued.primarySignal as SignalType | undefined,
     })
       .then((result) => {
         queued.status = 'COMPLETED';

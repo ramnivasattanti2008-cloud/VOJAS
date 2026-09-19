@@ -18,8 +18,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import type { PrismaClient } from '@vojas/db';
-import type { Prisma } from '@vojas/db';
+import type { PrismaClient, Prisma, ChangeAnalysis, SatelliteObservation } from '@vojas/db';
 import { logger } from '../utils/logger.js';
 import { geeProvider } from './changeAnalysisProviders/geeProvider.js';
 import { cdsePixelProvider } from './changeAnalysisProviders/cdsePixelProvider.js';
@@ -27,10 +26,8 @@ import {
   type AnalysisGeometry,
   type AnalysisParams,
   type ChangeRegion,
-  type ChangeRegionCategory,
   type ChangeAnalysisProvider,
   DEFAULT_RUN_PARAMETERS,
-  type ProviderResponse,
   type RawAnalysisResult,
   type RunParameters,
   type SignalType,
@@ -309,7 +306,7 @@ class ChangeAnalysisEngine {
 
     // 9. Build change story
     const changeStory = this.buildChangeStory(
-      raw, changeClassification, confidence, before, after, sector
+      raw, changeClassification, confidence, before, after
     );
 
     // 10. Build evidence package
@@ -553,8 +550,7 @@ class ChangeAnalysisEngine {
     classification: ChangeClassification,
     confidence: Confidence,
     before: { observationDate: Date },
-    after: { observationDate: Date },
-    sector: string
+    after: { observationDate: Date }
   ): string {
     const days = Math.round(
       (after.observationDate.getTime() - before.observationDate.getTime()) / 86400_000
@@ -770,7 +766,7 @@ class ChangeAnalysisEngine {
     beforeId: string,
     afterId: string,
     parametersHash: string
-  ): Promise<import('@vojas/db').ChangeAnalysis | null> {
+  ): Promise<ChangeAnalysis | null> {
     return this.prisma.changeAnalysis.findFirst({
       where: {
         projectId,
@@ -789,8 +785,8 @@ class ChangeAnalysisEngine {
     afterId: string
   ): Promise<{
     project: { latitude: number | null; longitude: number | null; approvedAmount: number | null; spentAmount: number | null };
-    before: import('@vojas/db').SatelliteObservation | null;
-    after: import('@vojas/db').SatelliteObservation | null;
+    before: SatelliteObservation | null;
+    after: SatelliteObservation | null;
   }> {
     const [project, before, after] = await Promise.all([
       this.prisma.project.findUnique({
@@ -808,7 +804,7 @@ class ChangeAnalysisEngine {
     return { project, before, after };
   }
 
-  private toObsRef(obs: import('@vojas/db').SatelliteObservation): AnalysisParams['before'] {
+  private toObsRef(obs: SatelliteObservation): AnalysisParams['before'] {
     return {
       id: obs.id,
       sceneId: obs.sceneId,
@@ -860,7 +856,7 @@ class ChangeAnalysisEngine {
     return this.toAnalysisResult(created);
   }
 
-  private toAnalysisResult(record: import('@vojas/db').ChangeAnalysis): AnalysisResult {
+  private toAnalysisResult(record: ChangeAnalysis): AnalysisResult {
     return {
       id: record.id,
       projectId: record.projectId,

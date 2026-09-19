@@ -10,8 +10,8 @@
  * - We NEVER fabricate a satellite capture to fill a week.
  */
 
-import type { PrismaClient } from '@vojas/db';
-import { cdseService, type CDSENearestResult } from './cdseService.js';
+import type { PrismaClient, Prisma, SatelliteObservation } from '@vojas/db';
+import { cdseService, type CDSENearestResult, type CDSEScene } from './cdseService.js';
 import { logger } from '../utils/logger.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ async function upsertSatelliteProjectEvent(
   prisma: PrismaClient,
   projectId: string,
   observationId: string,
-  scene: import('./cdseService.js').CDSEScene
+  scene: CDSEScene
 ): Promise<void> {
   const id = `sat-evt-${observationId}`;
   const cloudPct = Math.round(scene.cloudCover);
@@ -183,7 +183,7 @@ async function upsertSatelliteProjectEvent(
 async function upsertObservation(
   prisma: PrismaClient,
   projectId: string,
-  scene: import('./cdseService.js').CDSEScene,
+  scene: CDSEScene,
   targetDate: Date,
   selectionReason: string
 ): Promise<boolean> {
@@ -211,7 +211,7 @@ async function upsertObservation(
         dataset: scene.dataset,
         cloudCover: scene.cloudCover,
         resolution: scene.resolution,
-        bbox: scene.bbox as unknown as import('@vojas/db').Prisma.InputJsonValue,
+        bbox: scene.bbox as unknown as Prisma.InputJsonValue,
         tileUrl: scene.tileUrl,
         thumbnailUrl: scene.thumbnailUrl,
         centerLat: (scene.bbox.sw[0] + scene.bbox.ne[0]) / 2,
@@ -351,8 +351,8 @@ export function computeConfidence(
 
 async function computePairwiseAnalysis(
   prisma: PrismaClient,
-  obsBefore: import('@vojas/db').SatelliteObservation,
-  obsAfter: import('@vojas/db').SatelliteObservation
+  obsBefore: SatelliteObservation,
+  obsAfter: SatelliteObservation
 ): Promise<void> {
   const classification = classifyChange(
     obsBefore.ndvi ?? null, obsAfter.ndvi ?? null,

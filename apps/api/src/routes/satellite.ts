@@ -308,7 +308,7 @@ router.get(
     try {
       const jobId = req.params.jobId as string;
       const projectId = req.params.id as string;
-      const job = satelliteJobQueue.getJob(jobId);
+      const job = await satelliteJobQueue.getJob(jobId);
       if (!job || job.projectId !== projectId) {
         return res.status(404).json({ success: false, error: { code: 'JOB_NOT_FOUND', message: 'Job not found' } });
       }

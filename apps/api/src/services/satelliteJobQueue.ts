@@ -64,7 +64,7 @@ export const satelliteJobQueue = {
     return inProcessQueue.enqueue(projectId);
   },
 
-  getJob(jobId: string): Job | null {
+  async getJob(jobId: string): Promise<Job | null> {
     if (useBullMQ) {
       return bullmqQueue.getJob(jobId);
     }

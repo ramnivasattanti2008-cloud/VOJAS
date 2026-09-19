@@ -19,7 +19,6 @@ import {
   type ProviderResponse,
   type ProviderSuccess,
   type RawAnalysisResult,
-  type RunParameters,
   type SignalType,
 } from './changeAnalysisProvider.js';
 
@@ -96,12 +95,11 @@ function buildControlAreaPolygon(
     if (lat > maxLat) maxLat = lat;
   }
 
-  // Compute center and max half-diagonal
+  // Compute center and half-extents
   const cLng = (minLng + maxLng) / 2;
   const cLat = (minLat + maxLat) / 2;
   const dLng = (maxLng - minLng) / 2;
   const dLat = (maxLat - minLat) / 2;
-  const halfDiag = Math.sqrt(dLng * dLng + dLat * dLat);
 
   // Outer box extends by outerRadiusM in degrees (approximate)
   const outerDeg = outerRadiusM / 111_320;
@@ -275,9 +273,14 @@ class GEEProvider {
       const maskedNDVI = deltaNDVI.updateMask(cloudMask);
       const maskedNDBI = deltaNDBI.updateMask(cloudMask);
       const maskedBSI = deltaBSI.updateMask(cloudMask);
+      // Combined so a single reduceRegion returns per-band stats (NDVI_mean,
+      // NDBI_mean, BSI_mean, ...). Reducing maskedNDVI alone — as this used to
+      // do — only ever produces an NDVI_* key, so projNDBIDelta/projBSIDelta
+      // below silently read undefined and fell back to 0 on every run.
+      const maskedCombined = maskedNDVI.addBands(maskedNDBI).addBands(maskedBSI);
 
       // 8. Compute zonal statistics (project area)
-      const projectStats = maskedNDVI.reduceRegion({
+      const projectStats = maskedCombined.reduceRegion({
         geometry: projectPoly as any,
         scale: 10,
         reducer: earthengine.Reducer.mean().combine(
@@ -298,18 +301,7 @@ class GEEProvider {
         (projectStats as Record<string, unknown>)['BSI_mean'] ?? 0
       );
 
-      // 9. Control area stats
-      const controlStats = maskedNDVI.reduceRegion({
-        geometry: controlPoly as any,
-        scale: 10,
-        reducer: earthengine.Reducer.mean(),
-        bestEffort: true,
-      });
-      const controlNdviDelta = Number(
-        (controlStats as Record<string, unknown>)['NDVI_mean'] ?? 0
-      );
-
-      // 10. Compute areas
+      // 9. Compute areas
       const pixelAreaM2 = 100; // 10m × 10m Sentinel-2
       const totalPixels = (await maskedNDVI.select('NDVI').reduceRegion({
         geometry: projectPoly as any,
@@ -347,10 +339,10 @@ class GEEProvider {
         ? changePercent / controlAreaChangePercent
         : (changePercent > 0 ? Infinity : 0);
 
-      // 11. Primary signal
+      // 10. Primary signal
       const primarySignal = this.resolvePrimarySignal(analysisType, projNdviDelta, projNDBIDelta);
 
-      // 12. Image quality
+      // 11. Image quality
       const validPixelsPercent = totalAreaM2 > 0 ? (validPixels * pixelAreaM2 / totalAreaM2) * 100 : 0;
       const imageQuality = this.scoreImageQuality(
         before.cloudCover,
@@ -358,7 +350,7 @@ class GEEProvider {
         validPixelsPercent
       );
 
-      // 13. Build change regions (simplified — GEE gives us aggregate stats)
+      // 12. Build change regions (simplified — GEE gives us aggregate stats)
       const changeRegions: ChangeRegion[] = changedAreaM2 > runParameters.minRegionAreaM2
         ? [{
             id: 'region-1',

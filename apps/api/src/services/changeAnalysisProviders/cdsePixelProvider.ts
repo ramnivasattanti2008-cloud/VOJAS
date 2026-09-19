@@ -18,29 +18,17 @@ import {
   type AnalysisParams,
   type ChangeRegion,
   type ChangeRegionCategory,
-  type ObservationRef,
   type ProviderError,
   type ProviderResponse,
   type ProviderSuccess,
   type RawAnalysisResult,
-  type RunParameters,
   type SignalType,
 } from './changeAnalysisProvider.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const METRES_PER_DEGREE = 111_320;
-const SENTINEL2_RESOLUTION = 10; // metres per pixel
 const SAMPLE_GRID_SIZE = 50; // 50×50 = 2,500 pixels max
-
-// CDSE band asset keys for Sentinel-2 L2A
-const BAND_ASSETS: Record<string, string> = {
-  B02: 'B02',
-  B03: 'B03',
-  B04: 'B04',
-  B08: 'B08',
-  B11: 'B11',
-};
 
 // ── Token helper (shared with cdseService) ───────────────────────────────────
 
@@ -196,12 +184,6 @@ function polygonAreaM2(coords: [number, number][]): number {
   const latDegM = METRES_PER_DEGREE;
   const lngDegM = METRES_PER_DEGREE * Math.cos((avgLat * Math.PI) / 180);
   return area * latDegM * lngDegM;
-}
-
-function polygonCentroid(coords: [number, number][]): [number, number] {
-  let cx = 0, cy = 0;
-  for (const [lng, lat] of coords) { cx += lng; cy += lat; }
-  return [cx / coords.length, cy / coords.length];
 }
 
 // ── Change region extraction ────────────────────────────────────────────────

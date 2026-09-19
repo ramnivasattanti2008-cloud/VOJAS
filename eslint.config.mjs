@@ -96,4 +96,14 @@ export default [
       '@typescript-eslint/no-namespace': ['error', { allowDeclarations: true }],
     },
   },
+  {
+    // Hand-written ambient module declarations for untyped third-party
+    // packages (e.g. apps/api/src/types/ee.d.ts stubbing the Earth Engine
+    // SDK, which ships no types at all). `any` here is the standard,
+    // accepted way to declare such a module's shape — not debt to chase.
+    files: ['**/*.d.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
 ];

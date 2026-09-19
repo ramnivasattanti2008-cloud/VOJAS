@@ -366,7 +366,7 @@ router.post(
         projectId,
         observationBeforeId,
         observationAfterId,
-        { sector: effectiveSector, analysisType: effectiveSignal ?? undefined }
+        { sector: effectiveSector, primarySignal: effectiveSignal ?? undefined }
       );
 
       return success(res, { status, jobId, message: 'Change analysis job enqueued' });

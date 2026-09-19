@@ -1545,7 +1545,7 @@ router.post('/satellites/jobs/:jobId/retry', async (req: Request, res: Response,
   try {
     const { satelliteJobQueue } = await import('../services/satelliteJobQueue.js');
     const jobId = req.params.jobId as string;
-    const job = satelliteJobQueue.getJob(jobId);
+    const job = await satelliteJobQueue.getJob(jobId);
     if (!job) throw new NotFoundError('Satellite job');
     if (job.status !== 'FAILED') {
       throw new ValidationError(`Job ${jobId} is ${job.status}, not FAILED — nothing to retry.`);

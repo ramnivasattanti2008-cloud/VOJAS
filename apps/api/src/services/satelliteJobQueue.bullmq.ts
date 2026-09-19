@@ -420,8 +420,18 @@ export const queue = {
     return { jobId, status: 'STARTED' };
   },
 
-  getJob(jobId: string): Job | null {
-    return readJobLocal(jobId);
+  // Local mirror first (O(1), no network round-trip). Falls back to Redis on
+  // a miss so a job survives this process restarting — the mirror is an
+  // empty Map on a fresh process, but Redis still has whatever persistJob()
+  // wrote before the restart. Without this fallback, polling a job's status
+  // right after a redeploy or a Render free/starter-tier wake-from-idle
+  // always reported JOB_NOT_FOUND even for jobs that completed successfully.
+  async getJob(jobId: string): Promise<Job | null> {
+    const local = readJobLocal(jobId);
+    if (local) return local;
+    const fromRedis = await readJobFromRedis(jobId);
+    if (fromRedis) setLocalJob(fromRedis);
+    return fromRedis;
   },
 
   getJobsForProject(projectId: string): Job[] {
