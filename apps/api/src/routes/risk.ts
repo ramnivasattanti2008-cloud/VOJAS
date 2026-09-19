@@ -970,6 +970,13 @@ router.get(
   requirePermission('risk.read'),
   async (_req: Request, res: Response, next: NextFunction) => {
     try {
+      // Column aliases are double-quoted so Postgres returns them exactly
+      // as written — unquoted `as project_count` comes back lowercased as
+      // the literal key `project_count`, not the `projectCount` the type
+      // below claims; that mismatch previously made every field below
+      // read as undefined -> Number(undefined) -> NaN -> null over JSON,
+      // for every row, silently (this endpoint has no frontend consumer
+      // yet, so nothing ever surfaced it failing).
       const byState = await prisma.$queryRaw<
         Array<{
           state: string;
@@ -981,15 +988,15 @@ router.get(
       >`
         SELECT
           p.state,
-          COUNT(DISTINCT p.id)::bigint as project_count,
-          COALESCE(AVG(pr.risk_score), 0)::float as avg_risk_score,
-          COUNT(DISTINCT CASE WHEN pr.risk_level IN ('HIGH', 'CRITICAL') THEN p.id END)::bigint as high_risk_count,
-          COALESCE(SUM(pr.findings_count), 0)::bigint as active_findings
+          COUNT(DISTINCT p.id)::bigint as "projectCount",
+          COALESCE(AVG(pr.risk_score), 0)::float as "avgRiskScore",
+          COUNT(DISTINCT CASE WHEN pr.risk_level IN ('HIGH', 'CRITICAL') THEN p.id END)::bigint as "highRiskCount",
+          COALESCE(SUM(pr.findings_count), 0)::bigint as "activeFindings"
         FROM projects p
         LEFT JOIN project_risks pr ON pr.project_id = p.id
         WHERE p.status = 'IN_PROGRESS'
         GROUP BY p.state
-        ORDER BY avg_risk_score DESC
+        ORDER BY "avgRiskScore" DESC
       `;
 
       success(res, {
@@ -1000,6 +1007,133 @@ router.get(
           highRiskCount: Number(s.highRiskCount),
           activeFindings: Number(s.activeFindings),
         })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /risk/aggregate/by-district?state=<state>
+ *
+ * District-level drill-down for the state rollup above — same shape, one
+ * level deeper. Powers the early-warning command view: a state-level
+ * officer sees which states need attention (by-state), a district-level
+ * one drills into which districts within a state do (by-district).
+ */
+router.get(
+  '/risk/aggregate/by-district',
+  authenticate,
+  requirePermission('risk.read'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const state = typeof req.query.state === 'string' ? req.query.state : undefined;
+
+      const byDistrict = await prisma.$queryRaw<
+        Array<{
+          state: string;
+          district: string;
+          projectCount: bigint;
+          avgRiskScore: number;
+          highRiskCount: bigint;
+          activeFindings: bigint;
+        }>
+      >`
+        SELECT
+          p.state,
+          p.district,
+          COUNT(DISTINCT p.id)::bigint as "projectCount",
+          COALESCE(AVG(pr.risk_score), 0)::float as "avgRiskScore",
+          COUNT(DISTINCT CASE WHEN pr.risk_level IN ('HIGH', 'CRITICAL') THEN p.id END)::bigint as "highRiskCount",
+          COALESCE(SUM(pr.findings_count), 0)::bigint as "activeFindings"
+        FROM projects p
+        LEFT JOIN project_risks pr ON pr.project_id = p.id
+        WHERE p.status = 'IN_PROGRESS'
+          AND (${state}::text IS NULL OR p.state = ${state})
+        GROUP BY p.state, p.district
+        ORDER BY "avgRiskScore" DESC
+      `;
+
+      success(res, {
+        state: state ?? null,
+        districts: byDistrict.map(d => ({
+          state: d.state,
+          district: d.district,
+          projectCount: Number(d.projectCount),
+          avgRiskScore: Math.round(d.avgRiskScore),
+          highRiskCount: Number(d.highRiskCount),
+          activeFindings: Number(d.activeFindings),
+        })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /risk/early-warning?scope=state|district&value=<name>&limit=<n>
+ *
+ * The actual "early warning" list this feeds: real HIGH/CRITICAL-scored
+ * projects with open findings, ranked by risk score, optionally scoped to
+ * one state or district for drill-down. Deliberately project-level (not
+ * just counts) — a command dashboard needs the actual project to act on,
+ * not only a number telling you something is wrong somewhere.
+ */
+router.get(
+  '/risk/early-warning',
+  authenticate,
+  requirePermission('risk.read'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { scope, value } = req.query as { scope?: string; value?: string };
+      const limitNum = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '25'), 10) || 25));
+
+      const where: Prisma.ProjectWhereInput = {
+        projectRisk: { riskLevel: { in: ['HIGH', 'CRITICAL'] } },
+      };
+      if (scope === 'state' && value) where.state = value;
+      if (scope === 'district' && value) where.district = value;
+
+      const projects = await prisma.project.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          sector: true,
+          state: true,
+          district: true,
+          approvedAmount: true,
+          spentAmount: true,
+          status: true,
+          projectRisk: {
+            select: { riskLevel: true, riskScore: true, primaryDriver: true, findingsCount: true, updatedAt: true },
+          },
+        },
+        orderBy: { projectRisk: { riskScore: 'desc' } },
+        take: limitNum,
+      });
+
+      success(res, {
+        scope: scope && value ? { type: scope, value } : null,
+        projects: projects
+          .filter((p) => p.projectRisk)
+          .map((p) => ({
+            projectId: p.id,
+            name: p.name,
+            sector: p.sector,
+            state: p.state,
+            district: p.district,
+            approvedAmount: p.approvedAmount,
+            spentAmount: p.spentAmount,
+            status: p.status,
+            riskLevel: p.projectRisk!.riskLevel,
+            riskScore: p.projectRisk!.riskScore,
+            primaryDriver: p.projectRisk!.primaryDriver,
+            openFindings: p.projectRisk!.findingsCount,
+            lastScoredAt: p.projectRisk!.updatedAt.toISOString(),
+          })),
       });
     } catch (err) {
       next(err);

@@ -448,6 +448,39 @@ export type RiskHotspot = {
   state: string;
 };
 
+export type StateRiskAggregate = {
+  state: string;
+  projectCount: number;
+  avgRiskScore: number;
+  highRiskCount: number;
+  activeFindings: number;
+};
+
+export type DistrictRiskAggregate = {
+  state: string;
+  district: string;
+  projectCount: number;
+  avgRiskScore: number;
+  highRiskCount: number;
+  activeFindings: number;
+};
+
+export type EarlyWarningProject = {
+  projectId: string;
+  name: string;
+  sector: string;
+  state: string;
+  district: string;
+  approvedAmount: number;
+  spentAmount: number;
+  status: string;
+  riskLevel: 'HIGH' | 'CRITICAL';
+  riskScore: number;
+  primaryDriver: string | null;
+  openFindings: number;
+  lastScoredAt: string;
+};
+
 export type RiskRule = {
   id: string;
   name: string;

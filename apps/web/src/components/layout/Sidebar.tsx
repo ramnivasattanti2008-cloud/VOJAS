@@ -58,6 +58,7 @@ interface NavItem {
 // M14: Admin sub-navigation items
 const adminSubItems: NavItem[] = [
   { labelKey: 'nav.systemControlCenter', label: 'System Control Center', href: '/admin', icon: Activity },
+  { labelKey: 'nav.earlyWarning', label: 'Early Warning', href: '/admin/early-warning', icon: ShieldAlert },
   { labelKey: 'nav.users', label: 'Users', href: '/admin/users', icon: Users },
   { labelKey: 'nav.roles', label: 'Roles', href: '/admin/roles', icon: Lock },
   { labelKey: 'nav.dataSources', label: 'Data Sources', href: '/admin/data-sources', icon: Database },
@@ -136,6 +137,7 @@ const mpItems: NavItem[] = [
 // M14: Officer Command Center items
 const officerItems: NavItem[] = [
   { labelKey: 'nav.verificationCommand', label: 'Verification Command', href: '/officer', icon: ShieldAlert },
+  { labelKey: 'nav.earlyWarning', label: 'Early Warning', href: '/admin/early-warning', icon: AlertTriangle },
   { labelKey: 'nav.verificationQueue', label: 'Verification Queue', href: '/officer/verification', icon: ScanSearch },
   { labelKey: 'nav.investigations', label: 'Investigations', href: '/officer/investigations', icon: FileSearch },
   { labelKey: 'nav.evidenceCenter', label: 'Evidence Center', href: '/officer/evidence', icon: FileArchive },

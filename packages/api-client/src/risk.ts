@@ -12,6 +12,9 @@ import type {
   RiskTrend,
   RiskHotspot,
   RiskRule,
+  StateRiskAggregate,
+  DistrictRiskAggregate,
+  EarlyWarningProject,
 } from './types.js';
 
 export function createRiskApi(client: ApiClient) {
@@ -95,6 +98,27 @@ export function createRiskApi(client: ApiClient) {
     /** Rule registry */
     getRules() {
       return client.get<{ rules: RiskRule[] }>('/risk/rules');
+    },
+
+    /** State-level risk rollup — early-warning command view, top level */
+    getAggregateByState() {
+      return client.get<{ states: StateRiskAggregate[] }>('/risk/aggregate/by-state');
+    },
+
+    /** District-level drill-down, optionally scoped to one state */
+    getAggregateByDistrict(params?: { state?: string }) {
+      return client.get<{ state: string | null; districts: DistrictRiskAggregate[] }>(
+        '/risk/aggregate/by-district',
+        params
+      );
+    },
+
+    /** Real HIGH/CRITICAL projects ranked by score, optionally scoped */
+    getEarlyWarning(params?: { scope?: 'state' | 'district'; value?: string; limit?: number }) {
+      return client.get<{ scope: { type: string; value: string } | null; projects: EarlyWarningProject[] }>(
+        '/risk/early-warning',
+        params
+      );
     },
 
     // ── Workflow ──────────────────────────────────────────────

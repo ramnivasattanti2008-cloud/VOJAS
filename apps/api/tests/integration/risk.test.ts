@@ -145,4 +145,67 @@ runIfDb('M8 Risk Endpoints — DB-backed shape tests', () => {
       total: expect.any(Number),
     });
   });
+
+  // Regression coverage: $queryRaw's TS generic is a compile-time-only
+  // annotation — Postgres returns exactly the column aliases you write, so
+  // an unquoted `as project_count` in SQL comes back as the literal key
+  // `project_count`, not the `projectCount` the type claimed. Reading
+  // s.projectCount off that then silently produced undefined ->
+  // Number(undefined) -> NaN -> null over JSON, for every row, and this
+  // had no frontend consumer to ever surface it failing. Asserting real
+  // numbers (not null) here would have caught it immediately.
+  describe('Risk aggregate endpoints return real numbers, not null', () => {
+    it('GET /risk/aggregate/by-state', async () => {
+      const res = await request(makeApp()).get('/api/v1/risk/aggregate/by-state')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data.states)).toBe(true);
+      for (const s of res.body.data.states) {
+        expect(typeof s.state).toBe('string');
+        expect(Number.isFinite(s.projectCount)).toBe(true);
+        expect(Number.isFinite(s.avgRiskScore)).toBe(true);
+        expect(Number.isFinite(s.highRiskCount)).toBe(true);
+        expect(Number.isFinite(s.activeFindings)).toBe(true);
+      }
+    });
+
+    it('GET /risk/aggregate/by-district', async () => {
+      const res = await request(makeApp()).get('/api/v1/risk/aggregate/by-district')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data.districts)).toBe(true);
+      for (const d of res.body.data.districts) {
+        expect(typeof d.district).toBe('string');
+        expect(Number.isFinite(d.projectCount)).toBe(true);
+        expect(Number.isFinite(d.avgRiskScore)).toBe(true);
+      }
+    });
+
+    it('GET /risk/aggregate/by-district?state=X scopes results to that state', async () => {
+      const all = await request(makeApp()).get('/api/v1/risk/aggregate/by-district')
+        .set('Authorization', `Bearer ${adminToken}`);
+      const someState = all.body.data.districts[0]?.state;
+      if (!someState) return; // no seeded projects in this environment — nothing to scope
+
+      const res = await request(makeApp()).get(`/api/v1/risk/aggregate/by-district?state=${encodeURIComponent(someState)}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(200);
+      for (const d of res.body.data.districts) {
+        expect(d.state).toBe(someState);
+      }
+    });
+
+    it('GET /risk/early-warning returns only HIGH/CRITICAL projects, ranked by score', async () => {
+      const res = await request(makeApp()).get('/api/v1/risk/early-warning')
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.data.projects)).toBe(true);
+      let lastScore = Infinity;
+      for (const p of res.body.data.projects) {
+        expect(['HIGH', 'CRITICAL']).toContain(p.riskLevel);
+        expect(p.riskScore).toBeLessThanOrEqual(lastScore);
+        lastScore = p.riskScore;
+      }
+    });
+  });
 });

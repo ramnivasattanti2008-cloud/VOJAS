@@ -12,6 +12,9 @@ import type {
   RiskTrend,
   RiskHotspot,
   RiskRule,
+  StateRiskAggregate,
+  DistrictRiskAggregate,
+  EarlyWarningProject,
 } from '@vojas/api-client';
 import { apiClient } from '@/lib/api';
 
@@ -47,6 +50,32 @@ export function useRiskRules() {
     queryKey: ['risk', 'rules'],
     queryFn: () => riskApi.getRules(),
     staleTime: 10 * 60 * 1000,
+  });
+}
+
+// ── Early-warning command view ───────────────────────────────
+
+export function useStateRiskAggregate() {
+  return useQuery<{ states: StateRiskAggregate[] }, Error>({
+    queryKey: ['risk', 'aggregate', 'by-state'],
+    queryFn: () => riskApi.getAggregateByState(),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useDistrictRiskAggregate(state?: string) {
+  return useQuery<{ state: string | null; districts: DistrictRiskAggregate[] }, Error>({
+    queryKey: ['risk', 'aggregate', 'by-district', state ?? null],
+    queryFn: () => riskApi.getAggregateByDistrict(state ? { state } : undefined),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useEarlyWarningProjects(scope?: { type: 'state' | 'district'; value: string }, limit = 25) {
+  return useQuery<{ scope: { type: string; value: string } | null; projects: EarlyWarningProject[] }, Error>({
+    queryKey: ['risk', 'early-warning', scope ?? null, limit],
+    queryFn: () => riskApi.getEarlyWarning(scope ? { scope: scope.type, value: scope.value, limit } : { limit }),
+    staleTime: 60 * 1000,
   });
 }
 
