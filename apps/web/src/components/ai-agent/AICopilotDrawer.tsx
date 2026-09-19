@@ -3,21 +3,21 @@
 import { Badge } from '@/components/ui/Badge';
 import { useAIAssistant } from '@/hooks/useAIAssistant';
 import {
-    AlertTriangle,
-    ArrowRight,
-    Building2,
-    CheckCircle2,
-    Database,
-    FileCheck2,
-    Info,
-    Loader2,
-    Mic,
-    MicOff,
-    Scale,
-    Send,
-    ShieldCheck,
-    Sparkles,
-    X,
+  AlertTriangle,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  Database,
+  FileCheck2,
+  Info,
+  Loader2,
+  Mic,
+  MicOff,
+  Scale,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { RTIDraftModal } from './RTIDraftModal';
@@ -38,7 +38,7 @@ const DEFAULT_SUGGESTIONS = [
 
 const PROJECT_SUGGESTIONS = [
   'Verify sanctioned amount vs recorded expenditure',
-  'Has Sentinel-2 observed surface construction change?',
+  'Has ISRO NavIC or satellite telemetry verified construction?',
   'Are any citizen grievances or anomalies logged?',
   'What are the recommended verification steps?',
 ];
@@ -227,7 +227,7 @@ export function AICopilotDrawer({
                     How can VOJAS assist your civic inquiry?
                   </h3>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                    Ask questions about public works expenditure, Sentinel-2 spectral verification, project delays, or statutory GFR guidelines.
+                    Ask questions about public works expenditure, ISRO NavIC positioning, satellite verification, project delays, or statutory GFR guidelines.
                   </p>
                 </div>
 

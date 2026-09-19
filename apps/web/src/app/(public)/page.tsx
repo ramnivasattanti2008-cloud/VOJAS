@@ -1,14 +1,14 @@
 import { ShowcaseBanner } from '@/components/transparency/ShowcaseBanner';
 import {
-    ArrowRight,
-    BarChart3,
-    FileWarning,
-    MapPin,
-    Satellite,
-    Search,
-    ShieldCheck,
-    Sparkles,
-    Wallet
+  ArrowRight,
+  BarChart3,
+  FileWarning,
+  MapPin,
+  Satellite,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Wallet
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -31,7 +31,7 @@ export default function HomePage() {
           </h1>
 
           <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-normal">
-            VOJAS is an anti-corruption public accountability platform for India&apos;s Members of Parliament Local Area Development (MPLADS) scheme. Inspect government project records, track spending, view Sentinel-2 satellite observations, and report ground-level discrepancies.
+            VOJAS is an anti-corruption public accountability platform for India&apos;s Members of Parliament Local Area Development (MPLADS) scheme. Inspect government project records, track spending, view ISRO NavIC sovereign positioning and satellite observations, and report ground-level discrepancies.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4">
@@ -63,8 +63,8 @@ export default function HomePage() {
             <div className="text-slate-400 font-medium mt-0.5">Transport, Water, Health &amp; Edu</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-white tracking-tight">Sentinel-2</div>
-            <div className="text-slate-400 font-medium mt-0.5">Satellite Change Analysis</div>
+            <div className="text-2xl font-bold text-white tracking-tight">ISRO NavIC</div>
+            <div className="text-slate-400 font-medium mt-0.5">NavIC &amp; Earth Observation</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-white tracking-tight">100% Honest</div>
@@ -110,12 +110,12 @@ export default function HomePage() {
           </div>
 
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-3 hover:border-blue-300 hover:shadow-md transition-all">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold">
               <Satellite className="h-5 w-5" />
             </div>
-            <h4 className="font-bold text-slate-900 text-sm">Satellite Change Detection</h4>
+            <h4 className="font-bold text-slate-900 text-sm">ISRO NavIC &amp; Satellite Telemetry</h4>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Compare reported progress against Sentinel-2 L2A optical band observations with transparent fallback states.
+              Verify works with India&apos;s indigenous ISRO NavIC sovereign positioning and multi-spectral satellite surface change detection.
             </p>
           </div>
 

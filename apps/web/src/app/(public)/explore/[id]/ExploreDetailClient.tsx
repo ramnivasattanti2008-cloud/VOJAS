@@ -8,35 +8,35 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import {
-    usePublicProject,
-    usePublicProjectEvidence,
-    usePublicProjectReports,
-    usePublicProjectRisk,
-    usePublicProjectTimeline,
+  usePublicProject,
+  usePublicProjectEvidence,
+  usePublicProjectReports,
+  usePublicProjectRisk,
+  usePublicProjectTimeline,
 } from '@/hooks/usePublicProjects';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PublicProjectDetail } from '@vojas/api-client';
 import {
-    Activity,
-    AlertTriangle,
-    ArrowLeft,
-    CheckCircle,
-    CheckCircle2,
-    Clock,
-    Cpu,
-    DollarSign,
-    Download,
-    FileSearch,
-    FileText,
-    Loader2,
-    MapPin,
-    MessageSquare,
-    Satellite,
-    Scale,
-    ShieldAlert,
-    Sparkles,
-    UserCheck
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle,
+  CheckCircle2,
+  Clock,
+  Cpu,
+  DollarSign,
+  Download,
+  FileSearch,
+  FileText,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  Satellite,
+  Scale,
+  ShieldAlert,
+  Sparkles,
+  UserCheck
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -372,7 +372,7 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
 
   const auditSteps = [
-    '🛰️ Ingesting Sentinel-2 multi-spectral remote sensing telemetry...',
+    '🛰️ Ingesting ISRO NavIC coordinates & multi-spectral remote sensing telemetry...',
     '📜 Cross-referencing GFR 2017 & CVC statutory procurement rules...',
     '📊 Reconciling Measurement Book (MB) vs treasury disbursal vouchers...',
     '🧠 Synthesizing VOJAS Sentinel AI v4.2 forensic dossier...',
@@ -620,8 +620,8 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
             <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <Satellite className="w-3.5 h-3.5 text-vojas-600" />
-                  Sentinel-2 Optical Telemetry
+                  <Satellite className="w-3.5 h-3.5 text-orange-600" />
+                  ISRO NavIC &amp; Optical Telemetry
                 </span>
                 <span
                   className={cn(

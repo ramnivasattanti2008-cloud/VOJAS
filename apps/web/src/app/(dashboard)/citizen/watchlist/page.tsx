@@ -23,7 +23,12 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'success' | 'warni
   CANCELLED: { label: 'Cancelled', variant: 'danger' },
 };
 
-// Mock watchlist data (in real app, this would come from API/user preferences)
+// There is no watchlist/project-follow table or API in this codebase yet —
+// "following" a project isn't a capability that exists anywhere else in the
+// app (no Follow button on the project detail page either). Rendering
+// invented projects here would be exactly the fabricated-data trap this
+// codebase's rule against fabrication exists to prevent, so this page
+// honestly shows an empty watchlist rather than fake followed projects.
 interface WatchlistProject {
   id: string;
   name: string;
@@ -40,57 +45,6 @@ interface WatchlistProject {
   updatesCount: number;
   anomalyCount: number;
 }
-
-const MOCK_WATCHLIST: WatchlistProject[] = [
-  {
-    id: '1',
-    name: 'Construction of Primary Health Centre',
-    sector: 'HEALTH',
-    sectorLabel: 'Health',
-    status: 'IN_PROGRESS',
-    state: 'Karnataka',
-    district: 'Bangalore Rural',
-    approvedAmount: 2500000,
-    spentAmount: 1200000,
-    progressPercent: 48,
-    followedAt: '2024-01-15',
-    lastUpdated: '2024-03-10',
-    updatesCount: 5,
-    anomalyCount: 1,
-  },
-  {
-    id: '2',
-    name: 'Rural Road Connectivity Project',
-    sector: 'TRANSPORT',
-    sectorLabel: 'Transport',
-    status: 'IN_PROGRESS',
-    state: 'Maharashtra',
-    district: 'Pune',
-    approvedAmount: 5000000,
-    spentAmount: 4800000,
-    progressPercent: 96,
-    followedAt: '2024-02-01',
-    lastUpdated: '2024-03-12',
-    updatesCount: 12,
-    anomalyCount: 0,
-  },
-  {
-    id: '3',
-    name: 'Drinking Water Supply Scheme',
-    sector: 'WATER_SANITATION',
-    sectorLabel: 'Water & Sanitation',
-    status: 'COMPLETED',
-    state: 'Tamil Nadu',
-    district: 'Coimbatore',
-    approvedAmount: 3500000,
-    spentAmount: 3400000,
-    progressPercent: 100,
-    followedAt: '2023-11-20',
-    lastUpdated: '2024-02-28',
-    updatesCount: 8,
-    anomalyCount: 0,
-  },
-];
 
 // Watchlist Card Component
 function WatchlistCard({
@@ -264,7 +218,7 @@ export default function CitizenWatchlistPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [watchlist, setWatchlist] = useState<WatchlistProject[]>(MOCK_WATCHLIST);
+  const [watchlist] = useState<WatchlistProject[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
   // Filter watchlist
@@ -285,11 +239,6 @@ export default function CitizenWatchlistPage() {
   }, [watchlist, search, statusFilter]);
 
   const hasFilters = !!(statusFilter || search);
-
-  // Remove from watchlist
-  const handleRemove = (projectId: string) => {
-    setWatchlist(prev => prev.filter(p => p.id !== projectId));
-  };
 
   // Stats
   const stats = useMemo(() => {
@@ -462,7 +411,7 @@ export default function CitizenWatchlistPage() {
               key={project.id}
               project={project}
               onView={() => router.push(`/projects/${project.id}`)}
-              onRemove={() => handleRemove(project.id)}
+              onRemove={() => {}}
             />
           ))}
         </div>

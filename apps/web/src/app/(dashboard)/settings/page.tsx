@@ -14,27 +14,27 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { useAIProviders, useAIProviderStats, useSatelliteProviders } from '@/hooks/useAdmin';
 import { cn } from '@/lib/utils';
 import {
-    Activity,
-    AlertTriangle,
-    Brain,
-    Building2,
-    Check,
-    CheckCircle2,
-    Cpu,
-    Eye,
-    EyeOff,
-    Globe,
-    KeyRound,
-    Loader2,
-    Lock,
-    RefreshCw,
-    Satellite,
-    Scale,
-    Shield,
-    ShieldAlert,
-    Sliders,
-    Sparkles,
-    Zap
+  Activity,
+  AlertTriangle,
+  Brain,
+  Building2,
+  Check,
+  CheckCircle2,
+  Cpu,
+  Eye,
+  EyeOff,
+  Globe,
+  KeyRound,
+  Loader2,
+  Lock,
+  RefreshCw,
+  Satellite,
+  Scale,
+  Shield,
+  ShieldAlert,
+  Sliders,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -332,8 +332,8 @@ export default function SettingsPage() {
               : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
           )}
         >
-          <Satellite className="h-4 w-4 text-sky-600" />
-          <span>Sentinel-2 Earth Observation</span>
+          <Satellite className="h-4 w-4 text-orange-600" />
+          <span>ISRO NavIC &amp; Satellite Telemetry</span>
         </button>
 
         <button
@@ -1132,37 +1132,45 @@ export default function SettingsPage() {
       {/* TAB 3: SATELLITE TELEMETRY */}
       {activeTab === 'satellite' && (
         <div className="space-y-4">
-          <div className="p-4 bg-sky-50/70 border border-sky-200 rounded-xl">
-            <h3 className="text-sm font-bold text-sky-900 flex items-center gap-2">
-              <Satellite className="h-4 w-4 text-sky-700" />
-              <span>ESA Copernicus Sentinel-2 MSI Multi-Spectral Telemetry</span>
+          <div className="p-4 bg-orange-50/80 border border-orange-200 rounded-xl">
+            <h3 className="text-sm font-bold text-orange-950 flex items-center gap-2">
+              <Satellite className="h-4 w-4 text-orange-600" />
+              <span>ISRO NavIC (IRNSS) Sovereign Positioning &amp; Earth Observation</span>
             </h3>
-            <p className="text-xs text-sky-800 mt-1 leading-relaxed">
-              Optical surface observations are acquired from the European Space Agency Copernicus constellation (Sentinel-2A & 2B) at 10m ground resolution with a 5-day revisit cycle over India.
+            <p className="text-xs text-orange-900 mt-1 leading-relaxed">
+              VOJAS integrates India&apos;s indigenous <strong className="font-semibold">ISRO NavIC (Navigation with Indian Constellation)</strong> for tamper-resistant ground coordinate verification, paired with <strong className="font-semibold">ISRO Bhuvan Geoportal</strong> and Copernicus Sentinel-2 L2A optical multispectral remote sensing.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="border border-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <Card className="border border-orange-200 bg-linear-to-b from-white to-orange-50/30">
               <CardBody className="p-4 text-center space-y-1">
-                <span className="text-xs text-slate-500 block font-medium">Spectral Bands Analyzed</span>
-                <span className="text-2xl font-bold text-slate-900">B4, B8, B11</span>
-                <p className="text-[11px] text-slate-500 mt-1">Red (665nm), NIR (842nm), SWIR (1610nm)</p>
+                <span className="text-xs text-slate-500 block font-medium">NavIC Constellation</span>
+                <span className="text-2xl font-bold text-orange-600">7 Satellites</span>
+                <p className="text-[11px] text-slate-500 mt-1">3 GEO + 4 GSO (L5 &amp; S Band)</p>
               </CardBody>
             </Card>
 
             <Card className="border border-slate-200">
               <CardBody className="p-4 text-center space-y-1">
-                <span className="text-xs text-slate-500 block font-medium">Geometric Ground Resolution</span>
-                <span className="text-2xl font-bold text-sky-600">10m / pixel</span>
-                <p className="text-[11px] text-slate-500 mt-1">Level-2A Bottom-of-Atmosphere (BOA)</p>
+                <span className="text-xs text-slate-500 block font-medium">Positioning Security</span>
+                <span className="text-2xl font-bold text-emerald-600">&lt; 5m Accuracy</span>
+                <p className="text-[11px] text-slate-500 mt-1">Anti-Spoofing Sovereign Geotag</p>
+              </CardBody>
+            </Card>
+
+            <Card className="border border-slate-200">
+              <CardBody className="p-4 text-center space-y-1">
+                <span className="text-xs text-slate-500 block font-medium">Optical Bands</span>
+                <span className="text-2xl font-bold text-slate-900">B4, B8, B11</span>
+                <p className="text-[11px] text-slate-500 mt-1">Red, NIR &amp; SWIR at 10m</p>
               </CardBody>
             </Card>
 
             <Card className="border border-slate-200">
               <CardBody className="p-4 text-center space-y-1">
                 <span className="text-xs text-slate-500 block font-medium">Revisit Cadence</span>
-                <span className="text-2xl font-bold text-emerald-600">5 Days</span>
+                <span className="text-2xl font-bold text-sky-600">5 Days</span>
                 <p className="text-[11px] text-slate-500 mt-1">Continuous Pan-India Monitoring</p>
               </CardBody>
             </Card>

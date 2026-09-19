@@ -37,7 +37,7 @@ export function VerificationClient() {
   const [resolution, setResolution] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('VERIFICATION_REQUIRED');
 
-  const { data, isLoading } = useRiskFindings(undefined, {
+  const { data, isLoading, isError, error } = useRiskFindings(undefined, {
     status: statusFilter || undefined,
   });
   const updateStatus = useUpdateFindingStatus();
@@ -95,6 +95,14 @@ export function VerificationClient() {
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="h-16 bg-slate-50 rounded animate-pulse" />
                 ))}
+              </div>
+            ) : isError ? (
+              <div className="py-12 text-center px-4">
+                <Shield className="h-8 w-8 mx-auto mb-3 text-slate-300" />
+                <p className="text-sm font-semibold text-slate-600">Access denied</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {error?.message ?? 'This account does not have permission to view the verification queue.'}
+                </p>
               </div>
             ) : findings.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-sm">

@@ -7,7 +7,7 @@ import {
   ShieldAlert, ListChecks, ScanSearch, Map, BarChart3, Bell,
   Users, Briefcase, FileArchive, Layers, Shield, type LucideIcon,
   Flag, FileCheck2, CreditCard, MessageSquare, HardHat,
-  Home, FileBadge, MapPin, Star, ShieldCheck, Sparkles,
+  Home, FileBadge, MapPin, Star, Sparkles,
   Activity, Database, Cog, Cpu, Satellite, Play, Lock, FileSearch,
   ChevronRight, DollarSign, Target, Signal,
 } from 'lucide-react';
@@ -84,7 +84,6 @@ const citizenItems: NavItem[] = [
   { label: 'My Reports', href: '/citizen/reports', icon: FileBadge },
   { label: 'Nearby Projects', href: '/citizen/projects', icon: MapPin },
   { label: 'Watchlist', href: '/citizen/watchlist', icon: Star },
-  { label: 'Accountability', href: '/verification', icon: ShieldCheck },
   { label: 'AI Assistant', href: '#', icon: Sparkles },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];

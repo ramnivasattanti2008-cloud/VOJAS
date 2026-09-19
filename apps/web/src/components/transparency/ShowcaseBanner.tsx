@@ -2,10 +2,10 @@
 
 import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
 import {
-    ArrowRight,
-    FileSpreadsheet,
-    Satellite,
-    Sparkles,
+  ArrowRight,
+  FileSpreadsheet,
+  Satellite,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -34,7 +34,7 @@ export const FEATURED_SHOWCASE_PROJECTS: ShowcaseProjectItem[] = [
     disbursedPercent: 88,
     physicalProgress: 0,
     disbursedAmount: '₹86,00,000 (88% released)',
-    satelliteObservation: 'Sentinel-2 shows persistent barren scrubland; zero structural elevation.',
+    satelliteObservation: 'ISRO NavIC coordinates locked. Sentinel-2 shows persistent barren scrubland; zero structural elevation.',
     statutoryFlag: 'GFR Rule 171 Violation (Excessive advance without physical progress)',
     description: 'High-consequence ghost asset detection. Funds disbursed to contractor without ground execution.',
   },
@@ -101,7 +101,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
             Featured Forensic Showcase Projects
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Test instant AI auditing, Sentinel-2 spectral telemetry, and statutory GFR/CVC checks across high-consequence civic cases.
+            Test instant AI auditing, ISRO NavIC sovereign positioning, satellite spectral telemetry, and statutory GFR/CVC checks across high-consequence civic cases.
           </p>
         </div>
 
@@ -213,7 +213,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
                 <div className="bg-white/80 rounded-lg p-2 border border-slate-200/60 text-[10px] space-y-1">
                   <div className="flex items-center gap-1 font-semibold text-slate-700">
                     <Satellite className="w-3 h-3 text-indigo-600" />
-                    <span>Sentinel-2 Observation</span>
+                    <span>ISRO NavIC &amp; Satellite Telemetry</span>
                   </div>
                   <p className="text-slate-600 leading-snug line-clamp-2">
                     {proj.satelliteObservation}

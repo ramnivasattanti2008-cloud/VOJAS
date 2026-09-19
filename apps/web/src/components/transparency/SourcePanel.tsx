@@ -1,6 +1,6 @@
 'use client';
 
-import { Globe, Satellite, Users, Clock } from 'lucide-react';
+import { Clock, Globe, Satellite, Users } from 'lucide-react';
 
 interface SourceEntry {
   label: string;
@@ -20,8 +20,8 @@ export function SourcePanel({ lastUpdated, className }: SourcePanelProps) {
       description: 'Government transparency portals and official datasets',
     },
     {
-      label: 'Satellite Imagery',
-      description: 'Copernicus Sentinel-2 via European Space Agency / CDSE',
+      label: 'Satellite & Positioning',
+      description: 'ISRO NavIC sovereign positioning & Copernicus Sentinel-2 / Bhuvan Earth Observation',
     },
     {
       label: 'Citizen Reports',
