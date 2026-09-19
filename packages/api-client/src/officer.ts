@@ -296,12 +296,12 @@ export function createOfficerApi(client: ApiClient) {
       state?: string;
     }) {
       return client.get<{
-        projects: Array<{ id: string; name: string; lat: number; lng: number; sector: string; status: string }>;
-        riskFindings: Array<{ id: string; title: string; lat: number; lng: number; severity: string; projectId: string }>;
-        cases: Array<{ id: string; title: string; lat: number; lng: number; priority: string; status: string }>;
-        citizenSignals: Array<{ id: string; category: string; lat: number; lng: number; severity: string }>;
-        satelliteEvidence: Array<{ id: string; type: string; lat: number; lng: number; capturedAt: string }>;
-        fieldInspections: Array<{ id: string; projectName: string; lat: number; lng: number; status: string }>;
+        projects: Array<{ id: string; name: string; latitude: number; longitude: number; sector: string; status: string }>;
+        riskFindings: Array<{ id: string; title: string; latitude: number; longitude: number; severity: string; projectId: string }>;
+        cases: Array<{ id: string; title: string; latitude: number; longitude: number; priority: string; status: string }>;
+        citizenSignals: Array<{ id: string; category: string; latitude: number; longitude: number; severity: string }>;
+        satelliteEvidence: Array<{ id: string; type: string; latitude: number; longitude: number; capturedAt: string }>;
+        fieldInspections: Array<{ id: string; projectName: string; latitude: number; longitude: number; status: string }>;
       }>('/officer/map/layers', params);
     },
   };

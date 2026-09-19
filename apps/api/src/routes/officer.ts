@@ -1248,8 +1248,8 @@ router.get('/map/layers', authenticate, requireRole(UserRole.ADMIN, UserRole.OFF
         .map((p) => ({
           id: p.id,
           name: p.name,
-          lat: p.latitude as number,
-          lng: p.longitude as number,
+          latitude: p.latitude as number,
+          longitude: p.longitude as number,
           sector: p.sector,
           status: p.status,
         })),
@@ -1258,8 +1258,8 @@ router.get('/map/layers', authenticate, requireRole(UserRole.ADMIN, UserRole.OFF
         .map((f) => ({
           id: f.id,
           title: f.title,
-          lat: f.project!.latitude as number,
-          lng: f.project!.longitude as number,
+          latitude: f.project!.latitude as number,
+          longitude: f.project!.longitude as number,
           severity: f.severity,
           projectId: f.project?.id,
         })),
@@ -1268,8 +1268,8 @@ router.get('/map/layers', authenticate, requireRole(UserRole.ADMIN, UserRole.OFF
         .map((a) => ({
           id: a.id,
           title: a.title,
-          lat: a.project!.latitude as number,
-          lng: a.project!.longitude as number,
+          latitude: a.project!.latitude as number,
+          longitude: a.project!.longitude as number,
           severity: a.severity,
           projectId: a.project?.id,
           priority: a.severity,

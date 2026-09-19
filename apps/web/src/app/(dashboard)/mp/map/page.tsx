@@ -62,6 +62,7 @@ export default function MPMapPage() {
   // Fetch all projects for the constituency — resolved server-side from the
   // authenticated user's admin-linked MP record.
   const { data, isLoading } = useMPProjects({ limit: 500 });
+  const isLinked = data ? (data as { linked?: boolean }).linked !== false : true;
   const projects = data?.data ?? [];
 
   // Filter projects
@@ -69,7 +70,7 @@ export default function MPMapPage() {
     return projects.filter((p: any) => {
       if (filterStatus && p.status !== filterStatus) return false;
       // Only show projects with coordinates
-      return p.latitude && p.longitude;
+      return p.latitude != null && p.longitude != null;
     });
   }, [projects, filterStatus]);
 
@@ -120,6 +121,18 @@ export default function MPMapPage() {
           </Button>
         </div>
       </div>
+
+      {!isLoading && !isLinked && (
+        <Card>
+          <CardBody className="text-center py-8">
+            <MapPin className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+            <p className="text-sm font-medium text-slate-700">MP account not linked</p>
+            <p className="text-xs text-slate-500 mt-1">
+              This account has not yet been linked to an MP record by an administrator.
+            </p>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
