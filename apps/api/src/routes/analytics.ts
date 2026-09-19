@@ -29,6 +29,7 @@ import {
   ScenarioService,
   NotFoundError,
 } from '@vojas/domain';
+import type { EntityType, MetricType, ScenarioType } from '@vojas/domain';
 import { authenticate, requirePermission } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
 
@@ -92,8 +93,8 @@ router.get(
       }
 
       const metrics = await engine.calculateAggregatedMetrics(
-        entityType as any,
-        entityId as any,
+        entityType as EntityType,
+        entityId as string,
         {
           state: state as string | undefined,
           sector: sector as string | undefined,
@@ -137,7 +138,7 @@ router.get(
         }
       }
 
-      const distribution = await engine.calculateBenchmark(metricType as any, criteria);
+      const distribution = await engine.calculateBenchmark(metricType as MetricType, criteria);
 
       if (!distribution) {
         return res.status(404).json({
@@ -169,7 +170,10 @@ router.get(
       const project = await prisma.project.findUnique({ where: { id: projectId } });
       if (!project) throw new NotFoundError('Project');
 
-      const benchmark = await benchmarkService.benchmarkProject(projectId, metricType as any);
+      const benchmark = await benchmarkService.benchmarkProject(
+        projectId,
+        metricType as Parameters<BenchmarkService['benchmarkProject']>[1]
+      );
 
       if (!benchmark) {
         return res.status(404).json({
@@ -387,7 +391,7 @@ router.get(
       const results = await scenarioService.runComparativeScenario(
         entityType as string,
         entityId as string,
-        scenarioType as any,
+        scenarioType as ScenarioType,
         Number(changeRate)
       );
 
