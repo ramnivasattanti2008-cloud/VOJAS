@@ -211,8 +211,8 @@ export class CorrelationEngine {
       confidence,
       signalIds: group.signals.map(s => s.id),
       evidenceChain,
-      explanation: this.buildCorrelatedExplanation(group, patternType),
-      limitations: this.buildCorrelatedLimitations(group),
+      explanation: this.buildCorrelatedExplanation(group),
+      limitations: this.buildCorrelatedLimitations(),
       recommendedAction: this.recommendActionForPattern(patternType, severity),
       contributors,
     };
@@ -295,7 +295,7 @@ export class CorrelationEngine {
     return `Project "${projectName}" shows ${signalCount} independent signals from ${sourceCount} source types. This correlated finding is stronger evidence than any individual signal alone.`;
   }
 
-  private buildCorrelatedExplanation(group: EvidenceGroup, patternType: string): string {
+  private buildCorrelatedExplanation(group: EvidenceGroup): string {
     const lines: string[] = [];
     lines.push(`Multiple independent signals have been detected for this project:`);
     lines.push('');
@@ -312,7 +312,7 @@ export class CorrelationEngine {
     return lines.join('\n');
   }
 
-  private buildCorrelatedLimitations(group: EvidenceGroup): string {
+  private buildCorrelatedLimitations(): string {
     const lines: string[] = [
       'Multi-signal findings are stronger than individual signals, but limitations remain:',
       '• Signals may share underlying causes that are not yet identified.',

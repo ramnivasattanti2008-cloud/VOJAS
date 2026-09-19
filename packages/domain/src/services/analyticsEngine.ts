@@ -126,7 +126,7 @@ export function assessDataQuality(coverage: Record<string, number>): DataQuality
 
 // ── Trend Calculation ────────────────────────────────────────────────────────
 
-export function calculateTrend(values: number[], dates: Date[]): TrendResult {
+export function calculateTrend(values: number[]): TrendResult {
   if (values.length < 3) {
     return {
       direction: 'INSUFFICIENT_DATA',

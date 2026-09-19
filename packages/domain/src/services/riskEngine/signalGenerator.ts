@@ -10,8 +10,9 @@
  *   - No signal is created without at least one evidence reference
  */
 
-import type { PrismaClient } from '@vojas/db';
-import type { RiskSignal, SignalTypeEnum, SignalSeverity, SignalConfidence, SourceType } from './types.js';
+import { Prisma } from '@vojas/db';
+import type { PrismaClient, ProjectSector } from '@vojas/db';
+import type { RiskSignal } from './types.js';
 import type { ProjectDataSnapshot } from './ruleEngine.js';
 
 export class SignalGenerator {
@@ -74,7 +75,7 @@ export class SignalGenerator {
         data: {
           id: signal.id,
           projectId: signal.projectId,
-          signalType: signal.signalType as any,
+          signalType: signal.signalType,
           sourceType: signal.sourceType,
           sourceId: signal.sourceId,
           detectedAt: signal.detectedAt,
@@ -85,8 +86,10 @@ export class SignalGenerator {
           expectedValue: signal.expectedValue,
           deviation: signal.deviation,
           explanation: signal.explanation,
-          evidenceReferences: signal.evidenceReferences as any,
-          metadata: signal.metadata as any,
+          evidenceReferences: signal.evidenceReferences as unknown as Prisma.InputJsonValue,
+          metadata: signal.metadata === null
+            ? Prisma.JsonNull
+            : (signal.metadata as unknown as Prisma.InputJsonValue),
           algorithmVersion: signal.algorithmVersion,
         },
       });
@@ -300,7 +303,7 @@ export class SignalGenerator {
     // Peer benchmarking: compare unit cost vs similar projects
     const peers = await this.prisma.project.findMany({
       where: {
-        sector: project.sector as any,
+        sector: project.sector as ProjectSector,
         state: project.state,
         approvedAmount: {
           gte: project.approvedAmount * 0.5,
@@ -397,7 +400,7 @@ export class SignalGenerator {
     return signals;
   }
 
-  private generateGeographicSignals(data: ProjectDataSnapshot, now: Date): RiskSignal[] {
+  private generateGeographicSignals(data: ProjectDataSnapshot, _now: Date): RiskSignal[] {
     const signals: RiskSignal[] = [];
     const { project } = data;
 

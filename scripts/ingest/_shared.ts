@@ -10,6 +10,7 @@ import { createReadStream, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
+import type { ProjectStatus, ProjectSector } from "@vojas/db";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ export function normalizeStateName(name: string | null | undefined): string {
  * Map a free-text work description to a ProjectSector enum value.
  * Returns the default if no clear match.
  */
-export function inferSector(workText: string): string {
+export function inferSector(workText: string): ProjectSector {
   const w = workText.toLowerCase();
   if (/road|pathway|highway|bridge|flyover/.test(w)) return "TRANSPORT";
   if (/water|drinking|hand pump|well|pipe|sewage|drain/.test(w)) return "WATER_SANITATION";
@@ -157,7 +158,7 @@ export function inferSector(workText: string): string {
 /**
  * Map a work category string to a ProjectSector. (Vonter CATEGORY is high-level.)
  */
-export function categoryToSector(category: string): string {
+export function categoryToSector(category: string): ProjectSector {
   switch (category.toUpperCase().trim()) {
     case "NORMAL/OTHERS":
     case "REPAIR AND RENOVATION":
@@ -234,7 +235,7 @@ export function inferHouseFromValue(s: string | null | undefined): House {
 /**
  * Map CSV "status" string to Prisma ProjectStatus enum.
  */
-export function mapStatus(status: string | null | undefined): string {
+export function mapStatus(status: string | null | undefined): ProjectStatus {
   if (!status) return "PROPOSED";
   const u = status.toUpperCase().trim();
   if (u === "UNSANCTIONED") return "UNSANCTIONED";
@@ -336,8 +337,9 @@ export async function downloadWithRetry(
       writeFileSync(localPath, buf);
       console.log(`  ✓ saved ${(buf.length / 1_000_000).toFixed(2)} MB → ${localPath}`);
       return localPath;
-    } catch (e: any) {
-      console.log(`  ! attempt ${attempt} failed: ${e.message}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.log(`  ! attempt ${attempt} failed: ${message}`);
       if (attempt <= retries) await sleep(2000 * attempt);
     }
   }

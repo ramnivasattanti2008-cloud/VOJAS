@@ -150,7 +150,6 @@ export class RiskScorer {
     findings: CorrelatedFinding[]
   ): FindingConfidence {
     const highSignals = signals.filter(s => s.confidence === 'HIGH').length;
-    const totalSignals = signals.length;
     const hasHighQualityFinding = findings.some(f => f.confidence === 'HIGH');
 
     if (highSignals >= 2 || (highSignals >= 1 && hasHighQualityFinding)) {

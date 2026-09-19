@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@vojas/db';
+import type { PrismaClient, Prisma } from '@vojas/db';
 import { ValidationError } from '../errors/index.js';
 import { z } from 'zod';
 import { AuditAction } from '@vojas/shared';
@@ -50,7 +50,7 @@ export class AuditService {
         action: p.action,
         entityType: p.entityType,
         entityId: p.entityId,
-        metadata: Object.keys(metadata).length > 0 ? (metadata as any) : undefined,
+        metadata: Object.keys(metadata).length > 0 ? (metadata as Prisma.InputJsonValue) : undefined,
         ipAddress: p.ipAddress,
         userAgent: p.userAgent,
       },

@@ -12,7 +12,6 @@
 import 'dotenv/config';
 import { PrismaClient } from '@vojas/db';
 import { RiskAnalysisOrchestrator } from '@vojas/domain';
-import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 const orchestrator = new RiskAnalysisOrchestrator(prisma);
@@ -234,7 +233,6 @@ async function main() {
 
     if (!existingFinancial) {
       const approved = Number(project.approvedAmount) || 0;
-      const spent = Number(project.spentAmount) || 0;
       await prisma.financialObservation.createMany({
         data: [
           makeFinancialObservation(project.id, new Date('2026-01-15'), approved * 0.4, 'EXPENDITURE'),

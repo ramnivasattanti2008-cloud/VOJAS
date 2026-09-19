@@ -112,6 +112,7 @@ enum AnomalySeverity {
 
 enum RiskLevel {
   LOW
+  GUARDED
   MEDIUM
   HIGH
   CRITICAL

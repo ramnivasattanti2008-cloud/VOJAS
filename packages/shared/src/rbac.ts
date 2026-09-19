@@ -9,7 +9,6 @@ import type {
   Permission} from './permissions.js';
 import {
   PERMISSIONS,
-  ROLE_PERMISSIONS,
   getPermissionsForRole,
 } from './permissions.js';
 

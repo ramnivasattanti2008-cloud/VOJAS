@@ -20,7 +20,7 @@
  *   - Limitations section explains what could explain the anomaly
  */
 
-import type { PrismaClient } from '@vojas/db';
+import type { PrismaClient, Prisma, RiskRuleStatus } from '@vojas/db';
 import type {
   RiskSignal,
   RiskRule,
@@ -31,10 +31,8 @@ import type {
   ScoringWeights,
   SignalSeverity,
   SignalConfidence,
-  FindingConfidence,
-  SourceType,
   EvidenceNode,
-  RiskLevel,
+  RuleConditions,
 } from './types.js';
 import { DEFAULT_SCORING_WEIGHTS } from './types.js';
 
@@ -113,8 +111,8 @@ export class RiskRuleEngine {
     name: string;
     category: string;
     version: string;
-    status: any;
-    conditions: any;
+    status: RiskRuleStatus;
+    conditions: Prisma.JsonValue;
     severityModifier: string;
     confidenceModifier: string;
     explanationTemplate: string;
@@ -130,12 +128,16 @@ export class RiskRuleEngine {
       version: r.version,
       status: r.status as 'ENABLED' | 'DISABLED',
       severityModifier: parseInt(r.severityModifier) || 0,
-      confidenceModifier: r.confidenceModifier as any,
+      confidenceModifier: r.confidenceModifier as SignalConfidence,
       explanationTemplate: r.explanationTemplate,
       enabled: r.enabled,
       lastRun: r.lastRun,
       matchCount: r.matchCount,
-      conditions: r.conditions,
+      // conditions is a free-form Json column (structured per-rule condition
+      // logic); RuleConditions is its declared domain shape. Bridging a Json
+      // column into a specific interface unavoidably needs an unknown cast —
+      // same pattern already used at the write side of this boundary.
+      conditions: r.conditions as unknown as RuleConditions,
     };
   }
 }

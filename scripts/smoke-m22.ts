@@ -136,7 +136,7 @@ async function main() {
   try {
     const health = (await get('/health')) as Response;
     allPassed = checkStatus('GET /health → 200', health.status, 200) && allPassed;
-  } catch (e) {
+  } catch {
     console.log('  ❌ Backend not reachable — start with: pnpm dev:api');
     process.exit(1);
   }

@@ -70,7 +70,7 @@ function baselineForecast(values: number[], horizon: number): {
 } {
   if (values.length === 0) return { value: 0, lowerBound: 0, upperBound: 0, volatility: 0 };
   const latestValue = values[values.length - 1];
-  const trend = calculateTrend(values, []);
+  const trend = calculateTrend(values);
   const avgChangePerPeriod = trend.changeAbs ?? 0;
   const projected = latestValue + avgChangePerPeriod * horizon;
   const volatility = trend.volatility ?? 0.5;
@@ -367,7 +367,7 @@ export class ForecastingService {
     }
 
     const forecast = baselineForecast(scoreHistory, horizonDays / 7);
-    const trend = calculateTrend(scoreHistory, []);
+    const trend = calculateTrend(scoreHistory);
 
     let trajectory: RiskForecastResult['riskTrajectory'] = 'STABLE';
     if (trend.trend === 'RISING') trajectory = 'INCREASING';

@@ -2,8 +2,10 @@
  * M16: Benchmark Service
  */
 
-import type { PrismaClient } from '@vojas/db';
+import type { PrismaClient, Prisma } from '@vojas/db';
 import { percentile, benchmarkPercentile } from './analyticsEngine.js';
+
+type ProjectWithRisk = Prisma.ProjectGetPayload<{ include: { projectRisk: true } }>;
 
 export type MetricType = 'RISK_SCORE' | 'FINANCIAL_UTILIZATION' | 'DELAY_DAYS' | 'EXPENDITURE_VELOCITY' | 'PROGRESS_VELOCITY';
 
@@ -61,7 +63,7 @@ export class BenchmarkService {
   async benchmarkAllProjects(peerCriteria: Record<string, unknown>, metricType: MetricType): Promise<ProjectBenchmark[]> {
     const dist = await this.calculateBenchmarkDistribution(peerCriteria, metricType);
     if (!dist) return [];
-    const projects = await this.prisma.project.findMany({ where: this.criteriaToWhere(peerCriteria) });
+    const projects = await this.prisma.project.findMany({ where: this.criteriaToWhere(peerCriteria), include: { projectRisk: true } });
     const results: ProjectBenchmark[] = [];
     for (const p of projects) {
       const value = this.extractMetric(p, metricType);
@@ -74,7 +76,7 @@ export class BenchmarkService {
     return results.sort((a, b) => b.percentile - a.percentile);
   }
 
-  private extractMetric(project: any, metricType: MetricType): number | null {
+  private extractMetric(project: ProjectWithRisk, metricType: MetricType): number | null {
     switch (metricType) {
       case 'RISK_SCORE': return project.projectRisk?.riskScore ?? null;
       case 'FINANCIAL_UTILIZATION': return project.approvedAmount > 0 ? Math.round((project.spentAmount / project.approvedAmount) * 100) : null;

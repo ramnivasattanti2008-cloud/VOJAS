@@ -24,9 +24,6 @@ function get(path: string, token?: string): Promise<unknown> {
 function post(path: string, body: unknown, token?: string): Promise<unknown> {
   return request('POST', path, body, token);
 }
-function patch(path: string, body: unknown, token?: string): Promise<unknown> {
-  return request('PATCH', path, body, token);
-}
 
 function request(
   method: string,
@@ -114,7 +111,7 @@ async function main() {
     if (!check('GET /health → 200 + success:true', health.status === 200 && health.body?.success === true, true)) {
       console.log(`     raw: ${JSON.stringify(health)}`);
     }
-  } catch (e) {
+  } catch {
     console.log(`  ❌ Health check failed — is the backend running?`);
     console.log(`     Run: pnpm dev:api`);
     allPassed = false;
