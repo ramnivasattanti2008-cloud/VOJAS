@@ -25,6 +25,16 @@ const DRY_RUN = process.argv.includes("--dry-run");
 // Small in-memory district centroid cache for geocoding service.
 const CENTROID_CACHE_PATH = path.join(DATA_DIR, "lgd-centroids.json");
 
+// Shape of one row from the NAPIX LGD district API — field names are
+// inconsistent across NAPIX endpoints, hence the fallback chains below.
+interface NapixDistrict {
+  districtCode?: string;
+  lgdCode?: string;
+  nameEnglish?: string;
+  districtNameEnglish?: string;
+  districtName?: string;
+}
+
 interface LGDEntity {
   lgdCode: string;
   entityType: "STATE" | "DISTRICT" | "BLOCK" | "VILLAGE" | "GP" | "ULB";
@@ -55,8 +65,8 @@ async function fetchFromAPI(): Promise<LGDEntity[] | null> {
       const json = await res.json();
       states = Array.isArray(json) ? json : (json.data ?? json.states ?? []);
     }
-  } catch (e: any) {
-    console.log(`  ! API states failed: ${e.message}`);
+  } catch (e) {
+    console.log(`  ! API states failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 
   if (!states.length) return null;
@@ -73,7 +83,7 @@ async function fetchFromAPI(): Promise<LGDEntity[] | null> {
       });
       if (!res.ok) continue;
       const json = await res.json();
-      const districts: any[] = Array.isArray(json) ? json : (json.data ?? json.districts ?? []);
+      const districts: NapixDistrict[] = Array.isArray(json) ? json : (json.data ?? json.districts ?? []);
 
       for (const d of districts) {
         const name = d.nameEnglish ?? d.districtNameEnglish ?? d.districtName ?? "";
@@ -187,7 +197,7 @@ async function main() {
         })),
       });
       created += toCreate.length;
-    } catch (e: any) {
+    } catch {
       // Partial failure (duplicate key) — insert one-by-one to isolate bad rows
       for (const e2 of toCreate) {
         try {

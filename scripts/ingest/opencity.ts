@@ -30,7 +30,11 @@ import {
   getPrisma,
   getOrCreateSystemUser,
 } from "./_shared.js";
+import { House, ProjectStatus } from "@vojas/db";
+import type { Prisma } from "@vojas/db";
 import path from "node:path";
+
+type IngestPrisma = Awaited<ReturnType<typeof getPrisma>>;
 
 type Term = "FIFTEENTH" | "SIXTEENTH" | "SEVENTEENTH";
 const SOURCES: Array<{
@@ -72,7 +76,7 @@ function pickColumn(cols: string[], names: string[]): number {
 }
 
 async function ingestTerm(
-  prisma: any,
+  prisma: IngestPrisma,
   source: typeof SOURCES[number],
   systemUserId: string,
 ): Promise<{ rows: number; projects: number; expenditures: number; vendors: number; mps: number; skipped: number }> {
@@ -148,32 +152,32 @@ async function ingestTerm(
 
   const mpCache = new Map<string, string>();
   const vendorCache = new Map<string, string>();
-  const expBuffer: any[] = [];
+  const expBuffer: Prisma.FinancialObservationCreateManyInput[] = [];
   let lineNum = 0;
 
   async function flush() {
     if (!expBuffer.length) return;
     // Bulk lookup existing txnIds
-    const ids = expBuffer.map((e: any) => e.sourceTxnId);
+    const ids = expBuffer.map((e) => e.sourceTxnId);
     const existing = await prisma.financialObservation.findMany({
       where: { source: "OPENCITY", sourceTxnId: { in: ids } },
       select: { sourceTxnId: true, id: true },
     });
-    const existingIds = new Map(existing.map((e: any) => [e.sourceTxnId, e.id]));
-    const toCreate = expBuffer.filter((e: any) => !existingIds.has(e.sourceTxnId));
-    const toUpdate = expBuffer.filter((e: any) => existingIds.has(e.sourceTxnId));
+    const existingIds = new Map(existing.map((e) => [e.sourceTxnId, e.id]));
+    const toCreate = expBuffer.filter((e) => !existingIds.has(e.sourceTxnId));
+    const toUpdate = expBuffer.filter((e) => existingIds.has(e.sourceTxnId));
 
     if (toCreate.length > 0) {
       try {
         await prisma.financialObservation.createMany({ data: toCreate });
         expendituresCreated += toCreate.length;
-      } catch (err: any) {
+      } catch {
         // Partial dup fail — per-row fallback
         for (const e of toCreate) {
           try {
             await prisma.financialObservation.create({ data: e });
             expendituresCreated++;
-          } catch (e2: any) {
+          } catch {
             skipped++;
           }
         }
@@ -227,16 +231,16 @@ async function ingestTerm(
           name_constituency_term: {
             name: mpName,
             constituency: constituency || "—",
-            term: source.term as any,
+            term: source.term,
           },
         },
         update: {},
         create: {
           name: mpName,
-          house: "LOK_SABHA" as any,
+          house: House.LOK_SABHA,
           state: normalizeStateName(state),
           constituency: constituency || "—",
-          term: source.term as any,
+          term: source.term,
         },
       });
       mpId = mp.id as string;
@@ -301,8 +305,8 @@ async function ingestTerm(
           sourceRef: JSON.stringify({ mpName, vendorName, district, constituency, state, term: source.term }),
           name: (workDesc || "Untitled work").slice(0, 200),
           description: workDesc,
-          status: amount > 0 ? ("IN_PROGRESS" as any) : ("PROPOSED" as any),
-          sector: sector as any,
+          status: amount > 0 ? ProjectStatus.IN_PROGRESS : ProjectStatus.PROPOSED,
+          sector,
           district: district || state,
           constituency: constituency || null,
           state: normalizeStateName(state),

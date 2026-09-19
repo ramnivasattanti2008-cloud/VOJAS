@@ -34,6 +34,8 @@ import {
   getPrisma,
   getOrCreateSystemUser,
 } from "./_shared.js";
+import { House, ProjectStatus } from "@vojas/db";
+import type { Prisma } from "@vojas/db";
 import path from "node:path";
 
 const SOURCE = "DATAFUL";
@@ -134,7 +136,7 @@ async function main() {
   const projectCache = new Map<string, string>(); // key: sourceWorkId → projectId
 
   // Buffer expenditures to batch-create with proper FKs
-  const expBuffer: any[] = [];
+  const expBuffer: Prisma.FinancialObservationCreateManyInput[] = [];
   let lineNum = 0;
 
   async function flush() {
@@ -153,16 +155,17 @@ async function main() {
       try {
         await prisma.financialObservation.createMany({ data: toCreate });
         expendituresCreated += toCreate.length;
-      } catch (err: any) {
+      } catch {
         // Partial dup-failure (P2002) — insert one-by-one
         for (const e of toCreate) {
           try {
             await prisma.financialObservation.create({ data: e });
             expendituresCreated++;
-          } catch (e2: any) {
+          } catch (e2) {
             skipped++;
             if (skipped <= 3) {
-              console.log(`\n   ! skipped txn ${e.sourceTxnId}: ${e2.message?.slice(0, 200)}`);
+              const message = e2 instanceof Error ? e2.message : String(e2);
+              console.log(`\n   ! skipped txn ${e.sourceTxnId}: ${message.slice(0, 200)}`);
             }
           }
         }
@@ -176,7 +179,7 @@ async function main() {
           data: e,
         });
         expendituresCreated++;
-      } catch (e2: any) {
+      } catch {
         skipped++;
       }
     }
@@ -220,7 +223,7 @@ async function main() {
         update: {},
         create: {
           name: mpName,
-          house: "LOK_SABHA" as any,
+          house: House.LOK_SABHA,
           state: normalizeStateName(state),
           constituency: constituency || "—",
           term: "EIGHTEENTH" as const,
@@ -294,8 +297,8 @@ async function main() {
             sourceRef: JSON.stringify({ mpName, agency, vendorName, district, constituency, state }),
             name: workDesc.slice(0, 200),
             description: workDesc,
-            status: "IN_PROGRESS" as any,
-            sector: sector as any,
+            status: ProjectStatus.IN_PROGRESS,
+            sector,
             district: district || state,
             constituency: constituency || null,
             state: normalizeStateName(state),

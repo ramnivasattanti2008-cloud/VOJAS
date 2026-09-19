@@ -31,6 +31,7 @@ import {
 } from "./_shared.js";
 import path from "node:path";
 import { getPrisma, getOrCreateSystemUser } from "./_shared.js";
+import type { Prisma, ProjectSector } from "@vojas/db";
 
 const SOURCE = "VONTER";
 const CSV_PATH = path.join(DATA_DIR, "MPLADS.csv");
@@ -84,9 +85,9 @@ async function main() {
   let errors = 0;
 
   const mpCache = new Map<string, string>(); // key = "slugName|slugConst|term" → MP id
-  const sectorCache = new Map<string, string>();
+  const sectorCache = new Map<string, ProjectSector>();
 
-  let rowsBuffer: any[] = [];
+  let rowsBuffer: Prisma.ProjectCreateManyInput[] = [];
   let lineNum = 0;
 
   /**
@@ -118,27 +119,18 @@ async function main() {
       try {
         await prisma.project.createMany({ data: toCreate });
         created += toCreate.length;
-      } catch (e: any) {
-        if (e.code === "P2002") {
-          // Partial failure from duplicate key — insert one-by-one to isolate bad rows
-          for (const proj of toCreate) {
-            try {
-              await prisma.project.create({ data: proj });
-              created++;
-            } catch (e2: any) {
-              errors++;
-              if (errors <= 3) console.log(`\n   ! create failed: ${e2.message?.slice(0, 120)}`);
-            }
-          }
-        } else {
-          // Unknown error — fallback to per-row
-          for (const proj of toCreate) {
-            try {
-              await prisma.project.create({ data: proj });
-              created++;
-            } catch (e2: any) {
-              errors++;
-              if (errors <= 3) console.log(`\n   ! create failed: ${e2.message?.slice(0, 120)}`);
+      } catch {
+        // Duplicate key (P2002) or any other bulk-insert failure — either way,
+        // fall back to inserting one-by-one to isolate just the bad rows.
+        for (const proj of toCreate) {
+          try {
+            await prisma.project.create({ data: proj });
+            created++;
+          } catch (e2) {
+            errors++;
+            if (errors <= 3) {
+              const message = e2 instanceof Error ? e2.message : String(e2);
+              console.log(`\n   ! create failed: ${message.slice(0, 120)}`);
             }
           }
         }
@@ -154,9 +146,12 @@ async function main() {
             data: proj,
           });
           updated++;
-        } catch (e: any) {
+        } catch (e) {
           errors++;
-          if (errors <= 3) console.log(`\n   ! update failed: ${e.message?.slice(0, 120)}`);
+          if (errors <= 3) {
+            const message = e instanceof Error ? e.message : String(e);
+            console.log(`\n   ! update failed: ${message.slice(0, 120)}`);
+          }
         }
       }
     }
@@ -210,7 +205,7 @@ async function main() {
         update: {},
         create: {
           name: mpName.trim(),
-          house: inferHouseFromValue(house) as any,
+          house: inferHouseFromValue(house),
           state: normalizeStateName(state),
           constituency: (constituency || "").trim(),
           term: "EIGHTEENTH" as const,
@@ -235,8 +230,8 @@ async function main() {
       }),
       name: workDesc.slice(0, 200),
       description: `${workDesc}\n\nBlock: ${block || "—"}\nVillage: ${village || "—"}\nIDA: ${ida || "—"}\nRecommended: ${recommendedDate}`,
-      status: mapStatus(status) as any,
-      sector: sector as any,
+      status: mapStatus(status),
+      sector,
       district: (() => {
         if (!ida) return (block || village || "—").trim();
         const cleaned = ida
