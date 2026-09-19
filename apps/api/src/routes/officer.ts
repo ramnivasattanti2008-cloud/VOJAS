@@ -852,13 +852,43 @@ router.get('/contractor-responses', authenticate, requireRole(UserRole.ADMIN, Us
 router.patch('/contractor-responses/:id', authenticate, requireRole(UserRole.ADMIN, UserRole.OFFICER, UserRole.REVIEWER), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const { status, reviewNotes } = req.body as { status?: string; reviewNotes?: string };
+    const { status, reviewNotes, riskAcknowledged } = req.body as { status?: string; reviewNotes?: string; riskAcknowledged?: boolean };
     if (!status || !['ACCEPTED', 'REJECTED', 'CLARIFICATION_REQUESTED'].includes(status)) {
       throw new ValidationError('status must be ACCEPTED, REJECTED, or CLARIFICATION_REQUESTED');
     }
 
     const existing = await prisma.contractorUpdate.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Contractor response');
+
+    // Proactive risk gate: accepting a milestone or payment on a project
+    // currently scored HIGH/CRITICAL requires the reviewer to have actually
+    // seen that before signing off — this does not block the payout (an AI
+    // risk score is evidence for human verification, never proof of fraud;
+    // an algorithm does not get to veto a human reviewer), it makes sure a
+    // human consciously overrides the flag rather than accepting on
+    // autopilot without ever seeing it. REJECTED/CLARIFICATION_REQUESTED
+    // don't release funds, so they're never gated.
+    let riskOverride: { riskLevel: string; riskScore: number; openFindings: number } | null = null;
+    if (status === 'ACCEPTED' && (existing.updateType === 'MILESTONE' || existing.updateType === 'PAYMENT')) {
+      const risk = await prisma.projectRisk.findUnique({ where: { projectId: existing.projectId } });
+      if (risk && (risk.riskLevel === 'HIGH' || risk.riskLevel === 'CRITICAL')) {
+        if (!riskAcknowledged) {
+          const openFindings = await prisma.riskFinding.count({
+            where: { projectId: existing.projectId, status: { notIn: ['RESOLVED', 'DISMISSED'] } },
+          });
+          return success(res, {
+            requiresRiskAcknowledgment: true,
+            projectId: existing.projectId,
+            riskLevel: risk.riskLevel,
+            riskScore: risk.riskScore,
+            primaryDriver: risk.primaryDriver,
+            openFindings,
+            message: `This project is currently scored ${risk.riskLevel} (${risk.riskScore}/100) with ${openFindings} open finding(s). Resubmit with riskAcknowledged: true to proceed with acceptance anyway.`,
+          });
+        }
+        riskOverride = { riskLevel: risk.riskLevel, riskScore: risk.riskScore, openFindings: risk.findingsCount };
+      }
+    }
 
     const updated = await prisma.contractorUpdate.update({
       where: { id },
@@ -885,6 +915,19 @@ router.patch('/contractor-responses/:id', authenticate, requireRole(UserRole.ADM
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
+
+    if (riskOverride) {
+      await auditService.logEvent({
+        actorId: req.user!.userId,
+        actorType: 'USER',
+        action: AuditAction.HIGH_RISK_MILESTONE_OVERRIDE,
+        entityType: 'ContractorUpdate',
+        entityId: id,
+        metadata: { projectId: existing.projectId, updateType: existing.updateType, ...riskOverride },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+    }
 
     success(res, {
       id: updated.id,
