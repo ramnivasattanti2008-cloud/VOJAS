@@ -14,6 +14,7 @@ import { Prisma } from '@vojas/db';
 import type { PrismaClient, ProjectSector } from '@vojas/db';
 import type { RiskSignal } from './types.js';
 import type { ProjectDataSnapshot } from './ruleEngine.js';
+import { percentile } from '../analyticsEngine.js';
 
 export class SignalGenerator {
   private prisma: PrismaClient;
@@ -320,10 +321,23 @@ export class SignalGenerator {
 
     const peerCosts = peers.map(p => p.approvedAmount!);
     const medianCost = this.median(peerCosts);
+    const p75Cost = percentile(peerCosts, 75);
+    const p90Cost = percentile(peerCosts, 90);
     const deviation = ((project.approvedAmount - medianCost) / medianCost) * 100;
 
-    // Flag if cost is > 50% above peer median
-    if (deviation > 50) {
+    // Graduated: >100% above median is HIGH; >50% is MEDIUM; between 25-50%
+    // is only flagged (LOW) when the cost also clears the peer group's own
+    // 90th percentile — i.e. not just "above a typical project" but above
+    // all but the most expensive tenth of comparable ones. A flat
+    // deviation-from-median threshold alone missed moderate but still
+    // real overpricing sitting in the 25-50% band.
+    const aboveP90 = project.approvedAmount > p90Cost;
+    let severity: 'LOW' | 'MEDIUM' | 'HIGH' | null = null;
+    if (deviation > 100) severity = 'HIGH';
+    else if (deviation > 50) severity = 'MEDIUM';
+    else if (deviation > 25 && aboveP90) severity = 'LOW';
+
+    if (severity) {
       signals.push({
         id: `signal-${project.id}-cost-${now.getTime()}`,
         projectId: project.id,
@@ -332,19 +346,23 @@ export class SignalGenerator {
         sourceId: null,
         detectedAt: now,
         observationDate: null,
-        severity: deviation > 100 ? 'HIGH' : 'MEDIUM',
+        severity,
         confidence: peers.length >= 10 ? 'HIGH' : 'MEDIUM',
         value: project.approvedAmount,
         expectedValue: medianCost,
         deviation,
-        explanation: `Project cost (₹${project.approvedAmount.toLocaleString()}) is ${deviation.toFixed(1)}% above peer median (₹${medianCost.toLocaleString()}).`,
+        explanation: `Project cost (₹${project.approvedAmount.toLocaleString()}) is ${deviation.toFixed(1)}% above the peer median (₹${medianCost.toLocaleString()})` +
+          (aboveP90 ? `, and above the 90th percentile (₹${p90Cost.toLocaleString()}) of ${peers.length} comparable ${project.sector} projects in ${project.state}.` : `.`),
         evidenceReferences: peers.map((_, i) => `peer-${i}`),
         metadata: {
           peerCount: peers.length,
           peerMedian: medianCost,
+          peerP75: p75Cost,
+          peerP90: p90Cost,
           peerRange: [Math.min(...peerCosts), Math.max(...peerCosts)],
+          aboveP90,
         },
-        algorithmVersion: 'rule-engine-v1.0',
+        algorithmVersion: 'rule-engine-v1.1',
       });
     }
 

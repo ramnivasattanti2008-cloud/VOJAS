@@ -591,21 +591,32 @@ export class AnalyticsEngine {
       });
     }
 
+    // A COST_ANOMALY *signal* never ends up as a RiskFinding.type of
+    // literally 'COST_ANOMALY' — correlationEngine.mapSignalToPattern()
+    // renames it to 'COST_CONCERN' (standalone) or 'FINANCIAL_CONCERN'
+    // (correlated with a PROGRESS_FINANCIAL_MISMATCH signal). Querying for
+    // the raw signal name here meant this pattern never matched a single
+    // row, no matter how many cost-anomaly findings existed.
     const financialAnomalies = await this.prisma.riskFinding.groupBy({
       by: ['type'],
       where: {
         project: where,
-        type: 'COST_ANOMALY',
+        type: { in: ['COST_CONCERN', 'FINANCIAL_CONCERN'] },
         status: { notIn: ['RESOLVED', 'DISMISSED'] },
       },
       _count: true,
     });
 
-    if (financialAnomalies.length > 0 && financialAnomalies[0]._count >= minProjects) {
+    // groupBy(['type']) with an `in` filter returns one row per distinct
+    // type value (COST_CONCERN and FINANCIAL_CONCERN separately) — sum
+    // them for the combined count, rather than reading only the first row.
+    const financialAnomalyCount = financialAnomalies.reduce((sum, g) => sum + g._count, 0);
+
+    if (financialAnomalyCount >= minProjects) {
       patterns.push({
         patternType: 'FINANCIAL_ANOMALY_PATTERN',
-        description: `Multiple projects show financial anomalies (${financialAnomalies[0]._count} open findings)`,
-        affectedProjects: financialAnomalies[0]._count,
+        description: `Multiple projects show financial anomalies (${financialAnomalyCount} open findings)`,
+        affectedProjects: financialAnomalyCount,
         severity: 'HIGH',
         evidence: ['Cost anomaly findings across projects'],
         confidence: 'MEDIUM',
