@@ -8,35 +8,35 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import {
-  usePublicProject,
-  usePublicProjectEvidence,
-  usePublicProjectReports,
-  usePublicProjectRisk,
-  usePublicProjectTimeline,
+    usePublicProject,
+    usePublicProjectEvidence,
+    usePublicProjectReports,
+    usePublicProjectRisk,
+    usePublicProjectTimeline,
 } from '@/hooks/usePublicProjects';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import type { PublicProjectDetail } from '@vojas/api-client';
 import {
-  Activity,
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle,
-  CheckCircle2,
-  Clock,
-  Cpu,
-  DollarSign,
-  Download,
-  FileSearch,
-  FileText,
-  Loader2,
-  MapPin,
-  MessageSquare,
-  Satellite,
-  Scale,
-  ShieldAlert,
-  Sparkles,
-  UserCheck
+    Activity,
+    AlertTriangle,
+    ArrowLeft,
+    CheckCircle,
+    CheckCircle2,
+    Clock,
+    Cpu,
+    DollarSign,
+    Download,
+    FileSearch,
+    FileText,
+    Loader2,
+    MapPin,
+    MessageSquare,
+    Satellite,
+    Scale,
+    ShieldAlert,
+    Sparkles,
+    UserCheck
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';

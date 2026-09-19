@@ -58,6 +58,7 @@ export default function MPMapPage() {
     boundaries: true,
   });
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
 
   // Fetch all projects for the constituency — resolved server-side from the
   // authenticated user's admin-linked MP record.
@@ -69,10 +70,11 @@ export default function MPMapPage() {
   const filteredProjects = useMemo(() => {
     return projects.filter((p: any) => {
       if (filterStatus && p.status !== filterStatus) return false;
+      if (selectedDistrict && p.district !== selectedDistrict) return false;
       // Only show projects with coordinates
       return p.latitude != null && p.longitude != null;
     });
-  }, [projects, filterStatus]);
+  }, [projects, filterStatus, selectedDistrict]);
 
   // Get projects needing attention
   const attentionProjects = useMemo(() => {
@@ -207,8 +209,16 @@ export default function MPMapPage() {
 
           {/* Districts List */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <h3 className="font-semibold text-slate-900">Districts</h3>
+              {selectedDistrict && (
+                <button
+                  onClick={() => setSelectedDistrict(null)}
+                  className="text-xs text-vojas-600 hover:text-vojas-700 font-medium flex items-center gap-1 cursor-pointer"
+                >
+                  Clear filter <X className="h-3 w-3" />
+                </button>
+              )}
             </CardHeader>
             <CardBody className="p-0 max-h-[400px] overflow-y-auto">
               <div className="divide-y divide-slate-100">
@@ -217,12 +227,16 @@ export default function MPMapPage() {
                   .map(([district, districtProjects]) => (
                     <div
                       key={district}
-                      className="px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors"
-                      onClick={() => {/* TODO: Zoom to district */}}
+                      className={`px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors ${
+                        selectedDistrict === district ? 'bg-vojas-50/80 border-l-4 border-vojas-600' : ''
+                      }`}
+                      onClick={() => setSelectedDistrict(selectedDistrict === district ? null : district)}
                     >
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-slate-900">{district}</p>
-                        <Badge variant="neutral">{districtProjects.length}</Badge>
+                        <Badge variant={selectedDistrict === district ? 'primary' : 'neutral'}>
+                          {districtProjects.length}
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {districtProjects.slice(0, 4).map((p: any) => {

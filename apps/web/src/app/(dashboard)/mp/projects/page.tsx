@@ -61,6 +61,7 @@ export default function MPProjectsPage() {
   // Filters
   const [filters, setFilters] = useState<MPProjectFilters>({});
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -71,6 +72,7 @@ export default function MPProjectsPage() {
   const { data, isLoading, error } = useMPProjects({
     ...filters,
     search: search || undefined,
+    page,
   });
 
   const projects = data?.data ?? [];
@@ -520,8 +522,8 @@ export default function MPProjectsPage() {
           <Button
             variant="secondary"
             size="sm"
-            disabled={data.page === 1}
-            onClick={() => {/* TODO: Implement pagination */}}
+            disabled={data.page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             Previous
           </Button>
@@ -531,8 +533,8 @@ export default function MPProjectsPage() {
           <Button
             variant="secondary"
             size="sm"
-            disabled={data.page === data.totalPages}
-            onClick={() => {/* TODO: Implement pagination */}}
+            disabled={data.page >= data.totalPages}
+            onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
           >
             Next
           </Button>

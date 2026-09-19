@@ -163,7 +163,7 @@ export function IntelligenceClient() {
                   <button
                     key={i}
                     className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors text-left"
-                    onClick={() => {/* TODO: navigate to map with filter */}}
+                    onClick={() => router.push(`/explore/map?district=${encodeURIComponent(h.district)}`)}
                   >
                     <div>
                       <p className="text-sm font-medium text-slate-900">{h.district}, {h.state}</p>
