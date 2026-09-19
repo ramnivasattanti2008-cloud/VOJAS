@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '@vojas/db';
 import { AuditService, EvidenceService, ValidationError, NotFoundError, ForbiddenError } from '@vojas/domain';
-import { AuditAction, PERMISSIONS, ROLE_PERMISSIONS, getPermissionsForRole, getProjectVisibilityFilter, canAccessProject, buildUserContext } from '@vojas/shared';
+import { AuditAction, getPermissionsForRole, getProjectVisibilityFilter, canAccessProject, buildUserContext } from '@vojas/shared';
 import {
   createProjectSchema,
   projectFiltersSchema,
@@ -40,7 +40,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     const visibilityFilter = getProjectVisibilityFilter({
       userId: user.userId,
       role: user.role,
-      permissions: perms as any,
+      permissions: perms,
     });
 
     if (p.state) where.state = p.state;
@@ -187,8 +187,8 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
     // Resource scoping: MP can only see constituency projects, contractors only their projects
     const user = req.user!;
     const perms = req.userPermissions ?? getPermissionsForRole(user.role);
-    const userCtx = buildUserContext(user.role, user.userId, perms as any);
-    if (!canAccessProject(userCtx, project as any)) {
+    const userCtx = buildUserContext(user.role, user.userId, perms);
+    if (!canAccessProject(userCtx, project)) {
       throw new ForbiddenError('You do not have access to this project');
     }
 
@@ -220,8 +220,8 @@ router.get('/:id/evidence', authenticate, async (req: Request, res: Response, ne
 
     const user = req.user!;
     const perms = req.userPermissions ?? getPermissionsForRole(user.role);
-    const userCtx = buildUserContext(user.role, user.userId, perms as any);
-    if (!canAccessProject(userCtx, project as any)) {
+    const userCtx = buildUserContext(user.role, user.userId, perms);
+    if (!canAccessProject(userCtx, project)) {
       throw new ForbiddenError('You do not have access to this project');
     }
 
