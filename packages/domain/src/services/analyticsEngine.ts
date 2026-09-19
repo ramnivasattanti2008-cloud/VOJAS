@@ -639,6 +639,7 @@ export class AnalyticsEngine {
 
     const projects = await this.prisma.project.findMany({
       where,
+      take: locationType === 'NATIONAL' ? 500 : undefined,
       include: {
         projectRisk: true,
         riskFindings: { where: { status: { notIn: ['RESOLVED', 'DISMISSED'] } } },

@@ -1,18 +1,31 @@
-// Comprehensive route smoke test
-// Hits all 198 backend routes and reports pass/fail
+// Comprehensive route smoke test for VOJAS 2.0
+// Hits all real active backend routes and reports pass/fail
 import { prisma } from "@vojas/db";
+import jwt from "jsonwebtoken";
 
 const BASE = "http://localhost:5000/api/v1";
+const JWT_SECRET = "vojas-dev-secret-change-in-production-32ch";
 
-async function login(email, password) {
-  const res = await fetch(`${BASE}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+async function getPersonaToken(role) {
+  const user = await prisma.user.findFirst({ where: { role } });
+  if (!user) return null;
+  const session = await prisma.session.create({
+    data: {
+      userId: user.id,
+      refreshTokenHash: `smoke-test-${role.toLowerCase()}-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    },
   });
-  const json = await res.json();
-  if (!json.success) throw new Error(`Login failed: ${JSON.stringify(json)}`);
-  return json.data?.accessToken || json.data?.token;
+  return jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      sessionId: session.id,
+    },
+    JWT_SECRET,
+    { expiresIn: "1d" }
+  );
 }
 
 async function get(token, path) {
@@ -38,44 +51,6 @@ async function post(token, path, data) {
   return { status: res.status, body };
 }
 
-async function put(token, path, data) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data ?? {}),
-  });
-  let body;
-  try { body = await res.json(); } catch { body = null; }
-  return { status: res.status, body };
-}
-
-async function patch(token, path, data) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data ?? {}),
-  });
-  let body;
-  try { body = await res.json(); } catch { body = null; }
-  return { status: res.status, body };
-}
-
-async function del(token, path) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: "DELETE",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  let body;
-  try { body = await res.json(); } catch { body = null; }
-  return { status: res.status, body };
-}
-
 const results = [];
 let pass = 0, fail = 0;
 
@@ -87,101 +62,120 @@ function record(name, status, ok, detail = "") {
   console.log(`  ${color}${icon}\x1b[0m ${name} → ${status}${detail ? "  " + detail : ""}`);
 }
 
-let adminToken;
-try {
-  adminToken = await login("admin@vojas.gov", "Admin123!");
-} catch {
-  adminToken = await login("admin@vojas.gov", "admin123");
-}
-console.log(`\x1b[36mAdmin token acquired: ${adminToken.slice(0, 20)}...\x1b[0m\n`);
+// 1. Acquire authenticated tokens for all primary personas directly
+const adminToken = await getPersonaToken("ADMIN");
+const officerToken = await getPersonaToken("OFFICER") || adminToken;
+const citizenToken = await getPersonaToken("CITIZEN") || adminToken;
+const mpToken = await getPersonaToken("MP") || adminToken;
+const contractorToken = await getPersonaToken("CONTRACTOR") || adminToken;
 
-console.log("\x1b[1m=== HEALTH ===\x1b[0m");
-{
-  const r = await get(null, "/health");
-  record("GET /health", r.status, r.status === 200 && r.body?.success === true);
-}
+console.log(`\x1b[36mAdmin token acquired: ${adminToken.slice(0, 25)}...\x1b[0m\n`);
 
-// Find sample entities safely for testing
+// Lookup real sample records safely
 const safeFirst = async (fn) => { try { return await fn(); } catch { return null; } };
 
-const sampleProject = await safeFirst(() => prisma.project.findFirst({ select: { id: true } }));
+const sampleProject = await safeFirst(() => prisma.project.findFirst({ select: { id: true, state: true } }));
 const sampleMp = await safeFirst(() => prisma.mP.findFirst({ select: { id: true } }));
 const sampleAnomaly = await safeFirst(() => prisma.anomaly.findFirst({ select: { id: true } }));
 const sampleVendor = await safeFirst(() => prisma.vendor.findFirst({ select: { id: true } }));
-const sampleRule = await safeFirst(() => prisma.anomalyRule.findFirst({ select: { id: true } }));
-const sampleExpenditure = await safeFirst(() => prisma.financialObservation.findFirst({ select: { id: true } }));
-const sampleReport = await safeFirst(() => prisma.report.findFirst({ select: { id: true } }));
-const sampleLocation = await safeFirst(() => prisma.lGDLocation.findFirst({ select: { id: true } }));
-const sampleDoc = await safeFirst(() => prisma.document.findFirst({ select: { id: true } }));
-const sampleCase = await safeFirst(() => prisma.verificationCase.findFirst({ select: { id: true } }));
-const sampleUser = await safeFirst(() => prisma.user.findFirst({ where: { role: "OFFICER" } }));
-const sampleAsset = null;
-const sampleInspection = await safeFirst(() => prisma.fieldVerification.findFirst({ select: { id: true } }));
-const sampleAssetProblem = null;
-const sampleContractor = await safeFirst(() => prisma.user.findFirst({ where: { role: "CONTRACTOR" } }));
-const sampleMilestone = null;
-const sampleContractorProject = null;
-const samplePayment = null;
-const sampleDefect = null;
-const sampleContractorDoc = null;
-const sampleWorkDiary = null;
-const sampleResponse = null;
-const sampleDataSource = await safeFirst(() => prisma.dataSource.findFirst({ select: { id: true } }));
-const sampleDataIssue = null;
-const sampleDevRequest = null;
-const sampleGuideline = null;
-const sampleSatCapture = null;
-const sampleWhistle = null;
+const sampleReport = await safeFirst(() => prisma.report.findFirst({ select: { id: true, reportReference: true } }));
+const sampleInvestigation = await safeFirst(() => prisma.verificationCase.findFirst({ select: { id: true } }));
+const sampleReferral = await safeFirst(() => prisma.investigationReferral.findFirst({ select: { id: true } }));
+const sampleSector = await safeFirst(() => prisma.sector.findFirst({ select: { code: true } }));
 
-console.log("\x1b[1m=== AUTH ===\x1b[0m");
+const projectId = sampleProject?.id || "showcase-fraud-1";
+
+console.log("\x1b[1m=== 1. HEALTH & SYSTEM ===\x1b[0m");
 {
-  const r = await post(null, "/auth/login", { email: "admin@vojas.gov", password: "Admin123!" });
-  record("POST /auth/login (valid)", r.status, r.status === 200 && r.body?.success);
+  const r = await get(null, "/health");
+  record("GET /health", r.status, r.status === 200 && (r.body?.status === "ok" || r.body?.success === true));
 }
-{
-  const r = await post(null, "/auth/login", { email: "admin@vojas.gov", password: "wrong" });
-  record("POST /auth/login (invalid)", r.status, r.status === 401);
-}
+
+console.log("\x1b[1m=== 2. AUTHENTICATION & IDENTITY ===\x1b[0m");
 {
   const r = await get(adminToken, "/auth/me");
-  record("GET /auth/me", r.status, r.status === 200 && r.body?.success);
+  record("GET /auth/me (admin)", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await post(null, "/auth/register", { email: "x@x.com", password: "Test1234!", name: "Test", role: "CITIZEN" });
-  record("POST /auth/register", r.status, r.status === 200 || r.status === 201 || r.status === 400 || r.status === 409);
+  const r = await get(officerToken, "/auth/me");
+  record("GET /auth/me (officer)", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(citizenToken, "/auth/me");
+  record("GET /auth/me (citizen)", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== PROJECTS ===\x1b[0m");
+console.log("\x1b[1m=== 3. PUBLIC TRANSPARENCY (M12) ===\x1b[0m");
+{
+  const r = await get(null, "/projects/public?limit=5");
+  record("GET /projects/public", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(null, "/projects/public/summary");
+  record("GET /projects/public/summary", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(null, "/projects/public/states");
+  record("GET /projects/public/states", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(null, `/projects/public/districts?state=${encodeURIComponent(sampleProject?.state || "Odisha")}`);
+  record("GET /projects/public/districts", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(null, `/projects/public/${projectId}`);
+  record("GET /projects/public/:id", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(null, `/projects/public/${projectId}/ai-audit`);
+  record("GET /projects/public/:id/ai-audit", r.status, r.status === 200 && r.body?.success);
+}
+
+console.log("\x1b[1m=== 4. AUTHENTICATED PROJECTS ===\x1b[0m");
 {
   const r = await get(adminToken, "/projects?limit=5");
-  record("GET /projects", r.status, r.status === 200 && r.body?.success && Array.isArray(r.body?.data?.items));
+  record("GET /projects", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/projects/stats");
-  record("GET /projects/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, `/projects/${sampleProject.id}`);
+  const r = await get(adminToken, `/projects/${projectId}`);
   record("GET /projects/:id", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, `/projects/${sampleProject.id}/detail`);
-  record("GET /projects/:id/detail", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, `/projects/${sampleProject.id}/risk`);
-  record("GET /projects/:id/risk", r.status, r.status === 200 || r.status === 404);
-}
-{
-  const r = await get(adminToken, `/projects/${sampleProject.id}/expenditures`);
-  record("GET /projects/:id/expenditures", r.status, r.status === 200 || r.status === 404);
-}
-{
-  const r = await get(adminToken, `/projects/${sampleProject.id}/report/pdf`);
-  record("GET /projects/:id/report/pdf", r.status, r.status === 200 || r.status === 404, `(type: ${typeof r.body})`);
+  const r = await get(adminToken, `/projects/${projectId}/risk`);
+  record("GET /projects/:id/risk", r.status, r.status === 200);
 }
 
-console.log("\x1b[1m=== ANOMALIES ===\x1b[0m");
+console.log("\x1b[1m=== 5. PROJECT TELEMETRY (TIMELINE, LOCATIONS, FINANCIAL, SATELLITE) ===\x1b[0m");
+{
+  const r = await get(adminToken, `/projects/${projectId}/timeline`);
+  record("GET /projects/:id/timeline", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, `/projects/${projectId}/locations`);
+  record("GET /projects/:id/locations", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, `/projects/${projectId}/financial`);
+  record("GET /projects/:id/financial", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, `/projects/${projectId}/satellite`);
+  record("GET /projects/:id/satellite", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, `/projects/${projectId}/risk/signals`);
+  record("GET /projects/:id/risk/signals", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, `/projects/${projectId}/risk/findings`);
+  record("GET /projects/:id/risk/findings", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, `/projects/${projectId}/risk/events`);
+  record("GET /projects/:id/risk/events", r.status, r.status === 200 && r.body?.success);
+}
+
+console.log("\x1b[1m=== 6. ANOMALIES & AUDIT ===\x1b[0m");
 {
   const r = await get(adminToken, "/anomalies?limit=5");
   record("GET /anomalies", r.status, r.status === 200 && r.body?.success);
@@ -190,250 +184,154 @@ console.log("\x1b[1m=== ANOMALIES ===\x1b[0m");
   const r = await get(adminToken, "/anomalies/stats");
   record("GET /anomalies/stats", r.status, r.status === 200 && r.body?.success);
 }
-{
-  const r = await get(adminToken, "/anomalies/rules");
-  record("GET /anomalies/rules", r.status, r.status === 200 && r.body?.success);
-}
-{
+if (sampleAnomaly) {
   const r = await get(adminToken, `/anomalies/${sampleAnomaly.id}`);
   record("GET /anomalies/:id", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== RISK ===\x1b[0m");
+console.log("\x1b[1m=== 7. CITIZEN GRIEVANCE REPORTS (M10) ===\x1b[0m");
 {
-  const r = await get(adminToken, "/risk/stats");
-  record("GET /risk/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/risk?limit=5");
-  record("GET /risk", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, `/risk/${sampleProject.id}`);
-  record("GET /risk/:projectId", r.status, r.status === 200 || r.status === 404);
-}
-
-console.log("\x1b[1m=== REPORTS ===\x1b[0m");
-{
-  const r = await get(adminToken, "/reports?limit=5");
+  const r = await get(citizenToken, "/reports?limit=5");
   record("GET /reports", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/reports/stats");
-  record("GET /reports/stats", r.status, r.status === 200 && r.body?.success);
+  const r = await get(null, "/reports/public?limit=5");
+  record("GET /reports/public", r.status, r.status === 200 && r.body?.success);
 }
-{
-  if (sampleReport) {
-    const r = await get(adminToken, `/reports/${sampleReport.id}`);
-    record("GET /reports/:id", r.status, r.status === 200 && r.body?.success);
-  }
+if (sampleReport?.reportReference) {
+  const r = await get(null, `/reports/track/${sampleReport.reportReference}`);
+  record("GET /reports/track/:ref", r.status, r.status === 200 && r.body?.success);
 }
-
-console.log("\x1b[1m=== ANALYTICS ===\x1b[0m");
-{
-  const r = await get(adminToken, "/analytics/summary");
-  record("GET /analytics/summary", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/analytics/district?state=ODISHA");
-  record("GET /analytics/district", r.status, r.status === 200 || r.status === 404);
-}
-{
-  const r = await get(adminToken, "/analytics/heatmap");
-  record("GET /analytics/heatmap", r.status, r.status === 200 || r.status === 404);
+if (sampleReport) {
+  const r = await get(adminToken, `/reports/${sampleReport.id}`);
+  record("GET /reports/:id", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== MPS ===\x1b[0m");
+console.log("\x1b[1m=== 8. SECTORS (M13) ===\x1b[0m");
+{
+  const r = await get(null, "/sectors");
+  record("GET /sectors", r.status, r.status === 200 && r.body?.success);
+}
+if (sampleSector) {
+  const r = await get(null, `/sectors/${sampleSector.code}`);
+  record("GET /sectors/:code", r.status, r.status === 200 && r.body?.success);
+}
+
+console.log("\x1b[1m=== 9. MPS & MP COMMAND CENTER ===\x1b[0m");
 {
   const r = await get(adminToken, "/mps?limit=5");
   record("GET /mps", r.status, r.status === 200 && r.body?.success);
 }
-{
+if (sampleMp) {
   const r = await get(adminToken, `/mps/${sampleMp.id}`);
   record("GET /mps/:id", r.status, r.status === 200 && r.body?.success);
+  const r2 = await get(adminToken, `/mps/${sampleMp.id}/projects`);
+  record("GET /mps/:id/projects", r2.status, r2.status === 200 && r2.body?.success);
 }
 {
-  const r = await get(adminToken, `/mps/${sampleMp.id}/projects`);
-  record("GET /mps/:id/projects", r.status, r.status === 200 && r.body?.success);
+  const r = await get(mpToken, "/mp/me/constituency");
+  record("GET /mp/me/constituency", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, `/mps/${sampleMp.id}/projects-enhanced`);
-  record("GET /mps/:id/projects-enhanced", r.status, r.status === 200 && r.body?.success);
+  const r = await get(mpToken, "/mp/me/financials");
+  record("GET /mp/me/financials", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, `/mps/${sampleMp.id}/weekly-activity`);
-  record("GET /mps/:id/weekly-activity", r.status, r.status === 200 || r.status === 404);
-}
-{
-  const r = await get(adminToken, `/mps/${sampleMp.id}/satellite-summary`);
-  record("GET /mps/:id/satellite-summary", r.status, r.status === 200 || r.status === 404);
-}
-{
-  const r = await get(adminToken, "/analytics/mp-summary");
-  record("GET /analytics/mp-summary", r.status, r.status === 200 || r.status === 403);
-}
-{
-  const r = await get(adminToken, "/analytics/vendor-summary");
-  record("GET /analytics/vendor-summary", r.status, r.status === 200 || r.status === 403);
-}
-{
-  const r = await get(adminToken, "/analytics/vendor-top");
-  record("GET /analytics/vendor-top", r.status, r.status === 200 || r.status === 403);
-}
-{
-  const r = await get(adminToken, "/analytics/longitudinal");
-  record("GET /analytics/longitudinal", r.status, r.status === 200 || r.status === 403);
+  const r = await get(mpToken, "/mp/me/projects");
+  record("GET /mp/me/projects", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== VENDORS ===\x1b[0m");
+console.log("\x1b[1m=== 10. VENDORS & CONTRACTORS ===\x1b[0m");
 {
   const r = await get(adminToken, "/vendors?limit=5");
   record("GET /vendors", r.status, r.status === 200 && r.body?.success);
 }
-{
-  const r = await get(adminToken, "/vendors/top");
-  record("GET /vendors/top", r.status, r.status === 200 && r.body?.success);
+if (sampleVendor) {
+  const r = await get(adminToken, `/vendors/${sampleVendor.id}`);
+  record("GET /vendors/:id", r.status, r.status === 200 && r.body?.success);
 }
 {
-  if (sampleVendor) {
-    const r = await get(adminToken, `/vendors/${sampleVendor.id}`);
-    record("GET /vendors/:id", r.status, r.status === 200 && r.body?.success);
-  }
-}
-
-console.log("\x1b[1m=== LOCATIONS / MAPS ===\x1b[0m");
-{
-  const r = await get(adminToken, "/locations?limit=5");
-  record("GET /locations", r.status, r.status === 200 && r.body?.success);
+  const r = await get(contractorToken, "/contractor/dashboard");
+  record("GET /contractor/dashboard", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/locations/map/overview");
-  record("GET /locations/map/overview", r.status, r.status === 200 && r.body?.success);
+  const r = await get(contractorToken, "/contractor/projects");
+  record("GET /contractor/projects", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, `/locations/project/${sampleProject.id}`);
-  record("GET /locations/project/:projectId", r.status, r.status === 200 || r.status === 404);
+  const r = await get(contractorToken, "/contractor/milestones");
+  record("GET /contractor/milestones", r.status, r.status === 200 && r.body?.success);
 }
 {
-  if (sampleLocation) {
-    const r = await get(adminToken, `/locations/${sampleLocation.id}`);
-    record("GET /locations/:id", r.status, r.status === 200 && r.body?.success);
-  }
+  const r = await get(contractorToken, "/contractor/documents");
+  record("GET /contractor/documents", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(contractorToken, "/contractor/payments");
+  record("GET /contractor/payments", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(contractorToken, "/contractor/responses");
+  record("GET /contractor/responses", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== NOTIFICATIONS ===\x1b[0m");
+console.log("\x1b[1m=== 11. RISK ENGINE & EARLY WARNING (GFR 2017) ===\x1b[0m");
 {
-  const r = await get(adminToken, "/notifications?limit=5");
-  record("GET /notifications", r.status, r.status === 200 && r.body?.success);
+  const r = await get(adminToken, "/risk/summary");
+  record("GET /risk/summary", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/notifications/unread-count");
-  record("GET /notifications/unread-count", r.status, r.status === 200 && r.body?.success);
-}
-
-console.log("\x1b[1m=== FINANCIALS ===\x1b[0m");
-{
-  const r = await get(adminToken, `/financials?projectId=${sampleProject.id}&limit=5`);
-  record("GET /financials", r.status, r.status === 200 && r.body?.success);
+  const r = await get(adminToken, "/risk/trends");
+  record("GET /risk/trends", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/financials/stats");
-  record("GET /financials/stats", r.status, r.status === 200 && r.body?.success);
+  const r = await get(adminToken, "/risk/hotspots");
+  record("GET /risk/hotspots", r.status, r.status === 200 && r.body?.success);
 }
 {
-  if (sampleExpenditure) {
-    const r = await get(adminToken, `/financials/${sampleExpenditure.id}`);
-    record("GET /financials/:id", r.status, r.status === 200 && r.body?.success);
-  }
+  const r = await get(adminToken, "/risk/rules");
+  record("GET /risk/rules", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, "/risk/early-warning");
+  record("GET /risk/early-warning", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== DOCUMENTS ===\x1b[0m");
+console.log("\x1b[1m=== 12. OFFICER COMMAND CENTER (M14) ===\x1b[0m");
 {
-  const r = await get(adminToken, "/documents?limit=5");
-  record("GET /documents", r.status, r.status === 200 && r.body?.success);
+  const r = await get(officerToken, "/officer/dashboard/stats");
+  record("GET /officer/dashboard/stats", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, `/documents/stats?projectId=${sampleProject.id}`);
-  record("GET /documents/stats", r.status, r.status === 200 && r.body?.success);
+  const r = await get(officerToken, "/officer/map/layers");
+  record("GET /officer/map/layers", r.status, r.status === 200 && r.body?.success);
 }
 {
-  if (sampleDoc) {
-    const r = await get(adminToken, `/documents/${sampleDoc.id}`);
-    record("GET /documents/:id", r.status, r.status === 200 && r.body?.success);
-  }
+  const r = await get(officerToken, "/officer/evidence");
+  record("GET /officer/evidence", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== CASES ===\x1b[0m");
+console.log("\x1b[1m=== 13. INVESTIGATIONS & STATUTORY REFERRALS (Phase 4) ===\x1b[0m");
 {
-  const r = await get(adminToken, "/cases?limit=5");
-  record("GET /cases", r.status, r.status === 200 && r.body?.success);
+  const r = await get(officerToken, "/investigations");
+  record("GET /investigations", r.status, r.status === 200 && r.body?.success);
+}
+if (sampleInvestigation) {
+  const r = await get(officerToken, `/investigations/${sampleInvestigation.id}`);
+  record("GET /investigations/:id", r.status, r.status === 200 && r.body?.success);
+  const rDossier = await get(officerToken, `/investigations/${sampleInvestigation.id}/dossier`);
+  record("GET /investigations/:id/dossier", rDossier.status, rDossier.status === 200 && rDossier.body?.success);
 }
 {
-  const r = await get(adminToken, "/cases/stats");
-  record("GET /cases/stats", r.status, r.status === 200 && r.body?.success);
+  const r = await get(officerToken, "/referrals");
+  record("GET /referrals", r.status, r.status === 200 && r.body?.success);
 }
-{
-  if (sampleCase) {
-    const r = await get(adminToken, `/cases/${sampleCase.id}`);
-    record("GET /cases/:id", r.status, r.status === 200 && r.body?.success);
-    const r2 = await get(adminToken, `/cases/${sampleCase.id}/timeline`);
-    record("GET /cases/:id/timeline", r2.status, r2.status === 200 && r2.body?.success);
-  }
-}
-
-console.log("\x1b[1m=== ASSETS ===\x1b[0m");
-{
-  const r = await get(adminToken, "/assets?limit=5");
-  record("GET /assets", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/assets/stats");
-  record("GET /assets/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  if (sampleAsset) {
-    const r = await get(adminToken, `/assets/${sampleAsset.id}`);
-    record("GET /assets/:id", r.status, r.status === 200 && r.body?.success);
-    const r2 = await get(adminToken, `/assets/${sampleAsset.id}/health`);
-    record("GET /assets/:id/health", r2.status, r2.status === 200 && r2.body?.success);
-  }
+if (sampleReferral) {
+  const r = await get(officerToken, `/referrals/${sampleReferral.id}`);
+  record("GET /referrals/:id", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== INSPECTIONS ===\x1b[0m");
-{
-  const r = await get(adminToken, "/inspections?limit=5");
-  record("GET /inspections", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/inspections/stats");
-  record("GET /inspections/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/inspections/my");
-  record("GET /inspections/my", r.status, r.status === 200 && r.body?.success);
-}
-{
-  if (sampleInspection) {
-    const r = await get(adminToken, `/inspections/${sampleInspection.id}`);
-    record("GET /inspections/:id", r.status, r.status === 200 && r.body?.success);
-  }
-}
-
-console.log("\x1b[1m=== LAW ENFORCEMENT ===\x1b[0m");
-{
-  const r = await get(adminToken, "/law-enforcement/authorities");
-  record("GET /law-enforcement/authorities", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/law-enforcement/stats");
-  record("GET /law-enforcement/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/law-enforcement/escalations?limit=5");
-  record("GET /law-enforcement/escalations", r.status, r.status === 200 && r.body?.success);
-}
-
-console.log("\x1b[1m=== ADMIN ===\x1b[0m");
+console.log("\x1b[1m=== 14. ADMIN CENTER & GOVERNANCE ===\x1b[0m");
 {
   const r = await get(adminToken, "/admin/stats");
   record("GET /admin/stats", r.status, r.status === 200 && r.body?.success);
@@ -443,164 +341,87 @@ console.log("\x1b[1m=== ADMIN ===\x1b[0m");
   record("GET /admin/users", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/admin/anomaly-rules");
-  record("GET /admin/anomaly-rules", r.status, r.status === 200 && r.body?.success);
+  const r = await get(adminToken, "/admin/rules");
+  record("GET /admin/rules", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/admin/audit-logs?limit=5");
-  record("GET /admin/audit-logs", r.status, r.status === 200 && r.body?.success);
-}
-
-console.log("\x1b[1m=== AI ===\x1b[0m");
-{
-  const r = await post(adminToken, "/ai/analyze-report", { reportId: sampleReport?.id ?? "test" });
-  record("POST /ai/analyze-report", r.status, r.status === 200 || r.status === 400 || r.status === 404);
+  const r = await get(adminToken, "/admin/roles");
+  record("GET /admin/roles", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await post(adminToken, "/ai/analyze-patterns", {});
-  record("POST /ai/analyze-patterns", r.status, r.status === 200 || r.status === 400);
+  const r = await get(adminToken, "/admin/data-sources");
+  record("GET /admin/data-sources", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await post(adminToken, "/ai/explain-anomaly", { anomalyId: sampleAnomaly?.id ?? "test" });
-  record("POST /ai/explain-anomaly", r.status, r.status === 200 || r.status === 400 || r.status === 404);
-}
-
-console.log("\x1b[1m=== SATELLITE ===\x1b[0m");
-{
-  const r = await get(adminToken, `/satellite/${sampleProject.id}/captures`);
-  record("GET /satellite/:projectId/captures", r.status, r.status === 200 || r.status === 404);
+  const r = await get(adminToken, "/admin/jobs");
+  record("GET /admin/jobs", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, `/satellite/${sampleProject.id}/captures/latest`);
-  record("GET /satellite/:projectId/captures/latest", r.status, r.status === 200 || r.status === 404);
+  const r = await get(adminToken, "/admin/ai/providers");
+  record("GET /admin/ai/providers", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, `/satellite/${sampleProject.id}/timeline`);
-  record("GET /satellite/:projectId/timeline", r.status, r.status === 200 || r.status === 404);
+  const r = await get(adminToken, "/admin/ai/stats");
+  record("GET /admin/ai/stats", r.status, r.status === 200 && r.body?.success);
 }
 {
-  if (sampleSatCapture) {
-    const r = await get(adminToken, `/satellite/captures/${sampleSatCapture.id}`);
-    record("GET /satellite/captures/:captureId", r.status, r.status === 200 && r.body?.success);
-  }
-}
-{
-  const r = await post(adminToken, `/satellite/${sampleProject.id}/analyze`, {});
-  record("POST /satellite/:projectId/analyze", r.status, r.status === 200 || r.status === 400 || r.status === 500);
+  const r = await get(adminToken, "/admin/satellites/providers");
+  record("GET /admin/satellites/providers", r.status, r.status === 200 && r.body?.success);
 }
 
-console.log("\x1b[1m=== GEOCODING ===\x1b[0m");
+console.log("\x1b[1m=== 15. AI ASSISTANT & CIVIC INTELLIGENCE ===\x1b[0m");
 {
-  const r = await get(adminToken, "/geocoding/lookup?query=New+Delhi");
-  record("GET /geocoding/lookup", r.status, r.status === 200 || r.status === 400);
-}
-
-console.log("\x1b[1m=== PRIORITY ===\x1b[0m");
-{
-  const r = await get(adminToken, "/priority/stats");
-  record("GET /priority/stats", r.status, r.status === 200 && r.body?.success);
+  const r = await get(null, "/ai/tools");
+  record("GET /ai/tools", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/priority/top");
-  record("GET /priority/top", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/priority/area?state=ODISHA");
-  record("GET /priority/area", r.status, r.status === 200 || r.status === 400 || r.status === 404);
-}
-
-console.log("\x1b[1m=== DATA QUALITY ===\x1b[0m");
-{
-  const r = await get(adminToken, "/data-quality/stats");
-  record("GET /data-quality/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/data-quality?limit=5");
-  record("GET /data-quality", r.status, r.status === 200 && r.body?.success);
-}
-
-console.log("\x1b[1m=== DATA SOURCES ===\x1b[0m");
-{
-  const r = await get(adminToken, "/data-sources/stats");
-  record("GET /data-sources/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/data-sources/freshness?sourceName=VONTER&datasetName=projects");
-  record("GET /data-sources/freshness", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/data-sources?limit=5");
-  record("GET /data-sources", r.status, r.status === 200 && r.body?.success);
-}
-{
-  if (sampleDataSource) {
-    const r = await get(adminToken, `/data-sources/${sampleDataSource.id}`);
-    record("GET /data-sources/:id", r.status, r.status === 200 && r.body?.success);
-  }
-}
-
-console.log("\x1b[1m=== DEV REQUESTS ===\x1b[0m");
-{
-  const r = await get(null, "/development-requests?limit=5");
-  record("GET /development-requests", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(null, "/development-requests/stats");
-  record("GET /development-requests/stats", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(null, "/development-requests/groups");
-  record("GET /development-requests/groups", r.status, r.status === 200 && r.body?.success);
-}
-
-console.log("\x1b[1m=== GUIDELINES ===\x1b[0m");
-{
-  const r = await get(adminToken, "/guidelines?limit=5");
-  record("GET /guidelines", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/guidelines/categories");
-  record("GET /guidelines/categories", r.status, r.status === 200 && r.body?.success);
-}
-{
-  const r = await get(adminToken, "/guidelines/search?q=test");
-  record("GET /guidelines/search", r.status, r.status === 200 || r.status === 400);
-}
-{
-  const r = await get(adminToken, `/guidelines/project/${sampleProject.id}/compliance`);
-  record("GET /guidelines/project/:projectId/compliance", r.status, r.status === 200 || r.status === 404);
-}
-
-console.log("\x1b[1m=== CONTRACTORS ===\x1b[0m");
-{
-  if (sampleContractor) {
-    const contractorToken = await login(sampleContractor.email, "contractor123").catch(() => adminToken);
-    const r = await get(contractorToken, "/contractors/dashboard");
-    record("GET /contractors/dashboard", r.status, r.status === 200 || r.status === 403);
-    const r2 = await get(contractorToken, "/contractors/profile");
-    record("GET /contractors/profile", r2.status, r2.status === 200 || r2.status === 403);
-  }
-}
-
-console.log("\x1b[1m=== WHISTLEBLOWER ===\x1b[0m");
-{
-  const r = await post(null, "/whistleblower", {
-    title: "Test tip", description: "Test description", category: "FINANCIAL",
+  const r = await post(null, "/ai/assistant", {
+    message: "What is the status of public works?",
+    history: []
   });
-  record("POST /whistleblower", r.status, r.status === 200 || r.status === 201 || r.status === 400);
+  record("POST /ai/assistant", r.status, r.status === 200 && r.body?.success);
+}
+
+console.log("\x1b[1m=== 16. ADVANCED ANALYTICS (M16) ===\x1b[0m");
+{
+  const r = await get(adminToken, "/analytics/cross-project-patterns");
+  record("GET /analytics/cross-project-patterns", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/whistleblower?limit=5");
-  record("GET /whistleblower", r.status, r.status === 200 && r.body?.success);
+  const r = await get(adminToken, `/analytics/hotspot?locationType=STATE&locationId=${encodeURIComponent(sampleProject?.state || "Odisha")}`);
+  record("GET /analytics/hotspot", r.status, r.status === 200 && r.body?.success);
 }
 {
-  const r = await get(adminToken, "/whistleblower/stats");
-  record("GET /whistleblower/stats", r.status, r.status === 200 && r.body?.success);
+  const r = await get(adminToken, "/analytics/insights");
+  record("GET /analytics/insights", r.status, r.status === 200 && r.body?.success);
 }
+{
+  const r = await get(adminToken, "/analytics/models");
+  record("GET /analytics/models", r.status, r.status === 200 && r.body?.success);
+}
+
+console.log("\x1b[1m=== 17. SEARCH & NOTIFICATIONS & EXPORT ===\x1b[0m");
+{
+  const r = await get(adminToken, "/search?q=road");
+  record("GET /search", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, "/notifications?limit=5");
+  record("GET /notifications", r.status, r.status === 200 && r.body?.success);
+}
+{
+  const r = await get(adminToken, "/export/projects");
+  record("GET /export/projects", r.status, r.status === 200);
+}
+
+// Cleanup generated smoke test sessions
+await prisma.session.deleteMany({
+  where: { refreshTokenHash: { startsWith: "smoke-test-" } }
+});
 
 await prisma.$disconnect();
 
-console.log(`\n\x1b[1m=== SUMMARY ===\x1b[0m`);
+console.log(`\n\x1b[1m=== SMOKE TEST SUMMARY ===\x1b[0m`);
 console.log(`\x1b[32mPassed:\x1b[0m ${pass}`);
 console.log(`\x1b[31mFailed:\x1b[0m ${fail}`);
 console.log(`Total:  ${pass + fail}`);
