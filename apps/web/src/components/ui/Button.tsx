@@ -16,16 +16,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-vojas-600 text-white hover:bg-vojas-700 focus-visible:ring-vojas-500',
-  secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus-visible:ring-slate-400',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-400',
-  danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+  primary: 'bg-[#007AFF] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-[#0071EB] active:bg-[#0064D1]',
+  secondary: 'bg-[#F2F2F7] text-[#1C1C1E] hover:bg-[#E5E5EA] active:bg-[#D1D1D6]',
+  ghost: 'bg-transparent text-[#007AFF] hover:bg-[#007AFF]/[0.08] active:bg-[#007AFF]/[0.14]',
+  danger: 'bg-[#FF3B30] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)] hover:bg-[#EB362C] active:bg-[#D13026]',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base',
+  sm: 'h-9 px-3.5 text-[13px] rounded-[10px]',
+  md: 'h-11 px-4 text-[15px] rounded-[12px]',
+  lg: 'h-[52px] px-6 text-[16px] rounded-[14px]',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
@@ -43,9 +43,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-        'disabled:opacity-50 disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 font-semibold tracking-[-0.01em]',
+        'transition-[background-color,transform] duration-150 ease-out',
+        'active:scale-[0.97]',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] focus-visible:ring-offset-2',
+        'disabled:opacity-40 disabled:pointer-events-none disabled:active:scale-100',
         variantClasses[variant],
         sizeClasses[size],
         className

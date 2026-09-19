@@ -36,11 +36,13 @@ interface TabsListProps {
   className?: string;
 }
 
+// Real iOS segmented control: a pill-shaped track holding equal-width
+// segments, the active one lifted on a white chip rather than underlined.
 export function TabsList({ children, className }: TabsListProps) {
   return (
     <div
       className={cn(
-        'flex border-b border-slate-200 gap-1',
+        'inline-flex items-center gap-0.5 rounded-[10px] bg-[#F2F2F7] p-[3px]',
         className
       )}
       role="tablist"
@@ -67,10 +69,10 @@ export function TabsTrigger({ value, children, className }: TabsTriggerProps) {
       data-state={isActive ? 'active' : 'inactive'}
       onClick={() => onChange(value)}
       className={cn(
-        'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+        'flex-1 whitespace-nowrap rounded-[8px] px-4 py-1.5 text-[13px] font-semibold tracking-[-0.01em] transition-all duration-150',
         isActive
-          ? 'border-vojas-500 text-vojas-700'
-          : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
+          ? 'bg-white text-[#1C1C1E] shadow-[0_1px_3px_rgba(0,0,0,0.12)]'
+          : 'text-[#6E6E73] hover:text-[#1C1C1E]',
         className
       )}
     >

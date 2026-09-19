@@ -3,6 +3,7 @@
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/ui/Logo';
 import {
     Activity,
     AlertTriangle,
@@ -199,15 +200,15 @@ export function Sidebar() {
           href={hasChildren ? '#' : item.href}
           onClick={hasChildren ? (e) => { e.preventDefault(); toggleExpanded(item.href); } : undefined}
           className={cn(
-            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            'flex items-center gap-3 px-3 h-10 rounded-[10px] text-[14px] font-medium tracking-[-0.01em] transition-colors',
             isActive
-              ? 'bg-vojas-50 text-vojas-700'
-              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-            depth > 0 && 'ml-6 text-xs'
+              ? 'bg-[#007AFF]/[0.12] text-[#007AFF] font-semibold'
+              : 'text-[#48484A] hover:bg-black/[0.04] hover:text-[#1C1C1E]',
+            depth > 0 && 'ml-6 h-8 text-[13px]'
           )}
           aria-current={isActive ? 'page' : undefined}
         >
-          <Icon className={cn('h-4 w-4 shrink-0', depth > 0 && 'h-3.5 w-3.5')} aria-hidden="true" />
+          <Icon className={cn('h-[18px] w-[18px] shrink-0', depth > 0 && 'h-4 w-4')} aria-hidden="true" />
           <span className="flex-1">{label}</span>
           {hasChildren && (
             <ChevronRight className={cn(
@@ -227,23 +228,20 @@ export function Sidebar() {
 
   return (
     <aside
-      className="w-60 bg-white border-r border-slate-200 h-screen flex flex-col sticky top-0"
+      className="w-60 bg-[#F9F9FB] border-r border-black/[0.06] h-screen flex flex-col sticky top-0"
       role="complementary"
       aria-label="Sidebar"
     >
       {/* Logo */}
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-vojas-600 text-white font-bold flex items-center justify-center">
-          V
-        </div>
-        <span className="font-semibold text-slate-900">VOJAS</span>
+      <div className="px-4 h-16 ios-hairline-b flex items-center gap-2 shrink-0">
+        <Logo size={30} wordmarkClassName="!text-[16px]" />
         {roleLabel && (
           <span className={cn(
-            'ml-auto text-xs px-2 py-0.5 rounded-full font-medium',
-            isOfficer ? 'bg-red-100 text-red-700' :
-            isMP ? 'bg-vojas-100 text-vojas-700' :
-            isContractor ? 'bg-amber-100 text-amber-700' :
-            isCitizen ? 'bg-green-100 text-green-700' : ''
+            'ml-auto text-[11px] px-2 py-0.5 rounded-full font-semibold tracking-[-0.01em]',
+            isOfficer ? 'bg-[#FF3B30]/10 text-[#D70015]' :
+            isMP ? 'bg-[#5856D6]/10 text-[#5856D6]' :
+            isContractor ? 'bg-[#FF9500]/10 text-[#C96B00]' :
+            isCitizen ? 'bg-[#34C759]/10 text-[#248A3D]' : ''
           )}>
             {roleLabel}
           </span>
@@ -251,12 +249,12 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav aria-label="Main navigation" className="flex-1 px-3 py-4 space-y-1">
+      <nav aria-label="Main navigation" className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {items.map((item) => renderNavItem(item))}
       </nav>
 
-      <div className="px-5 py-3 border-t border-slate-100 text-xs text-slate-400">
-        v2.0.0
+      <div className="px-4 h-10 ios-hairline-t flex items-center text-[11px] text-[#8E8E93] font-medium tracking-[-0.01em] shrink-0">
+        VOJAS 2.0
       </div>
     </aside>
   );

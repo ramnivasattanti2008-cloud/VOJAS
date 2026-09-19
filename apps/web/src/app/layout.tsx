@@ -7,7 +7,6 @@ import { InstallPrompt } from '@/components/ui/InstallPrompt';
 export const metadata: Metadata = {
   title: 'VOJAS — Accountability',
   description: 'MPLAD accountability platform — VOJAS 2.0',
-  icons: { icon: '/favicon.ico' },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

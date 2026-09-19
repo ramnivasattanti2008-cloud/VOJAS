@@ -3,20 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --vojas-color-bg: 248 250 252;
-  --vojas-color-fg: 15 23 42;
-  --vojas-color-muted: 100 116 139;
-  --vojas-color-border: 226 232 240;
   --vojas-color-bg: 242 242 247;
   --vojas-color-fg: 28 28 30;
   --vojas-color-muted: 142 142 147;
   --vojas-color-border: 229 229 234;
   --vojas-color-surface: 255 255 255;
-  --vojas-color-primary: 37 99 235;
-  --vojas-color-primary-hover: 29 78 216;
-  --vojas-color-success: 16 185 129;
-  --vojas-color-warning: 245 158 11;
-  --vojas-color-danger: 225 29 72;
   --vojas-color-primary: 0 122 255;
   --vojas-color-primary-hover: 0 100 215;
   --vojas-color-success: 52 199 89;
@@ -27,9 +18,6 @@
 html,
 body {
   height: 100%;
-  background-color: rgb(var(--vojas-color-bg));
-  color: rgb(var(--vojas-color-fg));
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
   min-height: 100%;
   background-color: #F2F2F7;
   color: #1C1C1E;
@@ -41,7 +29,6 @@ body {
 }
 
 * {
-  border-color: rgb(var(--vojas-color-border));
   border-color: rgba(0, 0, 0, 0.06);
 }
 
@@ -80,22 +67,51 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid rgb(var(--vojas-color-primary));
   outline: 2px solid #007AFF;
   outline-offset: 2px;
 }
 
 .glass-panel {
   background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
 .gradient-civic-hero {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f2942 100%);
   background: linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 60%, #0A2540 100%);
+}
+
+/* Soft shimmer sweep for skeleton loading states — calmer than a flat pulse */
+@keyframes ios-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.ios-shimmer {
+  background: linear-gradient(90deg, #E5E5EA 25%, #EFEFF2 50%, #E5E5EA 75%);
+  background-size: 200% 100%;
+  animation: ios-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ios-shimmer {
+    animation: none;
+    background: #E5E5EA;
+  }
+}
+
+/* Sheet/modal entrance — a soft rise + fade, matching iOS's spring-out sheets */
+@keyframes ios-sheet-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 .sr-only {

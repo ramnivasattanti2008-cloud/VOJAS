@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="85" fill="#1e40af"/>
-  <path d="M256 64L384 128V256C384 336 320 400 256 432C192 400 128 336 128 256V128L256 64Z" fill="white" fill-opacity="0.15"/>
-  <path d="M256 64L384 128V256C384 336 320 400 256 432C192 400 128 336 128 256V128L256 64Z" stroke="white" stroke-width="10" fill="none"/>
-  <text x="256" y="315" font-family="system-ui,sans-serif" font-size="150" font-weight="700" fill="white" text-anchor="middle">V</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="512" height="512">
+  <rect width="192" height="192" fill="#141C2E"/>
+  <g transform="translate(36,36) scale(1.2963)">
+    <circle cx="60" cy="60" r="54" fill="none" stroke="#A9762E" stroke-width="3"/>
+    <line x1="30" y1="74" x2="90" y2="74" stroke="#F1EEE6" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+    <path d="M 34 60 L 48 74 L 84 34" fill="none" stroke="#A9762E" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/>
+  </g>
 </svg>

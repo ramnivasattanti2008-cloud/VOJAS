@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { LogoMark } from '@/components/ui/Logo';
 
 export const metadata: Metadata = {
   title: 'Sign In | VOJAS',
@@ -14,9 +15,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         {/* Apple HIG Logo + Header */}
         <div className="text-center mb-6">
           <Link href="/" className="inline-block active:scale-95 transition-transform">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-[16px] bg-[#1C1C1E] text-white font-black text-xl shadow-ios-sm">
-              V
-            </div>
+            <LogoMark size={52} className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.15)]" />
           </Link>
           <h1 className="text-2xl font-extrabold text-[#1C1C1E] tracking-tight mt-3">VOJAS</h1>
           <p className="text-[#8E8E93] text-xs font-medium mt-0.5">MPLAD Civic Accountability Platform</p>

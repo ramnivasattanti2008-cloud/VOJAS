@@ -9,10 +9,7 @@ interface SkeletonProps {
 export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
-      className={cn(
-        'animate-pulse rounded bg-slate-200 dark:bg-slate-800',
-        className
-      )}
+      className={cn('ios-shimmer rounded-[6px]', className)}
       aria-hidden="true"
     />
   );
@@ -20,9 +17,9 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function CardSkeleton() {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+    <div className="bg-white rounded-[16px] border border-black/[0.06] shadow-ios-card p-6 space-y-4">
       <div className="flex items-center gap-3">
-        <Skeleton className="w-10 h-10 rounded-lg" />
+        <Skeleton className="w-10 h-10 rounded-[10px]" />
         <div className="space-y-2 flex-1">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-3 w-1/2" />
@@ -40,7 +37,7 @@ export function CardSkeleton() {
 
 export function TableRowSkeleton({ cols = 5 }: { cols?: number }) {
   return (
-    <tr className="border-b border-slate-100 dark:border-slate-800">
+    <tr className="ios-hairline-b">
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-4 py-3">
           <Skeleton className="h-4 w-full max-w-[120px]" />
@@ -52,10 +49,10 @@ export function TableRowSkeleton({ cols = 5 }: { cols?: number }) {
 
 export function StatCardSkeleton() {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-3">
+    <div className="bg-white rounded-[16px] border border-black/[0.06] shadow-ios-card p-5 space-y-3">
       <div className="flex items-center justify-between">
         <Skeleton className="h-4 w-24" />
-        <Skeleton className="w-8 h-8 rounded-lg" />
+        <Skeleton className="w-8 h-8 rounded-[10px]" />
       </div>
       <Skeleton className="h-8 w-16" />
       <Skeleton className="h-3 w-32" />
