@@ -20,6 +20,8 @@ export interface MPConstituencySummary {
   totalSanctioned: number;
   totalSpent: number;
   utilizationRate: number;
+  /** Real per-sector project counts (never a fabricated/random split). */
+  bySectorCount: Array<{ sector: string; count: number }>;
   recentActivity: {
     date: string;
     type: 'REPORT' | 'VERIFICATION' | 'ANOMALY' | 'UPDATE';
@@ -51,8 +53,9 @@ export interface MPFinancialSummary {
 export interface MPDemandCluster {
   id: string;
   location: string;
-  latitude: number;
-  longitude: number;
+  /** Null when no report in this group carries real coordinates. */
+  latitude: number | null;
+  longitude: number | null;
   requestCount: number;
   sector: string;
   primaryIssue: string;
@@ -66,6 +69,7 @@ export interface MPDemandCluster {
 
 export interface MPCitizenSignal {
   id: string;
+  /** Always REPORT — there is no CLAIM/FEEDBACK source in the schema. */
   type: 'REPORT' | 'CLAIM' | 'FEEDBACK';
   title: string;
   description: string;
@@ -88,8 +92,9 @@ export function createMpApi(client: ApiClient) {
       return client.get<MPConstituencySummary>('/mp/me/constituency');
     },
 
-    // Get MP's project portfolio
-    getProjects(mpId: string, params?: {
+    // Get the authenticated user's own MP's project portfolio. Resolved
+    // entirely server-side from the admin-controlled User<->MP link.
+    getProjects(params?: {
       status?: string;
       sector?: string;
       district?: string;
@@ -97,7 +102,7 @@ export function createMpApi(client: ApiClient) {
       page?: number;
       limit?: number;
     }) {
-      return client.get<PaginatedResponse<Project>>(`/mp/${mpId}/projects`, params);
+      return client.get<PaginatedResponse<Project> & { linked: boolean }>('/mp/me/projects', params);
     },
 
     // Get the authenticated user's own MP financial overview. Resolved
@@ -106,28 +111,17 @@ export function createMpApi(client: ApiClient) {
       return client.get<MPFinancialSummary>('/mp/me/financials');
     },
 
-    // Get citizen demand clusters
-    getDemandClusters(mpId: string) {
-      return client.get<MPDemandCluster[]>(`/mp/${mpId}/demands/clusters`);
+    // Get the authenticated user's own MP's citizen demand clusters.
+    getDemandClusters() {
+      return client.get<{ linked: boolean; data: MPDemandCluster[] }>('/mp/me/demand-clusters');
     },
 
-    // Get citizen signals
-    getCitizenSignals(mpId: string, params?: {
-      page?: number;
-      limit?: number;
-    }) {
-      return client.get<PaginatedResponse<MPCitizenSignal>>(`/mp/${mpId}/signals`, params);
-    },
-
-    // Generate constituency report
-    generateReport(mpId: string, params: {
-      type: 'PROGRESS' | 'FINANCIAL' | 'DEMAND' | 'SECTOR';
-      format?: 'PDF' | 'CSV' | 'JSON';
-      startDate?: string;
-      endDate?: string;
-      sector?: string;
-    }) {
-      return client.post<{ reportId: string; downloadUrl: string }>(`/mp/${mpId}/reports/generate`, params);
+    // Get the authenticated user's own MP's citizen signals.
+    getCitizenSignals(params?: { page?: number; limit?: number }) {
+      return client.get<PaginatedResponse<MPCitizenSignal> & { linked: boolean; pendingCount: number }>(
+        '/mp/me/signals',
+        params
+      );
     },
   };
 }

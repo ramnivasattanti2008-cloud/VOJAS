@@ -15,7 +15,7 @@ import {
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useMPConstituency } from '@/hooks/useMP';
+import { useMPConstituency, useMPFinancials, useMPCitizenSignals, useMPDemandClusters } from '@/hooks/useMP';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
 
@@ -43,6 +43,11 @@ export default function MPHomePage() {
   // Resolved server-side from the authenticated user's admin-linked MP
   // record (see apps/api/src/routes/mp.ts) — no client-supplied id.
   const { data: constituency, isLoading } = useMPConstituency();
+  const { data: financials } = useMPFinancials();
+  // Small limit=1 fetch — only the API's exact total/pendingCount aggregates
+  // are used here, not the fetched rows themselves.
+  const { data: signals } = useMPCitizenSignals({ limit: 1 });
+  const { data: demandData } = useMPDemandClusters();
 
   // Quick stats
   const stats = useMemo(() => [
@@ -186,18 +191,22 @@ export default function MPHomePage() {
                     </p>
                   </div>
 
-                  {/* Quick Metrics */}
+                  {/* Quick Metrics — real figures only. "Released" is null
+                      (shown as "Not available") until real RELEASE-type
+                      FinancialObservation rows exist; "Remaining" is a real
+                      derived balance (sanctioned minus spent), not a fixed
+                      15% placeholder. */}
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                     <div>
                       <p className="text-xs text-slate-500">Released</p>
                       <p className="text-lg font-semibold text-slate-900">
-                        {formatCurrency((constituency?.totalSanctioned ?? 0) * 0.85)}
+                        {financials?.totalReleased != null ? formatCurrency(financials.totalReleased) : 'Not available'}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">Remaining</p>
                       <p className="text-lg font-semibold text-slate-900">
-                        {formatCurrency((constituency?.totalSanctioned ?? 0) * 0.15)}
+                        {formatCurrency(Math.max((constituency?.totalSanctioned ?? 0) - (constituency?.totalSpent ?? 0), 0))}
                       </p>
                     </div>
                   </div>
@@ -222,18 +231,30 @@ export default function MPHomePage() {
               </div>
             </CardHeader>
             <CardBody>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {/* Sector breakdown would come from API */}
-                {Object.entries(SECTOR_LABELS).slice(0, 8).map(([key, label]) => {
-                  const count = Math.floor(Math.random() * 15) + 1; // Placeholder - would come from API
-                  return (
-                    <div key={key} className="text-center p-3 bg-slate-50 rounded-lg">
-                      <p className="text-2xl font-bold text-vojas-600">{count}</p>
-                      <p className="text-xs text-slate-500 mt-1 truncate">{label}</p>
-                    </div>
-                  );
-                })}
-              </div>
+              {isLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              ) : !constituency?.bySectorCount?.length ? (
+                <p className="text-sm text-slate-400 text-center py-4">No projects recorded yet</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {/* Real per-sector project counts (see GET /mp/me/constituency) */}
+                  {[...constituency.bySectorCount]
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 8)
+                    .map(({ sector, count }) => (
+                      <div key={sector} className="text-center p-3 bg-slate-50 rounded-lg">
+                        <p className="text-2xl font-bold text-vojas-600">{count}</p>
+                        <p className="text-xs text-slate-500 mt-1 truncate">
+                          {SECTOR_LABELS[sector] ?? sector}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              )}
             </CardBody>
           </Card>
 
@@ -323,7 +344,7 @@ export default function MPHomePage() {
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                   <div>
                     <p className="text-xs text-purple-600 font-medium">Active Signals</p>
-                    <p className="text-xl font-bold text-purple-700">24</p>
+                    <p className="text-xl font-bold text-purple-700">{signals?.total ?? 0}</p>
                   </div>
                   <Link href="/mp/signals">
                     <Button variant="secondary" size="sm">View All</Button>
@@ -332,7 +353,7 @@ export default function MPHomePage() {
                 <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                   <div>
                     <p className="text-xs text-amber-600 font-medium">Pending Review</p>
-                    <p className="text-xl font-bold text-amber-700">7</p>
+                    <p className="text-xl font-bold text-amber-700">{signals?.pendingCount ?? 0}</p>
                   </div>
                   <Link href="/mp/signals">
                     <Button variant="secondary" size="sm">Review</Button>
@@ -356,24 +377,29 @@ export default function MPHomePage() {
               </div>
             </CardHeader>
             <CardBody className="p-0">
-              <div className="divide-y divide-slate-100">
-                {[
-                  { sector: 'Roads', demand: '12 requests', intensity: 'HIGH' },
-                  { sector: 'Water Supply', demand: '8 requests', intensity: 'HIGH' },
-                  { sector: 'Healthcare', demand: '6 requests', intensity: 'MEDIUM' },
-                  { sector: 'Education', demand: '5 requests', intensity: 'MEDIUM' },
-                ].map((item, i) => (
-                  <div key={i} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{item.sector}</p>
-                      <p className="text-xs text-slate-500">{item.demand}</p>
-                    </div>
-                    <Badge variant={item.intensity === 'HIGH' ? 'danger' : 'warning'}>
-                      {item.intensity}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+              {!demandData?.data.length ? (
+                <p className="text-sm text-slate-400 text-center py-6">No citizen demands recorded yet</p>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {/* Real demand clusters (see GET /mp/me/demand-clusters), highest request count first */}
+                  {[...demandData.data]
+                    .sort((a, b) => b.requestCount - a.requestCount)
+                    .slice(0, 4)
+                    .map((item) => (
+                      <div key={item.id} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50">
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">
+                            {SECTOR_LABELS[item.sector] ?? item.sector}
+                          </p>
+                          <p className="text-xs text-slate-500">{item.requestCount} requests</p>
+                        </div>
+                        <Badge variant={item.intensity === 'HIGH' ? 'danger' : item.intensity === 'MEDIUM' ? 'warning' : 'success'}>
+                          {item.intensity}
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+              )}
             </CardBody>
           </Card>
         </div>

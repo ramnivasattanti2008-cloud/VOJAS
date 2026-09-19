@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { ExportButton } from '@/components/ui/ExportButton';
+import { DEFAULT_OPTIONS, ExportButton } from '@/components/ui/ExportButton';
 import { useMPFinancials } from '@/hooks/useMP';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
@@ -138,8 +138,11 @@ export default function MPFinancePage() {
             Budget allocation and expenditure tracking
           </p>
         </div>
+        {/* No /export/financials backend route exists (and MP-role users
+            have no admin.manage permission for /export/* even if it did) —
+            offer only the real, working print-to-PDF option. */}
         <ExportButton
-          csvEndpoint={`${process.env.NEXT_PUBLIC_API_URL}/api/v1/export/financials`}
+          options={DEFAULT_OPTIONS.filter((o) => o.format === 'pdf')}
           filenameHint="mp-financials"
         />
       </div>

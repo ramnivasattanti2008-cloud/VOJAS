@@ -8,13 +8,12 @@
 import { useState, useMemo } from 'react';
 import {
   Target, MapPin, Users, AlertTriangle, CheckCircle2,
-  X, ArrowUpRight, ChevronRight, Activity
+  X, ChevronRight, Activity
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useMPDemandClusters } from '@/hooks/useMP';
-import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { ProjectSector } from '@vojas/shared';
 
@@ -37,10 +36,12 @@ const SECTOR_LABELS: Partial<Record<ProjectSector, string>> = {
   PUBLIC_SAFETY: 'Public Safety',
 };
 
+// Every demand cluster here is derived from real citizen Report rows (see
+// GET /mp/me/demand-clusters) — there is no "official requirement" or
+// "administrative priority" source in the schema, so only the one real
+// category is offered.
 const DEMAND_TYPES = [
   { id: 'CITIZEN', label: 'Citizen Demand', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
-  { id: 'OFFICIAL', label: 'Official Requirement', color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200' },
-  { id: 'ADMIN', label: 'Administrative Priority', color: 'text-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-200' },
 ];
 
 const INTENSITY_CONFIG = {
@@ -49,36 +50,21 @@ const INTENSITY_CONFIG = {
   HIGH: { variant: 'danger' as const, label: 'High', color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
-const mockDemands = [
-  { id: '1', location: 'Ward 5, Mainpuri', requestCount: 45, sector: 'TRANSPORT', primaryIssue: 'Road construction needed', intensity: 'HIGH' as const, type: 'CITIZEN' as const },
-  { id: '2', location: 'Block A, Rural', requestCount: 32, sector: 'WATER_SANITATION', primaryIssue: 'Clean water supply', intensity: 'HIGH' as const, type: 'CITIZEN' as const },
-  { id: '3', location: 'District HQ', requestCount: 28, sector: 'HEALTH', primaryIssue: 'Primary health center upgrade', intensity: 'MEDIUM' as const, type: 'OFFICIAL' as const },
-  { id: '4', location: 'Village Cluster 3', requestCount: 24, sector: 'EDUCATION', primaryIssue: 'Secondary school construction', intensity: 'MEDIUM' as const, type: 'CITIZEN' as const },
-  { id: '5', location: 'Industrial Area', requestCount: 18, sector: 'ENERGY', primaryIssue: 'Power supply improvement', intensity: 'MEDIUM' as const, type: 'OFFICIAL' as const },
-  { id: '6', location: 'Township B', requestCount: 15, sector: 'HOUSING', primaryIssue: 'Affordable housing scheme', intensity: 'LOW' as const, type: 'ADMIN' as const },
-  { id: '7', location: 'Gram Panchayat D', requestCount: 12, sector: 'AGRICULTURE', primaryIssue: 'Irrigation facilities', intensity: 'LOW' as const, type: 'CITIZEN' as const },
-  { id: '8', location: 'Urban Ward 12', requestCount: 10, sector: 'ENVIRONMENT', primaryIssue: 'Solid waste management', intensity: 'LOW' as const, type: 'ADMIN' as const },
-];
-
 export default function MPDemandPage() {
-  const { user } = useAuth();
-  const mpId = (user as any)?.mpId ?? 'current-mp';
-  useMPDemandClusters(mpId);
+  const { data, isLoading } = useMPDemandClusters();
 
-  const [filterType, setFilterType] = useState<string>('');
   const [filterIntensity, setFilterIntensity] = useState<string>('');
   const [filterSector, setFilterSector] = useState<string>('');
 
-  const demands = mockDemands;
+  const demands = useMemo(() => data?.data ?? [], [data]);
 
   const filteredDemands = useMemo(() => {
     return demands.filter((d) => {
-      if (filterType && d.type !== filterType) return false;
       if (filterIntensity && d.intensity !== filterIntensity) return false;
       if (filterSector && d.sector !== filterSector) return false;
       return true;
     });
-  }, [demands, filterType, filterIntensity, filterSector]);
+  }, [demands, filterIntensity, filterSector]);
 
   const byIntensity = useMemo(() => ({
     HIGH: filteredDemands.filter((d) => d.intensity === 'HIGH'),
@@ -97,12 +83,11 @@ export default function MPDemandPage() {
   }, [filteredDemands]);
 
   const clearFilters = () => {
-    setFilterType('');
     setFilterIntensity('');
     setFilterSector('');
   };
 
-  const hasFilters = !!(filterType || filterIntensity || filterSector);
+  const hasFilters = !!(filterIntensity || filterSector);
 
   return (
     <div className="space-y-6">
@@ -132,9 +117,7 @@ export default function MPDemandPage() {
                   <h3 className={cn('font-semibold', type.color)}>{type.label}</h3>
                 </div>
                 <p className="text-xs text-slate-600">
-                  {type.id === 'CITIZEN' && 'Direct requests from constituency residents through official channels'}
-                  {type.id === 'OFFICIAL' && 'Requirements identified by government departments and officials'}
-                  {type.id === 'ADMIN' && 'Priorities set by administrative decisions and policy mandates'}
+                  Direct requests from constituency residents through official channels
                 </p>
               </div>
             ))}
@@ -215,16 +198,6 @@ export default function MPDemandPage() {
             <CardBody className="p-0">
               <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap gap-2">
                 <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-vojas-500"
-                >
-                  <option value="">All Types</option>
-                  {DEMAND_TYPES.map((t) => (
-                    <option key={t.id} value={t.id}>{t.label}</option>
-                  ))}
-                </select>
-                <select
                   value={filterIntensity}
                   onChange={(e) => setFilterIntensity(e.target.value)}
                   className="px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-vojas-500"
@@ -247,15 +220,20 @@ export default function MPDemandPage() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {filteredDemands.length === 0 ? (
+                {isLoading ? (
+                  <div className="p-4 space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-16 bg-slate-100 rounded animate-pulse" />
+                    ))}
+                  </div>
+                ) : filteredDemands.length === 0 ? (
                   <div className="py-12 text-center text-slate-400">
                     <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No demands match your filters</p>
+                    <p>{demands.length === 0 ? 'No citizen demands recorded yet' : 'No demands match your filters'}</p>
                   </div>
                 ) : (
                   filteredDemands.map((demand) => {
                     const intensity = INTENSITY_CONFIG[demand.intensity];
-                    const typeInfo = DEMAND_TYPES.find((t) => t.id === demand.type);
 
                     return (
                       <div key={demand.id} className="px-5 py-4 hover:bg-slate-50 transition-colors">
@@ -274,7 +252,6 @@ export default function MPDemandPage() {
                             </div>
                             <div className="flex items-center gap-3">
                               <Badge variant="neutral">{SECTOR_LABELS[demand.sector as ProjectSector] ?? demand.sector}</Badge>
-                              <Badge variant="neutral" className={cn('text-xs', typeInfo?.color)}>{typeInfo?.label}</Badge>
                               <span className="text-sm text-slate-600 flex items-center gap-1">
                                 <Users className="h-3 w-3" />
                                 {demand.requestCount} requests
@@ -323,23 +300,6 @@ export default function MPDemandPage() {
                   );
                 })}
               </div>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-slate-900">Quick Actions</h2>
-            </CardHeader>
-            <CardBody className="space-y-3">
-              <Button variant="secondary" className="w-full justify-start" leftIcon={<Target className="h-4 w-4" />}>
-                Generate Demand Report
-              </Button>
-              <Button variant="secondary" className="w-full justify-start" leftIcon={<MapPin className="h-4 w-4" />}>
-                View Cluster Map
-              </Button>
-              <Button variant="secondary" className="w-full justify-start" leftIcon={<ArrowUpRight className="h-4 w-4" />}>
-                Submit to Ministry
-              </Button>
             </CardBody>
           </Card>
         </div>

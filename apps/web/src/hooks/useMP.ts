@@ -35,11 +35,10 @@ export interface MPProjectFilters {
   limit?: number;
 }
 
-export function useMPProjects(mpId: string | null | undefined, filters?: MPProjectFilters) {
+export function useMPProjects(filters?: MPProjectFilters) {
   return useQuery({
-    queryKey: ['mp', mpId, 'projects', filters],
-    queryFn: () => mpApi.getProjects(mpId!, filters),
-    enabled: !!mpId,
+    queryKey: ['mp', 'me', 'projects', filters],
+    queryFn: () => mpApi.getProjects(filters),
   });
 }
 
@@ -56,30 +55,18 @@ export function useMPFinancials() {
 
 // ── MP Demand Clusters ─────────────────────────────────────────────────────────
 
-export function useMPDemandClusters(mpId: string | null | undefined) {
+export function useMPDemandClusters() {
   return useQuery({
-    queryKey: ['mp', mpId, 'demands'],
-    queryFn: () => mpApi.getDemandClusters(mpId!),
-    enabled: !!mpId,
+    queryKey: ['mp', 'me', 'demands'],
+    queryFn: () => mpApi.getDemandClusters(),
   });
 }
 
 // ── MP Citizen Signals ─────────────────────────────────────────────────────────
 
-export function useMPCitizenSignals(mpId: string | null | undefined, params?: { page?: number; limit?: number }) {
+export function useMPCitizenSignals(params?: { page?: number; limit?: number }) {
   return useQuery({
-    queryKey: ['mp', mpId, 'signals', params],
-    queryFn: () => mpApi.getCitizenSignals(mpId!, params),
-    enabled: !!mpId,
+    queryKey: ['mp', 'me', 'signals', params],
+    queryFn: () => mpApi.getCitizenSignals(params),
   });
-}
-
-// ── MP Reports ─────────────────────────────────────────────────────────────────
-
-export interface MPReportParams {
-  type: 'PROGRESS' | 'FINANCIAL' | 'DEMAND' | 'SECTOR';
-  format?: 'PDF' | 'CSV' | 'JSON';
-  startDate?: string;
-  endDate?: string;
-  sector?: string;
 }

@@ -2,20 +2,19 @@
 
 /**
  * MP Citizen Signals — M14
- * View and manage citizen reports, claims, and feedback.
+ * View real citizen reports linked to constituency projects.
  */
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Activity, AlertTriangle, CheckCircle2, Clock, X,
-  MapPin, MessageSquare, ExternalLink, Eye, CheckCheck
+  MapPin, ExternalLink
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useMPCitizenSignals } from '@/hooks/useMP';
-import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 import type { ProjectSector } from '@vojas/shared';
@@ -53,59 +52,40 @@ interface SignalStatusConfig {
   variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 }
 
-interface Signal {
-  id: string;
-  type: 'REPORT' | 'CLAIM' | 'FEEDBACK';
-  title: string;
-  description: string;
-  location: string;
-  sector: string;
-  status: string;
-  submittedAt: string;
-  projectId?: string;
-  projectName?: string;
-}
-
+// Every row here is a real citizen Report (see GET /mp/me/signals) — there
+// is no CLAIM/FEEDBACK source in the schema, so only the one real type is
+// offered rather than implying categories that never populate.
 const SIGNAL_TYPES: SignalTypeConfig[] = [
   { id: 'REPORT', label: 'Report', icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-50' },
-  { id: 'CLAIM', label: 'Claim', icon: MessageSquare, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-  { id: 'FEEDBACK', label: 'Feedback', icon: CheckCircle2, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
 ];
 
+// Covers every real ReportStatus enum value, not just a simplified subset —
+// an unmapped status would otherwise silently render as "Submitted".
 const SIGNAL_STATUSES: SignalStatusConfig[] = [
   { id: 'SUBMITTED', label: 'Submitted', variant: 'neutral' },
-  { id: 'REVIEWING', label: 'Under Review', variant: 'info' },
+  { id: 'RECEIVED', label: 'Received', variant: 'neutral' },
+  { id: 'ASSIGNED', label: 'Assigned', variant: 'info' },
+  { id: 'TRIAGED', label: 'Triaged', variant: 'info' },
+  { id: 'PROJECT_MATCHED', label: 'Project Matched', variant: 'info' },
+  { id: 'REVIEW_QUEUE', label: 'Review Queue', variant: 'info' },
+  { id: 'UNDER_VERIFICATION', label: 'Under Verification', variant: 'info' },
   { id: 'VERIFIED', label: 'Verified', variant: 'success' },
   { id: 'ESCALATED', label: 'Escalated', variant: 'danger' },
   { id: 'RESOLVED', label: 'Resolved', variant: 'success' },
-];
-
-const mockSignals: Signal[] = [
-  { id: '1', type: 'REPORT', title: 'Road condition deteriorating', description: 'The road near Sector 5 has developed multiple potholes and is dangerous for commuters. Several accidents have been reported in the past month.', location: 'Sector 5, Main Road', sector: 'TRANSPORT', status: 'SUBMITTED', submittedAt: '2026-09-06T10:30:00Z', projectId: 'p1', projectName: 'NH-48 Road Widening' },
-  { id: '2', type: 'CLAIM', title: 'Project not started as per schedule', description: 'The announced water supply project for Block B has not started even though 6 months have passed since the foundation stone ceremony.', location: 'Block B, Rural Area', sector: 'WATER_SANITATION', status: 'REVIEWING', submittedAt: '2026-09-05T14:15:00Z', projectId: 'p2', projectName: 'Rural Water Supply Scheme' },
-  { id: '3', type: 'FEEDBACK', title: 'Construction quality concerns', description: 'The newly built school building shows signs of poor construction. Walls have cracks and the paint is already peeling off.', location: 'Township Primary School', sector: 'EDUCATION', status: 'VERIFIED', submittedAt: '2026-09-04T09:00:00Z', projectId: 'p3', projectName: 'School Infrastructure Upgrade' },
-  { id: '4', type: 'REPORT', title: 'Healthcare facility understaffed', description: 'The primary health center in our area is severely understaffed. Only one doctor is available for the entire population of 10,000+ residents.', location: 'PHC, District HQ', sector: 'HEALTH', status: 'ESCALATED', submittedAt: '2026-09-03T16:45:00Z', projectId: 'p4', projectName: 'PHC Strengthening' },
-  { id: '5', type: 'CLAIM', title: 'Delay in fund release', description: 'Despite government approval, the funds for our village drainage project have not been released for 3 months now.', location: 'Gram Panchayat D', sector: 'PUBLIC_ADMIN', status: 'SUBMITTED', submittedAt: '2026-09-02T11:20:00Z' },
-  { id: '6', type: 'FEEDBACK', title: 'Solar panel installation completed', description: 'The solar street light installation project has been completed successfully. All 50 lights are working and the village is satisfied.', location: 'Village A', sector: 'ENERGY', status: 'RESOLVED', submittedAt: '2026-08-28T08:30:00Z', projectId: 'p6', projectName: 'Solar Street Lighting' },
-  { id: '7', type: 'REPORT', title: 'Bridge safety concerns', description: 'The old bridge connecting two villages has developed structural cracks. Heavy vehicles should be restricted immediately.', location: 'Village Connector Bridge', sector: 'TRANSPORT', status: 'REVIEWING', submittedAt: '2026-08-25T13:00:00Z', projectId: 'p7', projectName: 'Bridge Repair Work' },
-  { id: '8', type: 'CLAIM', title: 'Land dispute affecting project', description: 'The affordable housing project is stuck due to an ongoing land dispute. Neither the district administration nor the developer has provided any clarity.', location: 'Affordable Housing Site', sector: 'HOUSING', status: 'ESCALATED', submittedAt: '2026-08-20T10:15:00Z', projectId: 'p8', projectName: 'PM Awas Yojana' },
+  { id: 'DISMISSED', label: 'Dismissed', variant: 'neutral' },
 ];
 
 export default function MPSignalsPage() {
-  const { user } = useAuth();
-  const mpId = (user as { mpId?: string } | null)?.mpId ?? 'current-mp';
-  useMPCitizenSignals(mpId, { limit: 50 });
+  const { data, isLoading } = useMPCitizenSignals({ limit: 100 });
 
-  const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSector, setFilterSector] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const signals = mockSignals;
+  const signals = useMemo(() => data?.data ?? [], [data]);
 
   const filteredSignals = useMemo(() => {
     return signals.filter((s) => {
-      if (filterType && s.type !== filterType) return false;
       if (filterStatus && s.status !== filterStatus) return false;
       if (filterSector && s.sector !== filterSector) return false;
       if (searchQuery) {
@@ -113,30 +93,29 @@ export default function MPSignalsPage() {
         return (
           s.title.toLowerCase().includes(query) ||
           s.description.toLowerCase().includes(query) ||
-          s.location.toLowerCase().includes(query)
+          (s.location ?? '').toLowerCase().includes(query)
         );
       }
       return true;
     });
-  }, [signals, filterType, filterStatus, filterSector, searchQuery]);
+  }, [signals, filterStatus, filterSector, searchQuery]);
 
+  // Total/Pending come from the API's exact counts (not limited to this
+  // page's fetch size); the rest are real but scoped to the fetched batch.
   const stats = useMemo(() => ({
-    total: signals.length,
-    reports: signals.filter((s) => s.type === 'REPORT').length,
-    claims: signals.filter((s) => s.type === 'CLAIM').length,
-    feedback: signals.filter((s) => s.type === 'FEEDBACK').length,
-    pending: signals.filter((s) => s.status === 'SUBMITTED').length,
+    total: data?.total ?? 0,
+    pending: data?.pendingCount ?? 0,
     escalated: signals.filter((s) => s.status === 'ESCALATED').length,
-  }), [signals]);
+    resolved: signals.filter((s) => s.status === 'RESOLVED').length,
+  }), [data, signals]);
 
   const clearFilters = () => {
-    setFilterType('');
     setFilterStatus('');
     setFilterSector('');
     setSearchQuery('');
   };
 
-  const hasFilters = !!(filterType || filterStatus || filterSector || searchQuery);
+  const hasFilters = !!(filterStatus || filterSector || searchQuery);
 
   const getSignalTypeConfig = (type: string): SignalTypeConfig => {
     return SIGNAL_TYPES.find((t) => t.id === type) ?? SIGNAL_TYPES[0];
@@ -174,33 +153,6 @@ export default function MPSignalsPage() {
         <Card>
           <CardBody className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <span className="text-xs text-slate-500">Reports</span>
-            </div>
-            <p className="text-2xl font-bold text-red-600">{stats.reports}</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <MessageSquare className="h-4 w-4 text-blue-600" />
-              <span className="text-xs text-slate-500">Claims</span>
-            </div>
-            <p className="text-2xl font-bold text-blue-600">{stats.claims}</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span className="text-xs text-slate-500">Feedback</span>
-            </div>
-            <p className="text-2xl font-bold text-emerald-600">{stats.feedback}</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center gap-2 mb-1">
               <Clock className="h-4 w-4 text-amber-600" />
               <span className="text-xs text-slate-500">Pending</span>
             </div>
@@ -214,6 +166,15 @@ export default function MPSignalsPage() {
               <span className="text-xs text-slate-500">Escalated</span>
             </div>
             <p className="text-2xl font-bold text-red-600">{stats.escalated}</p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs text-slate-500">Resolved</span>
+            </div>
+            <p className="text-2xl font-bold text-emerald-600">{stats.resolved}</p>
           </CardBody>
         </Card>
       </div>
@@ -230,17 +191,6 @@ export default function MPSignalsPage() {
                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-500"
               />
             </div>
-
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-vojas-500"
-            >
-              <option value="">All Types</option>
-              {SIGNAL_TYPES.map((t) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
 
             <select
               value={filterStatus}
@@ -286,10 +236,16 @@ export default function MPSignalsPage() {
         </CardHeader>
         <CardBody className="p-0">
           <div className="divide-y divide-slate-100">
-            {filteredSignals.length === 0 ? (
+            {isLoading ? (
+              <div className="p-4 space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-16 bg-slate-100 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : filteredSignals.length === 0 ? (
               <div className="py-12 text-center text-slate-400">
                 <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No signals match your filters</p>
+                <p>{signals.length === 0 ? 'No citizen reports linked to your projects yet' : 'No signals match your filters'}</p>
               </div>
             ) : (
               filteredSignals.map((signal) => {
@@ -315,11 +271,15 @@ export default function MPSignalsPage() {
 
                         <div className="flex flex-wrap items-center gap-3 text-xs">
                           <Badge variant="neutral">{typeConfig.label}</Badge>
-                          <span className="flex items-center gap-1 text-slate-500">
-                            <MapPin className="h-3 w-3" />
-                            {signal.location}
-                          </span>
-                          <Badge variant="neutral">{SECTOR_LABELS[signal.sector as ProjectSector] ?? signal.sector}</Badge>
+                          {signal.location && (
+                            <span className="flex items-center gap-1 text-slate-500">
+                              <MapPin className="h-3 w-3" />
+                              {signal.location}
+                            </span>
+                          )}
+                          {signal.sector && (
+                            <Badge variant="neutral">{SECTOR_LABELS[signal.sector as ProjectSector] ?? signal.sector}</Badge>
+                          )}
                           <span className="text-slate-400">
                             {new Date(signal.submittedAt).toLocaleDateString('en-IN', {
                               day: 'numeric',
@@ -336,19 +296,6 @@ export default function MPSignalsPage() {
                               {signal.projectName}
                             </Link>
                           </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col gap-2 shrink-0">
-                        {signal.status === 'SUBMITTED' && (
-                          <Button variant="secondary" size="sm">
-                            <Eye className="h-3 w-3" />
-                          </Button>
-                        )}
-                        {signal.status === 'REVIEWING' && (
-                          <Button variant="secondary" size="sm">
-                            <CheckCheck className="h-3 w-3" />
-                          </Button>
                         )}
                       </div>
                     </div>

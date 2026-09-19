@@ -8,7 +8,6 @@
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { useAuth } from '@/hooks/useAuth';
 import { useMPProjects } from '@/hooks/useMP';
 import { formatCurrency } from '@/lib/utils';
 import { ProjectStatus } from '@vojas/shared';
@@ -49,8 +48,6 @@ const STATUS_COLORS: Record<string, { fill: string; stroke: string; label: strin
 
 export default function MPMapPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const mpId = (user as any)?.mpId ?? 'current-mp';
 
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [hoveredProject, setHoveredProject] = useState<any>(null);
@@ -62,8 +59,9 @@ export default function MPMapPage() {
   });
   const [filterStatus, setFilterStatus] = useState<string>('');
 
-  // Fetch all projects for the constituency
-  const { data, isLoading } = useMPProjects(mpId, { limit: 500 });
+  // Fetch all projects for the constituency — resolved server-side from the
+  // authenticated user's admin-linked MP record.
+  const { data, isLoading } = useMPProjects({ limit: 500 });
   const projects = data?.data ?? [];
 
   // Filter projects

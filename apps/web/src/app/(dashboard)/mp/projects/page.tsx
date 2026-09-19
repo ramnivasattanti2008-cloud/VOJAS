@@ -14,9 +14,8 @@ import {
 import { Card, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { ExportButton } from '@/components/ui/ExportButton';
+import { DEFAULT_OPTIONS, ExportButton } from '@/components/ui/ExportButton';
 import { useMPProjects, type MPProjectFilters } from '@/hooks/useMP';
-import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ProjectSector, ProjectStatus } from '@vojas/shared';
 
@@ -58,8 +57,6 @@ type SortDirection = 'asc' | 'desc';
 
 export default function MPProjectsPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const mpId = (user as any)?.mpId ?? 'current-mp';
 
   // Filters
   const [filters, setFilters] = useState<MPProjectFilters>({});
@@ -69,8 +66,9 @@ export default function MPProjectsPage() {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  // Fetch projects
-  const { data, isLoading, error } = useMPProjects(mpId, {
+  // Fetch projects — resolved server-side from the authenticated user's
+  // admin-linked MP record (see apps/api/src/routes/mp.ts).
+  const { data, isLoading, error } = useMPProjects({
     ...filters,
     search: search || undefined,
   });
@@ -144,13 +142,26 @@ export default function MPProjectsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* /export/projects requires admin.manage, which no MP-role user
+              holds — offer only the real, working print-to-PDF option. */}
           <ExportButton
-            csvEndpoint={`${process.env.NEXT_PUBLIC_API_URL}/api/v1/export/projects`}
-            csvParams={{ mpId, status: filters?.status, sector: filters?.sector, district: filters?.district, search: filters?.search, page: filters?.page?.toString(), limit: filters?.limit?.toString() }}
+            options={DEFAULT_OPTIONS.filter((o) => o.format === 'pdf')}
             filenameHint="mp-projects"
           />
         </div>
       </div>
+
+      {data && !(data as { linked?: boolean }).linked && (
+        <Card>
+          <CardBody className="text-center py-8">
+            <Building2 className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+            <p className="text-sm font-medium text-slate-700">MP account not linked</p>
+            <p className="text-xs text-slate-500 mt-1">
+              This account has not yet been linked to an MP record by an administrator.
+            </p>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

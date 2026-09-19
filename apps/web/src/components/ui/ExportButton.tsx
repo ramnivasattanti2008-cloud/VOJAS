@@ -14,7 +14,7 @@ export interface ExportOption {
   description: string;
 }
 
-const DEFAULT_OPTIONS: ExportOption[] = [
+export const DEFAULT_OPTIONS: ExportOption[] = [
   {
     format: 'csv',
     label: 'Download CSV',

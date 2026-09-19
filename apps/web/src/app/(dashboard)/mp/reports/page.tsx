@@ -8,13 +8,13 @@
 import { useState } from 'react';
 import {
   FileText, Download, BarChart3, PieChart, TrendingUp,
-  Users, Calendar, Building2, AlertTriangle, CheckCircle2, Loader2
+  Users, Building2, Loader2, CheckCircle2
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/hooks/useAuth';
+import { useMPConstituency, useMPDemandClusters, useMPFinancials, useMPProjects } from '@/hooks/useMP';
 import { cn } from '@/lib/utils';
+import type { ReportRow } from '@/lib/pdf';
 import type { ProjectSector } from '@vojas/shared';
 
 const REPORT_TYPES = [
@@ -37,7 +37,7 @@ const REPORT_TYPES = [
   {
     id: 'DEMAND',
     label: 'Development Demand',
-    description: 'Citizen demands and service gaps analysis',
+    description: 'Citizen demand clusters by location and sector',
     icon: Users,
     color: 'text-purple-600',
     bgColor: 'bg-purple-50',
@@ -71,54 +71,148 @@ const SECTOR_LABELS: Partial<Record<ProjectSector, string>> = {
   PUBLIC_SAFETY: 'Public Safety',
 };
 
-// Recent reports (mock data)
-const recentReports = [
-  {
-    id: '1',
-    title: 'Q3 2026 Progress Report',
-    type: 'PROGRESS',
-    generatedAt: '2026-09-01T10:30:00Z',
-    format: 'PDF',
-    status: 'READY',
-  },
-  {
-    id: '2',
-    title: 'August Financial Summary',
-    type: 'FINANCIAL',
-    generatedAt: '2026-08-31T14:15:00Z',
-    format: 'PDF',
-    status: 'READY',
-  },
-  {
-    id: '3',
-    title: 'Rural Development Sector Analysis',
-    type: 'SECTOR',
-    generatedAt: '2026-08-25T09:00:00Z',
-    format: 'CSV',
-    status: 'READY',
-  },
-];
-
 export default function MPReportsPage() {
-  const { user } = useAuth();
-  const mpId = (user as any)?.mpId ?? 'current-mp';
+  const { data: constituency } = useMPConstituency();
+  const { data: financials } = useMPFinancials();
+  const { data: projectsData } = useMPProjects({ limit: 500 });
+  const { data: demandData } = useMPDemandClusters();
 
   const [selectedType, setSelectedType] = useState<string>('PROGRESS');
   const [selectedSector, setSelectedSector] = useState<string>('');
-  const [dateRange, setDateRange] = useState({
-    startDate: '2026-01-01',
-    endDate: '2026-09-30',
-  });
   const [selectedFormat, setSelectedFormat] = useState<'PDF' | 'CSV' | 'JSON'>('PDF');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedReport, setGeneratedReport] = useState<string | null>(null);
+  const [generatedFile, setGeneratedFile] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const projects = projectsData?.data ?? [];
+  const demandClusters = (selectedSector
+    ? demandData?.data.filter((d) => d.sector === selectedSector)
+    : demandData?.data) ?? [];
+  const bySector = (selectedSector
+    ? financials?.bySector.filter((s) => s.sector === selectedSector)
+    : financials?.bySector) ?? [];
+
+  const buildReport = () => {
+    switch (selectedType) {
+      case 'FINANCIAL':
+        return {
+          title: 'Constituency Financial Summary',
+          metrics: [
+            { label: 'Total Sanctioned', value: financials?.totalSanctioned ?? null, format: 'currency' as const },
+            { label: 'Total Released', value: financials?.totalReleased ?? null, format: 'currency' as const },
+            { label: 'Total Spent', value: financials?.totalSpent ?? null, format: 'currency' as const },
+            { label: 'Utilization', value: financials?.utilizationPercent ?? null, format: 'percent' as const },
+          ],
+          table: {
+            columns: [
+              { key: 'sector', header: 'Sector' },
+              { key: 'sanctioned', header: 'Sanctioned', align: 'right' as const, format: 'currency' as const },
+              { key: 'spent', header: 'Spent', align: 'right' as const, format: 'currency' as const },
+              { key: 'utilization', header: 'Utilization %', align: 'right' as const, format: 'percent' as const },
+            ],
+            rows: bySector.map((s): ReportRow => ({ ...s })),
+            emptyMessage: 'No sector-wise financial data available yet.',
+          },
+        };
+      case 'DEMAND':
+        return {
+          title: 'Development Demand Report',
+          metrics: [
+            { label: 'Demand Clusters', value: demandClusters.length, format: 'number' as const },
+            { label: 'Total Requests', value: demandClusters.reduce((sum, d) => sum + d.requestCount, 0), format: 'number' as const },
+          ],
+          table: {
+            columns: [
+              { key: 'location', header: 'Location' },
+              { key: 'sector', header: 'Sector' },
+              { key: 'requestCount', header: 'Requests', align: 'right' as const, format: 'number' as const },
+              { key: 'intensity', header: 'Priority' },
+              { key: 'primaryIssue', header: 'Primary Issue' },
+            ],
+            rows: demandClusters.map((d): ReportRow => ({
+              id: d.id,
+              location: d.location,
+              sector: d.sector,
+              requestCount: d.requestCount,
+              intensity: d.intensity,
+              primaryIssue: d.primaryIssue,
+            })),
+            emptyMessage: 'No citizen demand clusters recorded yet.',
+          },
+        };
+      case 'SECTOR': {
+        const countBySector = new Map((constituency?.bySectorCount ?? []).map((s) => [s.sector, s.count]));
+        return {
+          title: 'Sector Performance Summary',
+          metrics: [
+            { label: 'Sectors Covered', value: bySector.length, format: 'number' as const },
+          ],
+          table: {
+            columns: [
+              { key: 'sector', header: 'Sector' },
+              { key: 'projects', header: 'Projects', align: 'right' as const, format: 'number' as const },
+              { key: 'sanctioned', header: 'Sanctioned', align: 'right' as const, format: 'currency' as const },
+              { key: 'spent', header: 'Spent', align: 'right' as const, format: 'currency' as const },
+              { key: 'utilization', header: 'Utilization %', align: 'right' as const, format: 'percent' as const },
+            ],
+            rows: bySector.map((s): ReportRow => ({ ...s, projects: countBySector.get(s.sector) ?? 0 })),
+            emptyMessage: 'No sector-wise data available yet.',
+          },
+        };
+      }
+      case 'PROGRESS':
+      default:
+        return {
+          title: 'Constituency Progress Report',
+          metrics: [
+            { label: 'Total Projects', value: constituency?.totalProjects ?? null, format: 'number' as const },
+            { label: 'Completed', value: constituency?.completedProjects ?? null, format: 'number' as const },
+            { label: 'In Progress', value: constituency?.inProgressProjects ?? null, format: 'number' as const },
+            { label: 'Needs Attention', value: constituency?.attentionNeeded ?? null, format: 'number' as const },
+          ],
+          table: {
+            columns: [
+              { key: 'name', header: 'Project' },
+              { key: 'sector', header: 'Sector' },
+              { key: 'district', header: 'District' },
+              { key: 'status', header: 'Status' },
+              { key: 'sanctionedAmount', header: 'Sanctioned', align: 'right' as const, format: 'currency' as const },
+              { key: 'progressPercent', header: 'Progress %', align: 'right' as const, format: 'percent' as const },
+            ],
+            rows: projects.map((p): ReportRow => ({ ...p })),
+            emptyMessage: 'No projects recorded for your constituency yet.',
+          },
+        };
+    }
+  };
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
-    // Simulate report generation
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setGeneratedReport('report-' + Date.now() + '.pdf');
-    setIsGenerating(false);
+    setGenerateError(null);
+    try {
+      const report = buildReport();
+      const filenameBase = `MP-${selectedType}-Report-${new Date().toISOString().slice(0, 10)}`;
+
+      if (selectedFormat === 'PDF') {
+        const { generateTableReportPdf } = await import('@/lib/pdf');
+        const filename = await generateTableReportPdf({
+          title: report.title,
+          metrics: report.metrics,
+          table: report.table,
+        });
+        setGeneratedFile(filename);
+      } else if (selectedFormat === 'CSV') {
+        downloadCsv(`${filenameBase}.csv`, report.table.columns, report.table.rows);
+        setGeneratedFile(`${filenameBase}.csv`);
+      } else {
+        downloadJson(`${filenameBase}.json`, { title: report.title, metrics: report.metrics, rows: report.table.rows });
+        setGeneratedFile(`${filenameBase}.json`);
+      }
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Failed to generate report');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const currentReportType = REPORT_TYPES.find((t) => t.id === selectedType);
@@ -181,36 +275,8 @@ export default function MPReportsPage() {
               <h2 className="text-lg font-semibold text-slate-900">Report Options</h2>
             </CardHeader>
             <CardBody className="space-y-4">
-              {/* Date Range */}
-              <div>
-                <label className="text-sm font-medium text-slate-700 block mb-2">
-                  <Calendar className="h-4 w-4 inline mr-1" />
-                  Date Range
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-slate-500 block mb-1">From</label>
-                    <input
-                      type="date"
-                      value={dateRange.startDate}
-                      onChange={(e) => setDateRange((r) => ({ ...r, startDate: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-500 block mb-1">To</label>
-                    <input
-                      type="date"
-                      value={dateRange.endDate}
-                      onChange={(e) => setDateRange((r) => ({ ...r, endDate: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Sector Filter (for sector-specific reports) */}
-              {selectedType === 'SECTOR' && (
+              {/* Sector Filter (for sector- and demand-specific reports) */}
+              {(selectedType === 'SECTOR' || selectedType === 'DEMAND') && (
                 <div>
                   <label className="text-sm font-medium text-slate-700 block mb-2">
                     <Building2 className="h-4 w-4 inline mr-1" />
@@ -263,19 +329,24 @@ export default function MPReportsPage() {
                 </Button>
               </div>
 
-              {/* Generated Report Download */}
-              {generatedReport && (
+              {/* Confirmation — the file has already been saved to the
+                  browser's downloads by this point, there is nothing left
+                  to click; a second "Download" button would do nothing. */}
+              {generatedFile && (
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-emerald-800">Report Ready!</p>
-                      <p className="text-xs text-emerald-600">{generatedReport}</p>
+                      <p className="text-sm font-medium text-emerald-800">Report downloaded</p>
+                      <p className="text-xs text-emerald-600">{generatedFile}</p>
                     </div>
-                    <Button size="sm" variant="secondary">
-                      Download
-                    </Button>
                   </div>
+                </div>
+              )}
+              {generateError && (
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-sm font-medium text-red-800">Could not generate report</p>
+                  <p className="text-xs text-red-600 mt-0.5">{generateError}</p>
                 </div>
               )}
             </CardBody>
@@ -304,8 +375,8 @@ export default function MPReportsPage() {
                         <>
                           <li>• All project statuses</li>
                           <li>• Progress percentages</li>
-                          <li>• Timeline information</li>
-                          <li>• Risk indicators</li>
+                          <li>• Sanctioned amounts by project</li>
+                          <li>• Sector &amp; district breakdown</li>
                         </>
                       )}
                       {selectedType === 'FINANCIAL' && (
@@ -318,18 +389,16 @@ export default function MPReportsPage() {
                       )}
                       {selectedType === 'DEMAND' && (
                         <>
-                          <li>• Citizen demands</li>
-                          <li>• Demand clusters</li>
-                          <li>• Service gaps</li>
-                          <li>• Geographic distribution</li>
+                          <li>• Citizen demand clusters by location</li>
+                          <li>• Request counts per cluster</li>
+                          <li>• Priority intensity</li>
                         </>
                       )}
                       {selectedType === 'SECTOR' && (
                         <>
-                          <li>• Sector performance</li>
-                          <li>• Project counts</li>
-                          <li>• Financial summaries</li>
-                          <li>• Trend analysis</li>
+                          <li>• Project counts by sector</li>
+                          <li>• Sanctioned &amp; spent amounts</li>
+                          <li>• Utilization rates</li>
                         </>
                       )}
                     </ul>
@@ -339,46 +408,61 @@ export default function MPReportsPage() {
             </CardBody>
           </Card>
 
-          {/* Recent Reports */}
+          {/* Reports are generated and downloaded directly in the browser —
+              nothing is stored server-side, so there is no report history
+              to list here. */}
           <Card>
             <CardHeader>
-              <h3 className="font-semibold text-slate-900">Recent Reports</h3>
+              <h3 className="font-semibold text-slate-900">About These Reports</h3>
             </CardHeader>
-            <CardBody className="p-0">
-              <div className="divide-y divide-slate-100">
-                {recentReports.map((report) => {
-                  const typeInfo = REPORT_TYPES.find((t) => t.id === report.type);
-                  return (
-                    <div key={report.id} className="px-4 py-3 hover:bg-slate-50">
-                      <div className="flex items-start gap-3">
-                        <div className={cn('w-8 h-8 rounded flex items-center justify-center', typeInfo?.bgColor)}>
-                          <FileText className={cn('h-4 w-4', typeInfo?.color)} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate">{report.title}</p>
-                          <p className="text-xs text-slate-500">
-                            {new Date(report.generatedAt).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="neutral">{report.format}</Badge>
-                          <Button size="sm" variant="ghost">
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <CardBody>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Reports are generated on demand from your constituency&apos;s
+                live data and downloaded directly to your device. Nothing is
+                stored on the server, so previously generated reports are not
+                listed here — regenerate a report at any time to get current
+                figures.
+              </p>
             </CardBody>
           </Card>
         </div>
       </div>
     </div>
   );
+}
+
+// ── Real, client-side CSV/JSON export — no backend endpoint needed for
+// data the browser already has, and no fabricated reportId/downloadUrl. ──
+
+function csvEscape(value: unknown): string {
+  const s = value == null ? '' : String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function triggerDownload(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadCsv(
+  filename: string,
+  columns: Array<{ key: string; header: string }>,
+  rows: Array<Record<string, unknown>>
+) {
+  const lines = [
+    columns.map((c) => csvEscape(c.header)).join(','),
+    ...rows.map((row) => columns.map((c) => csvEscape(row[c.key])).join(',')),
+  ];
+  triggerDownload(filename, lines.join('\n'), 'text/csv;charset=utf-8;');
+}
+
+function downloadJson(filename: string, data: unknown) {
+  triggerDownload(filename, JSON.stringify(data, null, 2), 'application/json;charset=utf-8;');
 }
