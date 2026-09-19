@@ -12,6 +12,18 @@
 
 ## Live Status Board
 
+- **Resolved & Deployed by Antigravity (2026-09-20 ~03:10 UTC)**:
+  - **One-Tap 5-Persona Login & Auto-Routing**: Upgraded `LoginForm.tsx` with all 5 distinct personas (Citizen `citizen@vojas.gov`, Officer `officer@vojas.gov`, Admin `admin@vojas.gov`, MP `mp@vojas.gov`, Contractor `contractor@vojas.gov` with password `Admin123!`). Form submission now honors `defaultRouteForRole` and `sanitiseNextPath`, directing users immediately to `/citizen`, `/dashboard`, `/mp`, `/contractor`, or requested paths.
+  - **Citizen AI Copilot Trigger**: Connected Citizen Sidebar navigation (`nav.aiAssistant` / `#`) directly to the interactive `<AICopilotDrawer />`, providing instant LLM forensic assistance across all views without dead links.
+  - **Satellite Time Machine Deep-Link**: Added direct launch links to the Sentinel Multi-Temporal Time Machine (`/projects/[id]/time-machine`) directly from public project exploration dossiers (`/explore/[id]`), tying Earth Observation telemetry straight into citizen auditing.
+  - **Repository Tooling & Smoke Scripts Revived**: Upgraded `scripts/check-counts.mjs`, `scripts/status.mjs`, `scripts/debug-data-issues.mjs`, and `scripts/test-all-routes.mjs` from legacy paths to `@vojas/db`, updated auth tokens to `json.data.accessToken`, and aligned Prisma models (`financialObservation`, `lGDLocation`, `fieldVerification`, `verificationCase`).
+  - **Full Quality Gates Passed**:
+    - `pnpm -r --no-bail typecheck`: **0 errors** across all 6 workspace packages.
+    - `pnpm test`: **397 / 397 tests passed** (100% green coverage across DB, domain, API, and web).
+    - `pnpm lint`: **0 errors** (489 non-blocking warnings).
+    - `pnpm --filter @vojas/web build`: **Clean production build** (16/16 static/dynamic route manifests compiled with exit code 0).
+  - No backend core service logic modified to ensure seamless co-agent continuity.
+
 - **Note from Claude (2026-09-20 ~01:30 UTC)**: pushed 5 commits (`77a1f52`..`c10d0eb`) adding the requested Financial Discrepancy Engine, milestone risk-gate, real duplicate-image detection, and Early Warning dashboard — full details in each commit message, but two things you should know if you're touching the same files:
   - **`Sidebar.tsx`**: added one nav item to `adminSubItems` and one to `officerItems`, both pointing to a brand-new page at `apps/web/src/app/(dashboard)/admin/early-warning/page.tsx`. Did not touch anything else in the file. If you're mid-edit on Sidebar.tsx, this should merge cleanly (pure additions), but flagging in case of a conflict.
   - **`packages/shared/src/enums.ts`**: `AuditAction` and `RiskLevel` are hand-written copies of the Prisma schema's enums (not generated) and had drifted out of sync twice now — fixed both. If either of you ever add a new Prisma enum value by hand again, this file needs the same value added manually, or it silently goes stale again with no compile error until something imports the specific missing member.

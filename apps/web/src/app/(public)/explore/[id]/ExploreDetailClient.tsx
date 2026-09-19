@@ -341,12 +341,20 @@ export function ExploreDetailClient() {
                 <strong>{t('risk.disparityDetected', 'DISPARITY WARNING')}:</strong> {disbursalRate}% funds released from treasury with only {groundVerifiedPercent}% verified physical footprint ({disparityGap}% disparity).
               </span>
             </div>
-            <button
-              onClick={() => setActiveTab('risk')}
-              className="text-[11px] font-bold text-rose-300 hover:text-white underline ml-2 shrink-0 cursor-pointer"
-            >
-              {t('risk.viewForensics', 'Inspect Forensics →')}
-            </button>
+            <div className="flex items-center gap-2.5 ml-2 shrink-0">
+              <Link
+                href={`/projects/${project.id}/time-machine`}
+                className="text-[11px] font-bold text-sky-300 hover:text-white underline cursor-pointer"
+              >
+                Time Machine 🛰️ →
+              </Link>
+              <button
+                onClick={() => setActiveTab('risk')}
+                className="text-[11px] font-bold text-rose-300 hover:text-white underline cursor-pointer"
+              >
+                {t('risk.viewForensics', 'Inspect Forensics →')}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -754,6 +762,15 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
               <p className="text-xs text-slate-300 leading-relaxed">
                 {auditResult.satelliteTelemetryVerdict.interpretation}
               </p>
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                <Link
+                  href={`/projects/${project.id}/time-machine`}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold text-sky-400 hover:text-sky-300 transition-colors"
+                >
+                  <Satellite className="w-3.5 h-3.5" />
+                  Launch Multi-Temporal Time Machine →
+                </Link>
+              </div>
             </div>
 
             {/* Vigilance Action Roadmap */}

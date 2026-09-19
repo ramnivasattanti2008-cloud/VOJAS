@@ -4,6 +4,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/Logo';
+import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
 import {
     Activity,
     AlertTriangle,
@@ -153,6 +154,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isContractor, isCitizen, isMP, isOfficer } = useAuth();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['/admin']));
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   // Determine which items to show based on role
   let items: NavItem[];
@@ -193,14 +195,23 @@ export function Sidebar() {
       (item.href !== '/' && pathname?.startsWith(item.href));
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.href);
+    const isCopilotTrigger = item.href === '#' || item.labelKey === 'nav.aiAssistant';
     const Icon = item.icon;
     const label = item.labelKey ? t(item.labelKey, item.label) : item.label;
 
     return (
       <div key={item.href}>
         <Link
-          href={hasChildren ? '#' : item.href}
-          onClick={hasChildren ? (e) => { e.preventDefault(); toggleExpanded(item.href); } : undefined}
+          href={hasChildren || isCopilotTrigger ? '#' : item.href}
+          onClick={(e) => {
+            if (isCopilotTrigger) {
+              e.preventDefault();
+              setCopilotOpen(true);
+            } else if (hasChildren) {
+              e.preventDefault();
+              toggleExpanded(item.href);
+            }
+          }}
           className={cn(
             'flex items-center gap-3 px-3 h-10 rounded-[10px] text-[14px] font-medium tracking-[-0.01em] transition-colors',
             isActive
@@ -258,6 +269,8 @@ export function Sidebar() {
       <div className="px-4 h-10 ios-hairline-t flex items-center text-[11px] text-[#8E8E93] font-medium tracking-[-0.01em] shrink-0">
         VOJAS 2.0
       </div>
+
+      <AICopilotDrawer isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </aside>
   );
 }

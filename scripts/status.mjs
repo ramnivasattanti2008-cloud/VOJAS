@@ -1,4 +1,4 @@
-import { prisma } from "../backend/src/config/database.js";
+import { prisma } from "@vojas/db";
 
 const bySource = await prisma.project.groupBy({
   by: ["source"],

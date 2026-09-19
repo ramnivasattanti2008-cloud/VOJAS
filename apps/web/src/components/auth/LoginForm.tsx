@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { defaultRouteForRole, sanitiseNextPath } from '@/lib/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { KeyRound, ShieldAlert, Sparkles, UserCheck } from 'lucide-react';
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,8 +21,10 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     try {
-      await login(email, password);
-      router.push('/dashboard');
+      const user = await login(email, password);
+      const next = searchParams.get('next');
+      const target = sanitiseNextPath(next) || defaultRouteForRole(user.role);
+      router.push(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please verify credentials.');
     }
@@ -50,31 +54,50 @@ export function LoginForm() {
       <div className="p-3 rounded-[16px] bg-[#F2F2F7] border border-black/[0.04] space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-[#007AFF]" /> One-Tap Demo Accounts
+            <Sparkles className="w-3 h-3 text-[#007AFF]" /> One-Tap Demo Personas
           </span>
           <span className="text-[10px] font-mono text-[#8E8E93]">PW: Admin123!</span>
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-5 gap-1">
           <button
             type="button"
             onClick={() => fillDemoAccount('citizen@vojas.gov')}
-            className="px-2 py-1.5 rounded-[10px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[11px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center"
+            className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
+            title="Citizen Persona"
           >
             Citizen
           </button>
           <button
             type="button"
             onClick={() => fillDemoAccount('officer@vojas.gov')}
-            className="px-2 py-1.5 rounded-[10px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[11px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center"
+            className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
+            title="Vigilance Officer Persona"
           >
             Officer
           </button>
           <button
             type="button"
             onClick={() => fillDemoAccount('admin@vojas.gov')}
-            className="px-2 py-1.5 rounded-[10px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[11px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center"
+            className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
+            title="System Administrator Persona"
           >
             Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => fillDemoAccount('mp@vojas.gov')}
+            className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
+            title="Member of Parliament Persona"
+          >
+            MP
+          </button>
+          <button
+            type="button"
+            onClick={() => fillDemoAccount('contractor@vojas.gov')}
+            className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
+            title="Executing Contractor Persona"
+          >
+            Vendor
           </button>
         </div>
       </div>
