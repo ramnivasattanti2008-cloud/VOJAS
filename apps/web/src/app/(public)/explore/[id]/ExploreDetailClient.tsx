@@ -216,7 +216,7 @@ export function ExploreDetailClient() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-white" />
-              <span>Ask AI Copilot</span>
+              <span>{t('common.aiCopilot', 'Ask AI Copilot')}</span>
             </button>
             <button
               type="button"
@@ -229,7 +229,7 @@ export function ExploreDetailClient() {
               ) : (
                 <Download className="w-3.5 h-3.5 text-vojas-600" />
               )}
-              <span>{pdfBusy ? 'Generating PDF...' : 'Download Report (PDF)'}</span>
+              <span>{pdfBusy ? t('projects.generatingPdf', 'Generating PDF...') : t('projects.downloadPdf', 'Download Report (PDF)')}</span>
             </button>
           </div>
         </div>
@@ -364,6 +364,7 @@ interface ForensicAuditResult {
 }
 
 function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
+  const { t } = useLanguage();
   const initialRisk = project.projectRisk;
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditStep, setAuditStep] = useState(0);
@@ -450,10 +451,10 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-slate-900">
-                  VOJAS Sentinel AI Forensic Audit
+                  {t('projects.aiAuditTitle', 'VOJAS Sentinel AI Forensic Audit')}
                 </h2>
                 <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-semibold">
-                  {auditResult ? 'LIVE AUDITED' : 'PRE-COMPUTED'}
+                  {auditResult ? t('projects.liveAudited', 'LIVE AUDITED') : t('projects.preComputed', 'PRE-COMPUTED')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -474,12 +475,12 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
               {isAuditing ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                  <span>Auditing Live...</span>
+                  <span>{t('projects.auditingLive', 'Auditing Live...')}</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Run Live LLM Audit</span>
+                  <span>{t('projects.runLiveAudit', 'Run Live LLM Audit')}</span>
                 </>
               )}
             </button>
@@ -601,14 +602,14 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
         {initialRisk && (
           <div className="space-y-2">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Multi-Signal Sub-Score Telemetry (0 = Safe, 100 = Max Disparity)
+              {t('projects.multiSignalTelemetry', 'Multi-Signal Sub-Score Telemetry (0 = Safe, 100 = Max Disparity)')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-              <SignalMeter label="Financial Utilization" score={initialRisk.financialScore ?? 0} />
-              <SignalMeter label="Milestone & Progress" score={initialRisk.progressScore ?? 0} />
-              <SignalMeter label="Satellite Observation" score={initialRisk.satelliteScore ?? 0} />
-              <SignalMeter label="Contractor Disparity" score={initialRisk.contractorScore ?? 0} />
-              <SignalMeter label="Geographic Integrity" score={initialRisk.geographicScore ?? 0} />
+              <SignalMeter label={t('projects.financialUtilization', 'Financial Utilization')} score={initialRisk.financialScore ?? 0} />
+              <SignalMeter label={t('projects.milestoneProgress', 'Milestone & Progress')} score={initialRisk.progressScore ?? 0} />
+              <SignalMeter label={t('projects.satelliteObservation', 'Satellite Observation')} score={initialRisk.satelliteScore ?? 0} />
+              <SignalMeter label={t('projects.contractorDisparity', 'Contractor Disparity')} score={initialRisk.contractorScore ?? 0} />
+              <SignalMeter label={t('projects.geographicIntegrity', 'Geographic Integrity')} score={initialRisk.geographicScore ?? 0} />
             </div>
           </div>
         )}
@@ -621,7 +622,7 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   <Satellite className="w-3.5 h-3.5 text-orange-600" />
-                  ISRO NavIC &amp; Optical Telemetry
+                  {t('projects.isroNavicOpticalTelemetry', 'ISRO NavIC & Optical Telemetry')}
                 </span>
                 <span
                   className={cn(
@@ -631,7 +632,9 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
                       : 'bg-rose-100 text-rose-800'
                   )}
                 >
-                  {auditResult.satelliteTelemetryVerdict.spectralChangeDetected ? 'OBSERVABLE CHANGE' : 'NO CHANGE DETECTED'}
+                  {auditResult.satelliteTelemetryVerdict.spectralChangeDetected
+                    ? t('projects.observableChange', 'OBSERVABLE CHANGE')
+                    : t('projects.noChangeDetected', 'NO CHANGE DETECTED')}
                 </span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
@@ -643,7 +646,7 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
             <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5 text-slate-600" />
-                Statutory Vigilance Roadmap
+                {t('projects.statutoryVigilanceRoadmap', 'Statutory Vigilance Roadmap')}
               </span>
               <div className="space-y-1.5">
                 {auditResult.actionPlan.map((action) => (
@@ -668,9 +671,11 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" />
-                Citizen Physical Ground Verification Checklist
+                {t('projects.citizenChecklist', 'Citizen Physical Ground Verification Checklist')}
               </span>
-              <span className="text-[10px] text-amber-700 font-medium">On-Site Social Audit</span>
+              <span className="text-[10px] text-amber-700 font-medium">
+                {t('projects.onSiteSocialAudit', 'On-Site Social Audit')}
+              </span>
             </div>
             <div className="space-y-1.5">
               {auditResult.citizenChecklist.map((item, idx) => (
@@ -803,6 +808,7 @@ const EVIDENCE_TYPE_LABEL: Record<string, string> = {
 };
 
 function TimelineTab({ projectId, active }: { projectId: string; active: boolean }) {
+  const { t } = useLanguage();
   const { data, isLoading } = usePublicProjectTimeline(projectId);
   const events = data?.data ?? [];
   const { data: evidenceFeed, isLoading: evidenceLoading } = usePublicProjectEvidence(projectId, active);
@@ -812,14 +818,16 @@ function TimelineTab({ projectId, active }: { projectId: string; active: boolean
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <h2 className="text-base font-semibold text-slate-800">Evidence &amp; Timeline</h2>
+          <h2 className="text-base font-semibold text-slate-800">
+            {t('projects.evidenceAndTimeline', 'Evidence & Timeline')}
+          </h2>
         </CardHeader>
         <CardBody>
           {isLoading ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Loading…</div>
+            <div className="text-center py-8 text-slate-400 text-sm">{t('common.loading', 'Loading…')}</div>
           ) : events.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-sm">
-              No recorded events available for this project yet.
+              {t('projects.noRecordedEvents', 'No recorded events available for this project yet.')}
             </div>
           ) : (
             <ol className="space-y-4">
@@ -844,14 +852,16 @@ function TimelineTab({ projectId, active }: { projectId: string; active: boolean
 
       <Card>
         <CardHeader>
-          <h2 className="text-base font-semibold text-slate-800">Unified Evidence Feed</h2>
+          <h2 className="text-base font-semibold text-slate-800">
+            {t('projects.unifiedEvidenceFeed', 'Unified Evidence Feed')}
+          </h2>
         </CardHeader>
         <CardBody>
           {evidenceLoading ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Loading…</div>
+            <div className="text-center py-8 text-slate-400 text-sm">{t('common.loading', 'Loading…')}</div>
           ) : evidenceItems.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-sm">
-              No public evidence recorded for this project yet.
+              {t('projects.noPublicEvidence', 'No public evidence recorded for this project yet.')}
             </div>
           ) : (
             <ol className="space-y-4">
@@ -893,6 +903,7 @@ function RiskTab({
   project: PublicProjectDetail;
   active: boolean;
 }) {
+  const { t } = useLanguage();
   const { data, isLoading } = usePublicProjectRisk(projectId, active);
   const findings = data?.findings ?? [];
 
@@ -908,11 +919,13 @@ function RiskTab({
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8 text-slate-400 text-sm">Loading…</div>
+        <div className="text-center py-8 text-slate-400 text-sm">{t('common.loading', 'Loading…')}</div>
       ) : findings.length === 0 ? (
         <Card>
           <CardBody>
-            <div className="text-center py-8 text-slate-400 text-sm">No active risk findings for this project.</div>
+            <div className="text-center py-8 text-slate-400 text-sm">
+              {t('projects.noRiskFindings', 'No active risk findings for this project.')}
+            </div>
           </CardBody>
         </Card>
       ) : (
@@ -961,30 +974,34 @@ function CitizenReportsSection({ project }: { project: PublicProjectDetail }) {
           <div>
             <p className="text-2xl font-bold text-slate-900">{project.reportCount}</p>
             <p className="text-xs text-slate-500 mt-0.5">
-              {project.reportCount === 1 ? 'verified citizen submission' : 'verified citizen submissions'}
+              {project.reportCount === 1
+                ? t('projects.verifiedSubmissionSingle', 'verified citizen submission')
+                : t('projects.verifiedSubmissionsPlural', 'verified citizen submissions')}
             </p>
           </div>
           <p className="text-xs text-slate-400 max-w-xs text-right">
-            Geotagged citizen evidence directly updates project anomaly detection and statutory audits.
+            {t('projects.citizenEvidenceSubtitle', 'Geotagged citizen evidence directly updates project anomaly detection and statutory audits.')}
           </p>
         </div>
 
         {isLoading ? (
           <div className="text-center py-6 text-slate-400 text-sm flex items-center justify-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin text-vojas-500" />
-            Loading project citizen reports…
+            {t('projects.loadingCitizenReports', 'Loading project citizen reports…')}
           </div>
         ) : reports.length === 0 ? (
           <div className="text-center py-6 text-slate-400 text-sm">
-            <p className="font-medium text-slate-600">No public discrepancy reports logged yet</p>
+            <p className="font-medium text-slate-600">
+              {t('projects.noReportsLogged', 'No public discrepancy reports logged yet')}
+            </p>
             <p className="text-xs text-slate-400 mt-1">
-              Citizens and community inspectors can submit on-site photographs and progress notes above.
+              {t('projects.reportsPrompt', 'Citizens and community inspectors can submit on-site photographs and progress notes above.')}
             </p>
           </div>
         ) : (
           <div className="space-y-3 pt-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Submitted Discrepancies ({reports.length})
+              {t('projects.submittedDiscrepancies', 'Submitted Discrepancies')} ({reports.length})
             </h3>
             {reports.map((r) => (
               <div
@@ -1016,7 +1033,7 @@ function CitizenReportsSection({ project }: { project: PublicProjectDetail }) {
         )}
 
         <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-100 pt-3">
-          Whistleblower identities are cryptographically protected. Personally identifiable contact details are kept strictly confidential.
+          {t('projects.whistleblowerNotice', 'Whistleblower identities are cryptographically protected. Personally identifiable contact details are kept strictly confidential.')}
         </p>
       </CardBody>
     </Card>

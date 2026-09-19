@@ -1,21 +1,53 @@
 'use client';
 
+import { useLanguage } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/auth-context';
+import { cn } from '@/lib/utils';
+import {
+    Activity,
+    AlertTriangle,
+    BarChart3, Bell,
+    Briefcase,
+    ChevronRight,
+    Cog, Cpu,
+    CreditCard,
+    Database,
+    DollarSign,
+    FileArchive,
+    FileBadge,
+    FileCheck2,
+    FileSearch,
+    FileText,
+    Flag,
+    FolderOpenDot,
+    HardHat,
+    Home,
+    Layers,
+    LayoutDashboard,
+    ListChecks,
+    Lock,
+    Map,
+    MapPin,
+    MessageSquare,
+    Play,
+    Satellite,
+    ScanSearch,
+    Settings,
+    Shield,
+    ShieldAlert,
+    Signal,
+    Sparkles,
+    Star,
+    Target,
+    Users,
+    type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard, FolderOpenDot, AlertTriangle, FileText, Settings,
-  ShieldAlert, ListChecks, ScanSearch, Map, BarChart3, Bell,
-  Users, Briefcase, FileArchive, Layers, Shield, type LucideIcon,
-  Flag, FileCheck2, CreditCard, MessageSquare, HardHat,
-  Home, FileBadge, MapPin, Star, Sparkles,
-  Activity, Database, Cog, Cpu, Satellite, Play, Lock, FileSearch,
-  ChevronRight, DollarSign, Target, Signal,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/lib/auth-context';
 import { useState } from 'react';
 
 interface NavItem {
+  labelKey?: string;
   label: string;
   href: string;
   icon: LucideIcon;
@@ -24,96 +56,97 @@ interface NavItem {
 
 // M14: Admin sub-navigation items
 const adminSubItems: NavItem[] = [
-  { label: 'System Control Center', href: '/admin', icon: Activity },
-  { label: 'Users', href: '/admin/users', icon: Users },
-  { label: 'Roles', href: '/admin/roles', icon: Lock },
-  { label: 'Data Sources', href: '/admin/data-sources', icon: Database },
-  { label: 'Rules', href: '/admin/rules', icon: Cog },
-  { label: 'AI Control', href: '/admin/ai', icon: Cpu },
-  { label: 'Satellites', href: '/admin/satellites', icon: Satellite },
-  { label: 'Jobs', href: '/admin/jobs', icon: Play },
-  { label: 'Health', href: '/admin/health', icon: Activity },
-  { label: 'Audit Logs', href: '/admin/audit', icon: FileSearch },
-  { label: 'Security', href: '/admin/security', icon: Shield },
+  { labelKey: 'nav.systemControlCenter', label: 'System Control Center', href: '/admin', icon: Activity },
+  { labelKey: 'nav.users', label: 'Users', href: '/admin/users', icon: Users },
+  { labelKey: 'nav.roles', label: 'Roles', href: '/admin/roles', icon: Lock },
+  { labelKey: 'nav.dataSources', label: 'Data Sources', href: '/admin/data-sources', icon: Database },
+  { labelKey: 'nav.rules', label: 'Rules', href: '/admin/rules', icon: Cog },
+  { labelKey: 'nav.aiControl', label: 'AI Control', href: '/admin/ai', icon: Cpu },
+  { labelKey: 'nav.satellites', label: 'Satellites', href: '/admin/satellites', icon: Satellite },
+  { labelKey: 'nav.jobs', label: 'Jobs', href: '/admin/jobs', icon: Play },
+  { labelKey: 'nav.health', label: 'Health', href: '/admin/health', icon: Activity },
+  { labelKey: 'nav.auditLogs', label: 'Audit Logs', href: '/admin/audit', icon: FileSearch },
+  { labelKey: 'nav.security', label: 'Security', href: '/admin/security', icon: Shield },
 ];
 
 // M14: MP Command Center sub-navigation items
 const mpSubItems: NavItem[] = [
-  { label: 'My Constituency', href: '/mp', icon: Home },
-  { label: 'Projects', href: '/mp/projects', icon: FolderOpenDot },
-  { label: 'Map', href: '/mp/map', icon: MapPin },
-  { label: 'Finance', href: '/mp/finance', icon: DollarSign },
-  { label: 'Reports', href: '/mp/reports', icon: FileText },
-  { label: 'Demand', href: '/mp/demand', icon: Target },
-  { label: 'Intel', href: '/mp/intel', icon: BarChart3 },
-  { label: 'Signals', href: '/mp/signals', icon: Signal },
+  { labelKey: 'nav.myConstituency', label: 'My Constituency', href: '/mp', icon: Home },
+  { labelKey: 'nav.projects', label: 'Projects', href: '/mp/projects', icon: FolderOpenDot },
+  { labelKey: 'nav.map', label: 'Map', href: '/mp/map', icon: MapPin },
+  { labelKey: 'nav.finance', label: 'Finance', href: '/mp/finance', icon: DollarSign },
+  { labelKey: 'nav.reports', label: 'Reports', href: '/mp/reports', icon: FileText },
+  { labelKey: 'nav.demand', label: 'Demand', href: '/mp/demand', icon: Target },
+  { labelKey: 'nav.intel', label: 'Intel', href: '/mp/intel', icon: BarChart3 },
+  { labelKey: 'nav.signals', label: 'Signals', href: '/mp/signals', icon: Signal },
 ];
 
 const adminItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Projects', href: '/projects', icon: FolderOpenDot },
-  { label: 'Map View', href: '/map-view', icon: Map },
-  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { label: 'Sectors', href: '/sectors', icon: Layers },
-  { label: 'Anomalies', href: '/anomalies', icon: AlertTriangle },
-  { label: 'Reports', href: '/reports', icon: FileText },
-  { label: 'Intelligence', href: '/intelligence', icon: ShieldAlert },
-  { label: 'Alerts', href: '/alerts', icon: ListChecks },
-  { label: 'Verification', href: '/verification', icon: ScanSearch },
-  { label: 'MPs', href: '/mps', icon: Users },
-  { label: 'Vendors', href: '/vendors', icon: Briefcase },
-  { label: 'Documents', href: '/documents', icon: FileArchive },
-  { label: 'Notifications', href: '/notifications', icon: Bell },
-  { label: 'Officer', href: '/officer', icon: Shield },
-  { label: 'Admin', href: '/admin', icon: Shield, children: adminSubItems },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { labelKey: 'nav.dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { labelKey: 'nav.projects', label: 'Projects', href: '/projects', icon: FolderOpenDot },
+  { labelKey: 'nav.map', label: 'Map View', href: '/map-view', icon: Map },
+  { labelKey: 'nav.analytics', label: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { labelKey: 'nav.assets', label: 'Sectors', href: '/sectors', icon: Layers },
+  { labelKey: 'nav.anomalies', label: 'Anomalies', href: '/anomalies', icon: AlertTriangle },
+  { labelKey: 'nav.reports', label: 'Reports', href: '/reports', icon: FileText },
+  { labelKey: 'nav.risk', label: 'Intelligence', href: '/intelligence', icon: ShieldAlert },
+  { labelKey: 'nav.notifications', label: 'Alerts', href: '/alerts', icon: ListChecks },
+  { labelKey: 'nav.inspections', label: 'Verification', href: '/verification', icon: ScanSearch },
+  { labelKey: 'nav.mps', label: 'MPs', href: '/mps', icon: Users },
+  { labelKey: 'nav.vendors', label: 'Vendors', href: '/vendors', icon: Briefcase },
+  { labelKey: 'nav.documents', label: 'Documents', href: '/documents', icon: FileArchive },
+  { labelKey: 'nav.notifications', label: 'Notifications', href: '/notifications', icon: Bell },
+  { labelKey: 'nav.officer', label: 'Officer', href: '/officer', icon: Shield },
+  { labelKey: 'nav.admin', label: 'Admin', href: '/admin', icon: Shield, children: adminSubItems },
+  { labelKey: 'nav.settings', label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 const contractorItems: NavItem[] = [
-  { label: 'My Projects', href: '/contractor', icon: HardHat },
-  { label: 'Milestones', href: '/contractor/milestones', icon: Flag },
-  { label: 'Documents', href: '/contractor/documents', icon: FileCheck2 },
-  { label: 'Payments', href: '/contractor/payments', icon: CreditCard },
-  { label: 'Issues', href: '/contractor/issues', icon: AlertTriangle },
-  { label: 'Responses', href: '/contractor/responses', icon: MessageSquare },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { labelKey: 'nav.contractorProjects', label: 'My Projects', href: '/contractor', icon: HardHat },
+  { labelKey: 'nav.milestones', label: 'Milestones', href: '/contractor/milestones', icon: Flag },
+  { labelKey: 'nav.documents', label: 'Documents', href: '/contractor/documents', icon: FileCheck2 },
+  { labelKey: 'nav.payments', label: 'Payments', href: '/contractor/payments', icon: CreditCard },
+  { labelKey: 'nav.issues', label: 'Issues', href: '/contractor/issues', icon: AlertTriangle },
+  { labelKey: 'nav.responses', label: 'Responses', href: '/contractor/responses', icon: MessageSquare },
+  { labelKey: 'nav.settings', label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 const citizenItems: NavItem[] = [
-  { label: 'Citizen Home', href: '/citizen', icon: Home },
-  { label: 'My Reports', href: '/citizen/reports', icon: FileBadge },
-  { label: 'Nearby Projects', href: '/citizen/projects', icon: MapPin },
-  { label: 'Watchlist', href: '/citizen/watchlist', icon: Star },
-  { label: 'AI Assistant', href: '#', icon: Sparkles },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { labelKey: 'nav.citizenHome', label: 'Citizen Home', href: '/citizen', icon: Home },
+  { labelKey: 'nav.myReports', label: 'My Reports', href: '/citizen/reports', icon: FileBadge },
+  { labelKey: 'nav.nearbyProjects', label: 'Nearby Projects', href: '/citizen/projects', icon: MapPin },
+  { labelKey: 'nav.watchlist', label: 'Watchlist', href: '/citizen/watchlist', icon: Star },
+  { labelKey: 'nav.aiAssistant', label: 'AI Assistant', href: '#', icon: Sparkles },
+  { labelKey: 'nav.settings', label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 // M14: MP Command Center items
 const mpItems: NavItem[] = [
-  { label: 'My Constituency', href: '/mp', icon: Home },
-  { label: 'Projects', href: '/mp/projects', icon: FolderOpenDot },
-  { label: 'Map', href: '/mp/map', icon: MapPin },
-  { label: 'Finance', href: '/mp/finance', icon: DollarSign },
-  { label: 'Reports', href: '/mp/reports', icon: FileText },
-  { label: 'Demand', href: '/mp/demand', icon: Target },
-  { label: 'Intel', href: '/mp/intel', icon: BarChart3 },
-  { label: 'Signals', href: '/mp/signals', icon: Signal },
+  { labelKey: 'nav.myConstituency', label: 'My Constituency', href: '/mp', icon: Home },
+  { labelKey: 'nav.projects', label: 'Projects', href: '/mp/projects', icon: FolderOpenDot },
+  { labelKey: 'nav.map', label: 'Map', href: '/mp/map', icon: MapPin },
+  { labelKey: 'nav.finance', label: 'Finance', href: '/mp/finance', icon: DollarSign },
+  { labelKey: 'nav.reports', label: 'Reports', href: '/mp/reports', icon: FileText },
+  { labelKey: 'nav.demand', label: 'Demand', href: '/mp/demand', icon: Target },
+  { labelKey: 'nav.intel', label: 'Intel', href: '/mp/intel', icon: BarChart3 },
+  { labelKey: 'nav.signals', label: 'Signals', href: '/mp/signals', icon: Signal },
 ];
 
 // M14: Officer Command Center items
 const officerItems: NavItem[] = [
-  { label: 'Verification Command', href: '/officer', icon: ShieldAlert },
-  { label: 'Verification Queue', href: '/officer/verification', icon: ScanSearch },
-  { label: 'Investigations', href: '/officer/investigations', icon: FileSearch },
-  { label: 'Evidence Center', href: '/officer/evidence', icon: FileArchive },
-  { label: 'Field Mode', href: '/officer/field', icon: MapPin },
-  { label: 'Map', href: '/officer/map', icon: Map },
-  { label: 'Responses', href: '/officer/responses', icon: MessageSquare },
-  { label: 'All Projects', href: '/projects', icon: FolderOpenDot },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { labelKey: 'nav.verificationCommand', label: 'Verification Command', href: '/officer', icon: ShieldAlert },
+  { labelKey: 'nav.verificationQueue', label: 'Verification Queue', href: '/officer/verification', icon: ScanSearch },
+  { labelKey: 'nav.investigations', label: 'Investigations', href: '/officer/investigations', icon: FileSearch },
+  { labelKey: 'nav.evidenceCenter', label: 'Evidence Center', href: '/officer/evidence', icon: FileArchive },
+  { labelKey: 'nav.fieldMode', label: 'Field Mode', href: '/officer/field', icon: MapPin },
+  { labelKey: 'nav.map', label: 'Map', href: '/officer/map', icon: Map },
+  { labelKey: 'nav.responses', label: 'Responses', href: '/officer/responses', icon: MessageSquare },
+  { labelKey: 'nav.allProjects', label: 'All Projects', href: '/projects', icon: FolderOpenDot },
+  { labelKey: 'nav.settings', label: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar() {
+  const { t } = useLanguage();
   const pathname = usePathname();
   const { isContractor, isCitizen, isMP, isOfficer } = useAuth();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['/admin']));
@@ -124,16 +157,16 @@ export function Sidebar() {
 
   if (isOfficer) {
     items = officerItems;
-    roleLabel = 'Officer';
+    roleLabel = t('nav.officer', 'Officer');
   } else if (isMP) {
     items = mpItems;
-    roleLabel = 'MP';
+    roleLabel = t('nav.mp', 'MP');
   } else if (isContractor) {
     items = contractorItems;
-    roleLabel = 'Contractor';
+    roleLabel = t('nav.contractor', 'Contractor');
   } else if (isCitizen) {
     items = citizenItems;
-    roleLabel = 'Citizen';
+    roleLabel = t('nav.citizen', 'Citizen');
   } else {
     items = adminItems;
     roleLabel = null;
@@ -158,6 +191,7 @@ export function Sidebar() {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.href);
     const Icon = item.icon;
+    const label = item.labelKey ? t(item.labelKey, item.label) : item.label;
 
     return (
       <div key={item.href}>
@@ -174,7 +208,7 @@ export function Sidebar() {
           aria-current={isActive ? 'page' : undefined}
         >
           <Icon className={cn('h-4 w-4 shrink-0', depth > 0 && 'h-3.5 w-3.5')} aria-hidden="true" />
-          <span className="flex-1">{item.label}</span>
+          <span className="flex-1">{label}</span>
           {hasChildren && (
             <ChevronRight className={cn(
               'h-4 w-4 shrink-0 transition-transform',

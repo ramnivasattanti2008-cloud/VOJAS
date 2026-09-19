@@ -5,26 +5,27 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useSubmitReport } from '@/hooks/useCitizenReports';
 import { usePublicProject } from '@/hooks/usePublicProjects';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
-  PRIVACY_LABELS,
-  type ReportPrivacyLevel
+    PRIVACY_LABELS,
+    type ReportPrivacyLevel
 } from '@vojas/api-client';
 import { AlertCircle, Building2, Calendar, CheckCircle, Info, MapPin, Shield } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
 const CATEGORIES = [
-  { value: 'ABANDONED_WORK', label: 'Project Not Started / Abandoned', icon: '🏗️' },
-  { value: 'DELAYED_WORK', label: 'Project Delay / Incomplete', icon: '⏰' },
-  { value: 'CONSTRUCTION_QUALITY', label: 'Substandard Construction / Quality Issue', icon: '🔧' },
-  { value: 'PROGRESS_MISMATCH', label: 'Progress Mismatch / False Completion', icon: '📋' },
-  { value: 'SAFETY_HAZARD', label: 'Public Safety Hazard', icon: '⚠️' },
-  { value: 'ENVIRONMENTAL_VIOLATION', label: 'Environmental Violation', icon: '🌿' },
-  { value: 'FINANCIAL_IRREGULARITY', label: 'Financial Irregularity / Corruption', icon: '💰' },
-  { value: 'FAKE_DOCUMENTS', label: 'Fake or Forged Documents', icon: '📄' },
-  { value: 'VENDOR_MISCONDUCT', label: 'Contractor / Vendor Misconduct', icon: '👷' },
-  { value: 'LOCATION_MISMATCH', label: 'Ghost Project / Location Mismatch', icon: '📍' },
-  { value: 'OTHER', label: 'Other Observation', icon: '❓' },
+  { value: 'ABANDONED_WORK', key: 'report.catAbandoned', label: 'Project Not Started / Abandoned', icon: '🏗️' },
+  { value: 'DELAYED_WORK', key: 'report.catDelayed', label: 'Project Delay / Incomplete', icon: '⏰' },
+  { value: 'CONSTRUCTION_QUALITY', key: 'report.catQuality', label: 'Substandard Construction / Quality Issue', icon: '🔧' },
+  { value: 'PROGRESS_MISMATCH', key: 'report.catMismatch', label: 'Progress Mismatch / False Completion', icon: '📋' },
+  { value: 'SAFETY_HAZARD', key: 'report.catSafety', label: 'Public Safety Hazard', icon: '⚠️' },
+  { value: 'ENVIRONMENTAL_VIOLATION', key: 'report.catEnv', label: 'Environmental Violation', icon: '🌿' },
+  { value: 'FINANCIAL_IRREGULARITY', key: 'report.catFinancial', label: 'Financial Irregularity / Corruption', icon: '💰' },
+  { value: 'FAKE_DOCUMENTS', key: 'report.catFakeDocs', label: 'Fake or Forged Documents', icon: '📄' },
+  { value: 'VENDOR_MISCONDUCT', key: 'report.catVendor', label: 'Contractor / Vendor Misconduct', icon: '👷' },
+  { value: 'LOCATION_MISMATCH', key: 'report.catLocation', label: 'Ghost Project / Location Mismatch', icon: '📍' },
+  { value: 'OTHER', key: 'report.catOther', label: 'Other Observation', icon: '❓' },
 ];
 
 const PRIVACY_OPTIONS: ReportPrivacyLevel[] = ['PUBLIC', 'RESTRICTED', 'CONFIDENTIAL', 'ANONYMOUS'];
@@ -70,6 +71,7 @@ const initialFormData: FormData = {
 };
 
 export function ReportForm() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const initialProjectId = searchParams.get('projectId') ?? '';
   const { data: linkedProject } = usePublicProject(initialProjectId || undefined);
@@ -100,29 +102,29 @@ export function ReportForm() {
           handleChange('unknownLocation', false);
         },
         () => {
-          alert('Unable to get your location. Please enter coordinates manually.');
+          alert(t('report.locError', 'Unable to get your location. Please enter coordinates manually.'));
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     } else {
-      alert('Geolocation is not supported by your browser.');
+      alert(t('report.geoUnsupported', 'Geolocation is not supported by your browser.'));
     }
-  }, []);
+  }, [t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
 
     if (!formData.title.trim()) {
-      alert('Please enter a title for your report.');
+      alert(t('report.enterTitle', 'Please enter a title for your report.'));
       return;
     }
     if (!formData.description.trim()) {
-      alert('Please describe what you observed.');
+      alert(t('report.enterDesc', 'Please describe what you observed.'));
       return;
     }
     if (!formData.category) {
-      alert('Please select a category.');
+      alert(t('report.selectCategory', 'Please select a category.'));
       return;
     }
 
@@ -147,7 +149,7 @@ export function ReportForm() {
       setReportReference(result.reportReference);
       setSubmitted(true);
     } catch (err: any) {
-      setSubmitError(err?.message || 'Failed to submit report. Please check your inputs and try again.');
+      setSubmitError(err?.message || t('report.failedSubmit', 'Failed to submit report. Please check your inputs and try again.'));
     }
   };
 
@@ -159,23 +161,25 @@ export function ReportForm() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-50 flex items-center justify-center">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Report Submitted</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">
+              {t('report.submittedTitle', 'Report Submitted')}
+            </h2>
             <p className="text-slate-600 mb-6">
-              Thank you for helping improve public accountability. Your report has been received.
+              {t('report.submittedDesc', 'Thank you for helping improve public accountability. Your report has been received.')}
             </p>
             <div className="bg-slate-50 rounded-lg p-4 mb-6">
-              <p className="text-sm text-slate-500 mb-1">Your Reference Number</p>
+              <p className="text-sm text-slate-500 mb-1">{t('report.refNumber', 'Your Reference Number')}</p>
               <p className="text-2xl font-mono font-bold text-vojas-600">{reportReference}</p>
             </div>
             <p className="text-sm text-slate-500 mb-6">
-              Save this reference number to track your report status.
+              {t('report.saveRef', 'Save this reference number to track your report status.')}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button onClick={() => window.print()} variant="secondary">
-                Print Reference
+                {t('report.printRef', 'Print Reference')}
               </Button>
               <Button onClick={() => { window.location.href = `/report/track/${reportReference}`; }}>
-                Track This Report
+                {t('report.trackReport', 'Track This Report')}
               </Button>
             </div>
           </CardBody>
@@ -187,7 +191,7 @@ export function ReportForm() {
             setFormData(initialFormData);
             setReportReference('');
           }}>
-            Submit Another Report
+            {t('report.submitAnother', 'Submit Another Report')}
           </Button>
         </div>
       </div>
@@ -197,9 +201,9 @@ export function ReportForm() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-slate-900">Report what you observed</h1>
+        <h1 className="text-3xl font-bold text-slate-900">{t('report.title', 'Report what you observed')}</h1>
         <p className="text-slate-600 mt-2">
-          Help us ensure public projects are built correctly and on time.
+          {t('report.subtitle', 'Help us ensure public projects are built correctly and on time.')}
         </p>
       </div>
 
@@ -207,12 +211,12 @@ export function ReportForm() {
         <CardBody className="flex gap-3">
           <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
           <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Your information is protected</p>
+            <p className="font-medium mb-1">{t('report.infoProtected', 'Your information is protected')}</p>
             <ul className="list-disc list-inside space-y-0.5 text-blue-700">
-              <li>You can submit anonymously</li>
-              <li>Location is stored with configurable precision</li>
-              <li>Media metadata is stripped before public display</li>
-              <li>Your identity is never shared without your consent</li>
+              <li>{t('report.bulletAnon', 'You can submit anonymously')}</li>
+              <li>{t('report.bulletLocation', 'Location is stored with configurable precision')}</li>
+              <li>{t('report.bulletMedia', 'Media metadata is stripped before public display')}</li>
+              <li>{t('report.bulletIdentity', 'Your identity is never shared without your consent')}</li>
             </ul>
           </div>
         </CardBody>
@@ -231,7 +235,7 @@ export function ReportForm() {
           <CardHeader>
             <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <Shield className="h-5 w-5 text-slate-500" />
-              Privacy Level
+              {t('report.privacyLevel', 'Privacy Level')}
             </h2>
           </CardHeader>
           <CardBody className="space-y-3">
@@ -253,8 +257,12 @@ export function ReportForm() {
                   className="mt-1"
                 />
                 <div>
-                  <span className="font-medium text-slate-900">{PRIVACY_LABELS[level].label}</span>
-                  <p className="text-sm text-slate-600">{PRIVACY_LABELS[level].description}</p>
+                  <span className="font-medium text-slate-900">
+                    {t(`report.privacy_${level}`, PRIVACY_LABELS[level].label)}
+                  </span>
+                  <p className="text-sm text-slate-600">
+                    {t(`report.privacyDesc_${level}`, PRIVACY_LABELS[level].description)}
+                  </p>
                 </div>
               </label>
             ))}
@@ -264,7 +272,9 @@ export function ReportForm() {
         {/* Category */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold text-slate-900">What type of issue?</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('report.categoryTitle', 'What type of issue?')}
+            </h2>
           </CardHeader>
           <CardBody>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -280,7 +290,7 @@ export function ReportForm() {
                   }`}
                 >
                   <span className="text-xl mb-1 block">{cat.icon}</span>
-                  <span className="text-xs font-medium">{cat.label}</span>
+                  <span className="text-xs font-medium">{t(cat.key, cat.label)}</span>
                 </button>
               ))}
             </div>
@@ -290,20 +300,24 @@ export function ReportForm() {
         {/* Title & Description */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold text-slate-900">Tell us what you observed</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('report.tellUs', 'Tell us what you observed')}
+            </h2>
           </CardHeader>
           <CardBody className="space-y-4">
             <Input
-              label="Short Description"
-              placeholder="Brief title for your report (e.g., 'Road construction stopped for 3 months')"
+              label={t('report.shortDesc', 'Short Description')}
+              placeholder={t('report.shortDescPlaceholder', "Brief title for your report (e.g., 'Road construction stopped for 3 months')")}
               value={formData.title}
               onChange={(e) => handleChange('title', e.target.value)}
               maxLength={200}
             />
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-slate-700">Detailed Description</label>
+              <label className="text-sm font-medium text-slate-700">
+                {t('report.detailedDesc', 'Detailed Description')}
+              </label>
               <textarea
-                placeholder="Describe what you observed in detail. Include dates, locations, and any people involved."
+                placeholder={t('report.detailedDescPlaceholder', 'Describe what you observed in detail. Include dates, locations, and any people involved.')}
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 rows={5}
@@ -312,7 +326,7 @@ export function ReportForm() {
               />
               <p className="text-xs text-slate-500">
                 {formData.description.length > 0 && formData.description.length < 10
-                  ? 'Please describe what you observed in at least 10 characters.'
+                  ? t('report.minChars', 'Please describe what you observed in at least 10 characters.')
                   : `${formData.description.length}/2000 characters`}
               </p>
             </div>
@@ -324,14 +338,14 @@ export function ReportForm() {
           <CardHeader>
             <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <MapPin className="h-5 w-5 text-slate-500" />
-              Location
+              {t('report.location', 'Location')}
             </h2>
           </CardHeader>
           <CardBody className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="secondary" onClick={handleUseLocation} size="sm">
                 <MapPin className="h-4 w-4 mr-1" />
-                Use My Location
+                {t('report.useMyLocation', 'Use My Location')}
               </Button>
               <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                 <input
@@ -347,7 +361,7 @@ export function ReportForm() {
                   }}
                   className="rounded"
                 />
-                I don&apos;t know the exact location
+                {t('report.unknownLocation', "I don't know the exact location")}
               </label>
             </div>
 
@@ -357,7 +371,7 @@ export function ReportForm() {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
                     <p className="text-green-800 flex items-center gap-1">
                       <CheckCircle className="h-4 w-4" />
-                      Location captured
+                      {t('report.locationCaptured', 'Location captured')}
                     </p>
                     <p className="font-mono text-green-700 mt-1">
                       {parseFloat(formData.latitude).toFixed(6)}, {parseFloat(formData.longitude).toFixed(6)}
@@ -366,7 +380,7 @@ export function ReportForm() {
                 )}
                 <div className="grid grid-cols-2 gap-4">
                   <Input
-                    label="Latitude"
+                    label={t('report.latitude', 'Latitude')}
                     type="number"
                     step="any"
                     placeholder="e.g., 12.9716"
@@ -374,7 +388,7 @@ export function ReportForm() {
                     onChange={(e) => handleChange('latitude', e.target.value)}
                   />
                   <Input
-                    label="Longitude"
+                    label={t('report.longitude', 'Longitude')}
                     type="number"
                     step="any"
                     placeholder="e.g., 77.5946"
@@ -386,11 +400,11 @@ export function ReportForm() {
             )}
 
             <Input
-              label="Location Description"
-              placeholder="e.g., Near the market road, 500m from the village temple"
+              label={t('report.locationDesc', 'Location Description')}
+              placeholder={t('report.locationDescPlaceholder', 'e.g., Near the market road, 500m from the village temple')}
               value={formData.locationDesc}
               onChange={(e) => handleChange('locationDesc', e.target.value)}
-              hint="Help reviewers find this location on a map"
+              hint={t('report.locationDescHint', 'Help reviewers find this location on a map')}
             />
           </CardBody>
         </Card>
@@ -400,7 +414,7 @@ export function ReportForm() {
           <CardHeader>
             <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
               <Calendar className="h-5 w-5 text-slate-500" />
-              When did you observe this?
+              {t('report.whenObserved', 'When did you observe this?')}
             </h2>
           </CardHeader>
           <CardBody>
@@ -416,7 +430,9 @@ export function ReportForm() {
         {/* Project */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold text-slate-900">Is this related to a specific project?</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('report.relatedProject', 'Is this related to a specific project?')}
+            </h2>
           </CardHeader>
           <CardBody className="space-y-4">
             {linkedProject && (
@@ -444,15 +460,15 @@ export function ReportForm() {
                 }}
                 className="rounded"
               />
-              I don&apos;t know which project this relates to
+              {t('report.unknownProject', "I don't know which project this relates to")}
             </label>
             {!formData.unknownProject && (
               <Input
-                label="Project ID (if known)"
+                label={t('report.projectId', 'Project ID (if known)')}
                 placeholder="e.g., showcase-fin-1"
                 value={formData.projectId}
                 onChange={(e) => handleChange('projectId', e.target.value)}
-                hint="You can find this on project notices or documents"
+                hint={t('report.projectIdHint', 'You can find this on project notices or documents')}
               />
             )}
           </CardBody>
@@ -461,8 +477,12 @@ export function ReportForm() {
         {/* Reporter Info */}
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-semibold text-slate-900">Your Contact Information</h2>
-            <p className="text-sm text-slate-500 mt-1">Optional. We may contact you for more information.</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('report.contactInfo', 'Your Contact Information')}
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">
+              {t('report.contactDesc', 'Optional. We may contact you for more information.')}
+            </p>
           </CardHeader>
           <CardBody className="space-y-4">
             <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
@@ -472,21 +492,39 @@ export function ReportForm() {
                 onChange={(e) => handleChange('isAnonymous', e.target.checked)}
                 className="rounded"
               />
-              Submit anonymously
+              {t('report.submitAnon', 'Submit anonymously')}
             </label>
 
             {!formData.isAnonymous && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input label="Your Name" placeholder="Full name" value={formData.reporterName} onChange={(e) => handleChange('reporterName', e.target.value)} />
-                <Input label="Email" type="email" placeholder="your@email.com" value={formData.reporterEmail} onChange={(e) => handleChange('reporterEmail', e.target.value)} />
-                <Input label="Phone" type="tel" placeholder="+91 XXXXX XXXXX" value={formData.reporterPhone} onChange={(e) => handleChange('reporterPhone', e.target.value)} className="sm:col-span-2" />
+                <Input
+                  label={t('report.name', 'Your Name')}
+                  placeholder="Full name"
+                  value={formData.reporterName}
+                  onChange={(e) => handleChange('reporterName', e.target.value)}
+                />
+                <Input
+                  label={t('report.email', 'Email')}
+                  type="email"
+                  placeholder="your@email.com"
+                  value={formData.reporterEmail}
+                  onChange={(e) => handleChange('reporterEmail', e.target.value)}
+                />
+                <Input
+                  label={t('report.phone', 'Phone')}
+                  type="tel"
+                  placeholder="+91 XXXXX XXXXX"
+                  value={formData.reporterPhone}
+                  onChange={(e) => handleChange('reporterPhone', e.target.value)}
+                  className="sm:col-span-2"
+                />
               </div>
             )}
 
             {formData.isAnonymous && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                Your report will be submitted anonymously.
+                {t('report.anonNotice', 'Your report will be submitted anonymously.')}
               </div>
             )}
           </CardBody>
@@ -494,10 +532,10 @@ export function ReportForm() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-end pt-4">
           <Button type="button" variant="ghost" onClick={() => setFormData(initialFormData)}>
-            Clear Form
+            {t('report.clearForm', 'Clear Form')}
           </Button>
           <Button type="submit" isLoading={submitReport.isPending} size="lg">
-            Submit Report
+            {t('report.submitReport', 'Submit Report')}
           </Button>
         </div>
       </form>

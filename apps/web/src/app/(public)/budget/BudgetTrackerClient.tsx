@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { usePublicProjects } from '@/hooks/usePublicProjects';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { apiClient } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ function UtilizationBadge({ pct }: { pct: number | null }) {
 }
 
 export function BudgetTrackerClient() {
+  const { t } = useLanguage();
   const [state, setState] = useState('');
   const [sector, setSector] = useState('');
   const [status, setStatus] = useState('');
@@ -80,22 +82,27 @@ export function BudgetTrackerClient() {
   );
   const { data: projectPage, isLoading: projectsLoading, isFetching, isError } = usePublicProjects(filters);
 
-  const nationalUtilization = summary
-    ? utilizationPct(summary.totalSanctioned, summary.totalSpent)
-    : null;
+  const nationalUtilization =
+    summary && summary.totalSanctioned > 0
+      ? (summary.totalSpent / summary.totalSanctioned) * 100
+      : null;
 
-  const sortedStates = [...(stateSummaries ?? [])].sort((a, b) => b.totalSanctioned - a.totalSanctioned);
+  const sortedStates = useMemo(() => {
+    if (!stateSummaries) return [];
+    return [...stateSummaries].sort((a, b) => b.totalSanctioned - a.totalSanctioned);
+  }, [stateSummaries]);
+
   const sortedSectors = [...(sectorStats ?? [])]
     .filter((s) => s.total > 0)
     .sort((a, b) => b.totalAmount - a.totalAmount);
 
   return (
     <div className="space-y-8">
+      {/* Title */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Budget Tracker</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t('budget.title', 'Budget Tracker')}</h1>
         <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-          Sanctioned and spent amounts for MPLAD projects, sourced from official government records. Figures
-          are reported totals — VOJAS does not fabricate a value where none is tracked.
+          {t('budget.subtitle', 'Sanctioned and spent amounts for MPLAD projects, sourced from official government records. Figures are reported totals — VOJAS does not fabricate a value where none is tracked.')}
         </p>
       </div>
 
@@ -103,7 +110,7 @@ export function BudgetTrackerClient() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
           icon={IndianRupee}
-          label="Total Sanctioned"
+          label={t('projects.sanctionedAmount', 'Total Sanctioned')}
           value={summaryLoading ? null : formatCurrency(summary?.totalSanctioned)}
           color="text-vojas-600"
           isError={summaryError}
@@ -111,7 +118,7 @@ export function BudgetTrackerClient() {
         />
         <SummaryCard
           icon={Wallet}
-          label="Total Spent"
+          label={t('projects.spentAmount', 'Total Spent')}
           value={summaryLoading ? null : formatCurrency(summary?.totalSpent)}
           color="text-emerald-600"
           isError={summaryError}
@@ -119,7 +126,7 @@ export function BudgetTrackerClient() {
         />
         <SummaryCard
           icon={PiggyBank}
-          label="Unspent Balance"
+          label={t('budget.unspentBalance', 'Unspent Balance')}
           value={
             summaryLoading || !summary
               ? null
@@ -131,8 +138,8 @@ export function BudgetTrackerClient() {
         />
         <SummaryCard
           icon={ArrowUpRight}
-          label="Fund Utilization"
-          value={summaryLoading ? null : nationalUtilization != null ? `${nationalUtilization.toFixed(1)}%` : 'Not available'}
+          label={t('budget.fundUtilization', 'Fund Utilization')}
+          value={summaryLoading ? null : nationalUtilization != null ? `${nationalUtilization.toFixed(1)}%` : t('common.noData', 'Not available')}
           color="text-blue-600"
           isError={summaryError}
           onRetry={() => refetchSummary()}
@@ -142,37 +149,37 @@ export function BudgetTrackerClient() {
       {/* State breakdown */}
       <Card>
         <CardHeader>
-          <h2 className="text-base font-semibold text-slate-800">By State</h2>
+          <h2 className="text-base font-semibold text-slate-800">{t('budget.byState', 'By State')}</h2>
         </CardHeader>
         <CardBody className="p-0">
           {statesLoading ? (
             <div className="py-10 text-center text-sm text-slate-400 flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> Loading state finances…
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> {t('budget.loadingStateFinances', 'Loading state finances…')}
             </div>
           ) : statesError ? (
             <div className="py-10 text-center text-sm text-red-600">
               <AlertTriangle className="h-5 w-5 text-red-400 mx-auto mb-1.5" />
-              Could not load state summaries.
+              {t('common.couldNotLoad', 'Could not load state summaries.')}
               <button
                 type="button"
                 onClick={() => refetchStates()}
                 className="ml-2 font-semibold underline text-blue-600 hover:text-blue-700"
               >
-                Retry
+                {t('common.retry', 'Retry')}
               </button>
             </div>
           ) : sortedStates.length === 0 ? (
-            <div className="py-10 text-center text-sm text-slate-400">No state-level data available.</div>
+            <div className="py-10 text-center text-sm text-slate-400">{t('budget.noStateData', 'No state-level data available.')}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    <th className="px-5 py-2.5 font-medium">State</th>
-                    <th className="px-5 py-2.5 font-medium text-right">Projects</th>
-                    <th className="px-5 py-2.5 font-medium text-right">Sanctioned</th>
-                    <th className="px-5 py-2.5 font-medium text-right">Spent</th>
-                    <th className="px-5 py-2.5 font-medium text-right">Utilization</th>
+                    <th className="px-5 py-2.5 font-medium">{t('budget.state', 'State')}</th>
+                    <th className="px-5 py-2.5 font-medium text-right">{t('budget.projects', 'Projects')}</th>
+                    <th className="px-5 py-2.5 font-medium text-right">{t('budget.sanctioned', 'Sanctioned')}</th>
+                    <th className="px-5 py-2.5 font-medium text-right">{t('budget.spent', 'Spent')}</th>
+                    <th className="px-5 py-2.5 font-medium text-right">{t('budget.utilization', 'Utilization')}</th>
                   </tr>
                 </thead>
                 <tbody>

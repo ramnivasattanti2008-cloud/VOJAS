@@ -24,17 +24,17 @@ export function PublicNavBar() {
     },
     {
       href: '/budget',
-      label: t('nav.financial', 'Budget Tracker'),
+      label: t('nav.budgetTracker', 'Budget Tracker'),
       icon: Wallet,
     },
     {
       href: '/insights',
-      label: t('nav.analytics', 'Sector Analytics'),
+      label: t('nav.sectorAnalytics', 'Sector Analytics'),
       icon: BarChart3,
     },
     {
       href: '/satellites',
-      label: t('nav.satellite', 'Satellite Engine'),
+      label: t('nav.satelliteEngine', 'Satellite Engine'),
       icon: Satellite,
     },
     {
@@ -79,9 +79,9 @@ export function PublicMobileNavBar() {
   const links = [
     { href: '/explore', label: t('nav.projects', 'Explore') },
     { href: '/explore/map', label: t('nav.map', 'Map') },
-    { href: '/budget', label: t('nav.financial', 'Budget') },
-    { href: '/insights', label: t('nav.analytics', 'Analytics') },
-    { href: '/satellites', label: t('nav.satellite', 'Satellite') },
+    { href: '/budget', label: t('nav.budgetTracker', 'Budget') },
+    { href: '/insights', label: t('nav.sectorAnalytics', 'Analytics') },
+    { href: '/satellites', label: t('nav.satelliteEngine', 'Satellite') },
     { href: '/report', label: t('nav.reports', 'Report') },
   ];
 

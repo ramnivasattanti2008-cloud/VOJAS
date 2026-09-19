@@ -1,22 +1,22 @@
 'use client';
 
 import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
 } from 'react';
 import {
-  DEFAULT_LANGUAGE,
-  LANGUAGES,
-  STORAGE_KEY,
-  getLanguage,
-  resolveLanguageCode,
-  type Language,
+    DEFAULT_LANGUAGE,
+    LANGUAGES,
+    STORAGE_KEY,
+    getLanguage,
+    resolveLanguageCode,
+    type Language,
 } from './locales/config';
 import enTranslations from './locales/en.json';
 
@@ -303,7 +303,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       // Not named `module` — that shadows Next.js's module-system global
       // (@next/next/no-assign-module-variable) and breaks the build.
       const loadedLocale = await loader();
-      const dict = loadedLocale.default;
+      const rawDict = (loadedLocale as Record<string, unknown>)?.default ?? loadedLocale;
+      const dict =
+        rawDict && typeof rawDict === 'object' && !Array.isArray(rawDict)
+          ? (rawDict as Dictionary)
+          : EN_DICTIONARY;
       translationCache[code] = dict;
       writeWarmDictionary(code, dict);
       if (requestRef.current !== requestId) return;
@@ -339,7 +343,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       // Paint the new language immediately using whatever is already warm, then
       // replace it with the authoritative chunk.
       const warm = readWarmDictionary(code);
-      if (warm) setLocale({ code, dict: warm });
+      if (warm) {
+        setLocale({ code, dict: warm });
+      } else {
+        setLocale((prev) => ({ code, dict: prev.dict }));
+      }
 
       await loadDictionary(code);
     },

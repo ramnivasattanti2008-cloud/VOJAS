@@ -196,7 +196,7 @@ export function ExploreClient() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" aria-hidden="true" />
           <input
             type="search"
-            placeholder={t('common.search', 'Search by project name or description…')}
+            placeholder={t('explore.searchPlaceholder', 'Search by project name or description…')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-vojas-200 focus:border-vojas-500"
@@ -208,9 +208,9 @@ export function ExploreClient() {
           value={state}
           onChange={(e) => setState(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
-          aria-label={t('common.filter', 'Filter by state')}
+          aria-label={t('explore.filterByState', 'Filter by state')}
         >
-          <option value="">{t('common.all', 'All')} {t('common.state', 'states')}</option>
+          <option value="">{t('explore.allStates', 'All states')}</option>
           {(stateSummaries ?? []).map((s) => (
             <option key={s.state} value={s.state}>
               {s.state} ({s.totalProjects})
@@ -222,9 +222,9 @@ export function ExploreClient() {
           value={sector}
           onChange={(e) => setSector(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
-          aria-label={t('common.filter', 'Filter by sector')}
+          aria-label={t('explore.filterBySector', 'Filter by sector')}
         >
-          <option value="">{t('common.all', 'All')} {t('common.category', 'sectors')}</option>
+          <option value="">{t('explore.allSectors', 'All sectors')}</option>
           {Object.values(ProjectSector).map((s) => (
             <option key={s} value={s}>
               {s.replace(/_/g, ' ')}
@@ -236,9 +236,9 @@ export function ExploreClient() {
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-vojas-200"
-          aria-label={t('common.filter', 'Filter by status')}
+          aria-label={t('explore.filterByStatus', 'Filter by status')}
         >
-          <option value="">{t('common.all', 'All')} {t('common.status', 'statuses')}</option>
+          <option value="">{t('explore.allStatuses', 'All statuses')}</option>
           {Object.values(ProjectStatus).map((s) => (
             <option key={s} value={s}>
               {s.replace(/_/g, ' ')}
@@ -271,7 +271,7 @@ export function ExploreClient() {
               setStatus('');
             }}
           >
-            {t('common.clear', 'Clear filters')}
+            {t('explore.clearFilters', 'Clear filters')}
           </Button>
         )}
       </div>
@@ -281,23 +281,23 @@ export function ExploreClient() {
         <div className="flex items-center justify-center py-24">
           <div className="text-center">
             <Loader2 className="h-6 w-6 animate-spin text-vojas-500 mx-auto mb-2" aria-hidden="true" />
-            <p className="text-sm text-slate-400">Loading projects…</p>
+            <p className="text-sm text-slate-400">{t('explore.loadingProjects', 'Loading projects…')}</p>
           </div>
         </div>
       ) : isError ? (
         <div className="text-center py-16 border border-red-100 bg-red-50 rounded-xl">
           <AlertTriangle className="h-6 w-6 text-red-400 mx-auto mb-2" aria-hidden="true" />
-          <p className="text-sm font-medium text-red-700">Could not load projects</p>
-          <p className="text-xs text-red-500 mt-1">{error instanceof Error ? error.message : 'Unknown error'}</p>
+          <p className="text-sm font-medium text-red-700">{t('explore.couldNotLoadProjects', 'Could not load projects')}</p>
+          <p className="text-xs text-red-500 mt-1">{error instanceof Error ? error.message : t('common.unknownError', 'Unknown error')}</p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={() => refetch()}>
-            Try again
+            {t('common.tryAgain', 'Try again')}
           </Button>
         </div>
       ) : projects.length === 0 ? (
         <div className="text-center py-16 border border-slate-200 bg-white rounded-xl">
-          <p className="text-sm font-medium text-slate-600">No projects found</p>
+          <p className="text-sm font-medium text-slate-600">{t('explore.noProjectsFound', 'No projects found')}</p>
           <p className="text-xs text-slate-400 mt-1">
-            {hasFilters ? 'Try adjusting or clearing your filters.' : 'No projects are available yet.'}
+            {hasFilters ? t('explore.adjustFilters', 'Try adjusting or clearing your filters.') : t('projects.noProjectsYet', 'No projects are available yet.')}
           </p>
         </div>
       ) : (
@@ -316,10 +316,10 @@ export function ExploreClient() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                Previous
+                {t('common.previous', 'Previous')}
               </Button>
               <span className="text-sm text-slate-500">
-                Page {page} of {totalPages}
+                {t('explore.page', 'Page')} {page} {t('explore.of', 'of')} {totalPages}
               </span>
               <Button
                 variant="secondary"
@@ -327,7 +327,7 @@ export function ExploreClient() {
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
-                Next
+                {t('common.next', 'Next')}
               </Button>
             </div>
           )}

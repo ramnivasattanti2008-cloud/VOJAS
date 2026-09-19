@@ -4,6 +4,7 @@ import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
 import { LanguageSelector } from '@/components/ui/LanguageSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotificationCount } from '@/hooks/useNotifications';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
 import { Bell, ChevronDown, LogOut, Sparkles, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -11,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 export function Header() {
+  const { t } = useLanguage();
   const { user, logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -54,10 +56,10 @@ export function Header() {
           type="button"
           onClick={() => setCopilotOpen(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/80 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-          aria-label="Open AI Copilot"
+          aria-label={t('common.aiCopilot', 'AI Copilot')}
         >
           <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-          <span className="hidden sm:inline">AI Copilot</span>
+          <span className="hidden sm:inline">{t('common.aiCopilot', 'AI Copilot')}</span>
         </button>
 
         {/* Language selector */}
@@ -67,7 +69,7 @@ export function Header() {
         <Link
           href="/notifications"
           className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-600"
-          aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ''}`}
+          aria-label={`${t('common.notifications', 'Notifications')}${unread > 0 ? ` (${unread} unread)` : ''}`}
         >
           <Bell className="h-5 w-5" />
           {unread > 0 && (
@@ -116,11 +118,11 @@ export function Header() {
                 type="button"
                 role="menuitem"
                 onClick={onLogout}
-                aria-label="Sign out"
+                aria-label={t('common.signOut', 'Sign out')}
                 className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
-                Sign out
+                {t('common.signOut', 'Sign out')}
               </button>
             </div>
           )}

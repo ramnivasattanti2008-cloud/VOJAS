@@ -1,11 +1,12 @@
 'use client';
 
 import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
-  ArrowRight,
-  FileSpreadsheet,
-  Satellite,
-  Sparkles,
+    ArrowRight,
+    FileSpreadsheet,
+    Satellite,
+    Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -80,6 +81,7 @@ export const FEATURED_SHOWCASE_PROJECTS: ShowcaseProjectItem[] = [
 ];
 
 export function ShowcaseBanner({ className = '' }: { className?: string }) {
+  const { t } = useLanguage();
   const [activeCopilotProject, setActiveCopilotProject] = useState<{ id: string; name: string } | null>(null);
 
   return (
@@ -91,17 +93,20 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-purple-600 text-white text-[11px] font-bold uppercase tracking-wider shadow-2xs">
               <Sparkles className="w-3 h-3 text-amber-300" />
-              SIH Evaluator Quick-Access
+              {t('showcase.quickAccess', 'SIH Evaluator Quick-Access')}
             </span>
             <span className="text-xs text-purple-700 font-semibold hidden sm:inline">
-              4 Premier Forensic Demonstrations
+              {t('showcase.premierDemos', '4 Premier Forensic Demonstrations')}
             </span>
           </div>
           <h2 className="text-lg font-bold text-slate-900 mt-1">
-            Featured Forensic Showcase Projects
+            {t('showcase.title', 'Featured Forensic Showcase Projects')}
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Test instant AI auditing, ISRO NavIC sovereign positioning, satellite spectral telemetry, and statutory GFR/CVC checks across high-consequence civic cases.
+            {t(
+              'showcase.subtitle',
+              'Test instant AI auditing, ISRO NavIC sovereign positioning, satellite spectral telemetry, and statutory GFR/CVC checks across high-consequence civic cases.'
+            )}
           </p>
         </div>
 
@@ -110,7 +115,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-purple-700 bg-white border border-purple-200 hover:bg-purple-100/50 shadow-2xs transition-all cursor-pointer self-start sm:self-auto shrink-0"
         >
           <FileSpreadsheet className="w-3.5 h-3.5 text-purple-600" />
-          <span>Open Judges AI Sandbox</span>
+          <span>{t('showcase.openSandbox', 'Open Judges AI Sandbox')}</span>
         </Link>
       </div>
 
@@ -136,6 +141,14 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
             ? 'bg-blue-100 text-blue-800 border-blue-200'
             : 'bg-emerald-100 text-emerald-800 border-emerald-200';
 
+          const localizedBadge = isGhost
+            ? `🚨 ${t('showcase.ghostWork', 'CRITICAL GHOST WORK')}`
+            : isAnomaly
+            ? `⚠️ ${t('showcase.auditedAnomaly', 'AUDITED ANOMALY')}`
+            : isOngoing
+            ? `🏗️ ${t('showcase.activeOngoing', 'ACTIVE ONGOING')}`
+            : `✅ ${t('showcase.verifiedCompleted', 'VERIFIED COMPLETED')}`;
+
           return (
             <div
               key={proj.id}
@@ -146,7 +159,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
                   <span
                     className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight border ${badgeColor}`}
                   >
-                    {proj.badgeLabel}
+                    {localizedBadge}
                   </span>
                   <span className="text-[10px] font-mono text-slate-400">
                     {proj.id.slice(0, 14)}
@@ -164,7 +177,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
                 <div className="space-y-1.5 pt-1">
                   <div>
                     <div className="flex justify-between text-[10px] font-medium text-slate-600 mb-0.5">
-                      <span>Fund Disbursed:</span>
+                      <span>{t('showcase.disbursed', 'Fund Disbursed:')}</span>
                       <span className="font-bold text-slate-900">{proj.disbursedPercent}%</span>
                     </div>
                     <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
@@ -185,7 +198,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
 
                   <div>
                     <div className="flex justify-between text-[10px] font-medium text-slate-600 mb-0.5">
-                      <span>Physical Ground Progress:</span>
+                      <span>{t('showcase.physicalExecution', 'Physical Ground Progress:')}</span>
                       <span
                         className={`font-bold ${
                           proj.physicalProgress === 0 ? 'text-rose-600' : 'text-slate-900'
@@ -213,7 +226,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
                 <div className="bg-white/80 rounded-lg p-2 border border-slate-200/60 text-[10px] space-y-1">
                   <div className="flex items-center gap-1 font-semibold text-slate-700">
                     <Satellite className="w-3 h-3 text-indigo-600" />
-                    <span>ISRO NavIC &amp; Satellite Telemetry</span>
+                    <span>{t('home.pillar3Title', 'ISRO NavIC & Satellite Telemetry')}</span>
                   </div>
                   <p className="text-slate-600 leading-snug line-clamp-2">
                     {proj.satelliteObservation}
@@ -227,7 +240,7 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
                   href={`/explore/${proj.id}`}
                   className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 transition-all shadow-2xs"
                 >
-                  <span>Dossier</span>
+                  <span>{t('projects.projectDetails', 'Dossier')}</span>
                   <ArrowRight className="w-3 h-3 text-slate-400" />
                 </Link>
 
@@ -235,10 +248,10 @@ export function ShowcaseBanner({ className = '' }: { className?: string }) {
                   type="button"
                   onClick={() => setActiveCopilotProject({ id: proj.id, name: proj.title })}
                   className="inline-flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-2xs transition-all cursor-pointer shrink-0"
-                  title="Run AI Copilot Audit"
+                  title={t('showcase.auditCopilot', 'Audit with AI Copilot')}
                 >
                   <Sparkles className="w-3 h-3" />
-                  <span>AI Audit</span>
+                  <span>{t('showcase.auditCopilot', 'AI Audit')}</span>
                 </button>
               </div>
             </div>
