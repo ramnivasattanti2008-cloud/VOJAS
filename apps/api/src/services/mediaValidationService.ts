@@ -183,7 +183,7 @@ export class MediaValidationService {
    * - EXIF extraction for metadata consistency checks
    * - JPEG quantization analysis for recompression detection
    */
-  assessMediaForensics(filePath: string, uploadDate: Date): ForensicSignals {
+  assessMediaForensics(filePath: string, _uploadDate: Date): ForensicSignals {
     let stats: fs.Stats;
     try {
       stats = fs.statSync(filePath);

@@ -11,10 +11,11 @@
  */
 
 import type { PrismaClient, Document } from '@vojas/db';
-import { NotFoundError, ValidationError } from '@vojas/domain';
+import { NotFoundError } from '@vojas/domain';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import { logger } from '../utils/logger.js';
 
 // ─── File validation constants ───────────────────────────────────────────────
 
@@ -249,6 +250,13 @@ export class DocumentIntelligenceService {
           aiConfidence: extraction.confidenceScore,
         },
       });
+
+      // Cross-check has no dedicated storage column yet — log it so a failed
+      // check is at least visible in the pipeline, instead of vanishing.
+      logger.info(
+        `[document-intel] Processed ${documentId} in ${Date.now() - startTime}ms: ` +
+        `crossCheck ${crossCheck.overallPassed ? 'passed' : 'FAILED'} (score=${crossCheck.overallScore}, checks=${crossCheck.checks.length})`
+      );
 
       return extraction;
     } catch (err) {

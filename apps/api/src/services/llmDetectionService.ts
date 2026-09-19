@@ -16,8 +16,27 @@
  * describing ground conditions it never measured.
  */
 
-import type { PrismaClient } from '@vojas/db';
+import type { PrismaClient, Prisma } from '@vojas/db';
 import { RiskLevel } from '@vojas/db';
+
+// Raw shapes read back from the LLM providers' HTTP responses — only the
+// fields this service actually reads, not the full provider schema.
+interface GeminiRawResponse {
+  candidates?: { content?: { parts?: { text?: string }[] } }[];
+}
+interface OpenAIRawResponse {
+  choices?: { message?: { content?: string } }[];
+}
+
+type AuditedProject = Prisma.ProjectGetPayload<{
+  include: {
+    projectRisk: true;
+    locations: true;
+    changeAnalyses: true;
+    financialObservations: true;
+    satelliteObservations: true;
+  };
+}>;
 
 export type ForensicVerdict =
   | 'CLEAN'
@@ -158,7 +177,7 @@ export class LLMDetectionService {
    * VOJAS Sentinel AI v4.2 Neural-LLM Core Engine
    */
   private runNeuralLLMCore(
-    project: any,
+    project: AuditedProject,
     approved: number,
     spent: number,
     spentRatio: number,
@@ -443,7 +462,7 @@ export class LLMDetectionService {
   /**
    * Google Gemini LLM Integration
    */
-  private async callGeminiLLM(project: any, apiKey: string): Promise<ForensicAuditResult | null> {
+  private async callGeminiLLM(project: AuditedProject, apiKey: string): Promise<ForensicAuditResult | null> {
     const prompt = this.buildPrompt(project);
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
@@ -463,7 +482,7 @@ export class LLMDetectionService {
       throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
     }
 
-    const json: any = await response.json();
+    const json = (await response.json()) as GeminiRawResponse;
     const candidateText = json.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!candidateText) return null;
 
@@ -476,7 +495,7 @@ export class LLMDetectionService {
   /**
    * OpenAI LLM Integration
    */
-  private async callOpenAILLM(project: any, apiKey: string): Promise<ForensicAuditResult | null> {
+  private async callOpenAILLM(project: AuditedProject, apiKey: string): Promise<ForensicAuditResult | null> {
     const prompt = this.buildPrompt(project);
     const url = 'https://api.openai.com/v1/chat/completions';
 
@@ -504,7 +523,7 @@ export class LLMDetectionService {
       throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
     }
 
-    const json: any = await response.json();
+    const json = (await response.json()) as OpenAIRawResponse;
     const content = json.choices?.[0]?.message?.content;
     if (!content) return null;
 
@@ -514,7 +533,7 @@ export class LLMDetectionService {
     return parsed;
   }
 
-  private buildPrompt(project: any): string {
+  private buildPrompt(project: AuditedProject): string {
     return `
 Analyze the following Indian public works project for fiscal corruption, ghost work, contractor cartelization, and timeline delays.
 

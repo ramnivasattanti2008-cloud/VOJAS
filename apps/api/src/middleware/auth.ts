@@ -6,8 +6,6 @@ import type { JWTPayload } from '../auth/jwt.js';
 import type {
   Permission} from '@vojas/shared';
 import {
-  UserRole,
-  PERMISSIONS,
   ROLE_PERMISSIONS,
   hasPermission,
   hasAnyPermission,

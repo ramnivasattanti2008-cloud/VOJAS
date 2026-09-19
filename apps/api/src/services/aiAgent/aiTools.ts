@@ -13,7 +13,7 @@
  * 6. Satellite data returns NO_USABLE_OBSERVATION when absent — never fabricated.
  */
 
-import type { PrismaClient } from '@vojas/db';
+import type { PrismaClient, Prisma, ProjectSector, ProjectStatus } from '@vojas/db';
 import type { UserContext } from '@vojas/shared';
 import { UserRole } from '@vojas/shared';
 
@@ -158,11 +158,11 @@ export class AIToolRegistry {
     const query = typeof args.query === 'string' ? args.query.trim() : undefined;
     const state = typeof args.state === 'string' ? args.state.trim() : undefined;
     const district = typeof args.district === 'string' ? args.district.trim() : undefined;
-    const sector = typeof args.sector === 'string' ? (args.sector.trim().toUpperCase() as any) : undefined;
-    const status = typeof args.status === 'string' ? (args.status.trim().toUpperCase() as any) : undefined;
+    const sector = typeof args.sector === 'string' ? (args.sector.trim().toUpperCase() as ProjectSector) : undefined;
+    const status = typeof args.status === 'string' ? (args.status.trim().toUpperCase() as ProjectStatus) : undefined;
     const limit = Math.min(Math.max(1, Number(args.limit) || 5), 10);
 
-    const where: any = {};
+    const where: Prisma.ProjectWhereInput = {};
 
     if (query) {
       where.OR = [

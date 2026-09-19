@@ -466,7 +466,10 @@ export class ReportTriageService {
   /**
    * Assess evidence quality score based on multiple factors.
    */
-  assessEvidenceQuality(report: any, mediaCount: number): string {
+  assessEvidenceQuality(
+    report: { latitude: number | null; longitude: number | null; locationAccuracyM: number | null; incidentDate: Date | null; description: string | null },
+    mediaCount: number
+  ): string {
     let score = 0;
 
     // Location precision

@@ -43,6 +43,54 @@ export interface AIAgentResponse {
   roleContext: UserRole;
 }
 
+// Raw shapes read back from the LLM providers' HTTP responses — only the
+// fields this service actually reads, not the full provider schema.
+interface GeminiRawResponse {
+  candidates?: { content?: { parts?: { text?: string }[] } }[];
+}
+interface OpenAIRawResponse {
+  choices?: { message?: { content?: string } }[];
+}
+
+// Best-effort projections of AIToolRegistry's tool-result payloads — only
+// the fields the deterministic fallback below actually reads.
+interface ToolProjectResult {
+  name: string;
+  sector: string;
+  status: string;
+  location?: { district?: string; state?: string };
+  financials?: { approvedAmountINR?: number; spentAmountINR?: number; utilizationRate?: string };
+  governance?: { contractor?: string };
+}
+interface ToolFinancialsResult {
+  isOverSpent?: boolean;
+  utilizationPercentage?: number;
+}
+interface ToolSatelliteResult {
+  status?: string;
+  latestChangeAnalysis?: { changeClassification?: string; confidence?: string; interpretation?: string } | null;
+}
+interface ToolRiskFinding {
+  severity: string;
+  title: string;
+  ruleCode: string;
+}
+interface ToolRiskResult {
+  assessed?: boolean;
+  riskScore?: number;
+  riskLevel?: string;
+  findings?: ToolRiskFinding[];
+}
+interface ToolSearchProject {
+  status: string;
+  name: string;
+  approvedAmountINR?: number;
+  location?: string;
+}
+interface ToolSearchResult {
+  projects?: ToolSearchProject[];
+}
+
 export class AIAgentService {
   private toolRegistry: AIToolRegistry;
 
@@ -249,7 +297,7 @@ CORE DIRECTIVES:
       throw new Error(`Gemini API returned ${response.status}: ${response.statusText}`);
     }
 
-    const data: any = await response.json();
+    const data = (await response.json()) as GeminiRawResponse;
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!raw) return null;
 
@@ -307,7 +355,7 @@ CORE DIRECTIVES:
       throw new Error(`OpenAI API returned ${response.status}: ${response.statusText}`);
     }
 
-    const data: any = await response.json();
+    const data = (await response.json()) as OpenAIRawResponse;
     const raw = data.choices?.[0]?.message?.content;
     if (!raw) return null;
 
@@ -339,11 +387,11 @@ CORE DIRECTIVES:
     const actions: string[] = [];
     let answer = '';
 
-    const proj: any = toolResults.project;
-    const fin: any = toolResults.financials;
-    const sat: any = toolResults.satellite;
-    const risk: any = toolResults.risk;
-    const search: any = toolResults.search;
+    const proj = toolResults.project as ToolProjectResult | undefined;
+    const fin = toolResults.financials as ToolFinancialsResult | undefined;
+    const sat = toolResults.satellite as ToolSatelliteResult | undefined;
+    const risk = toolResults.risk as ToolRiskResult | undefined;
+    const search = toolResults.search as ToolSearchResult | undefined;
 
     if (proj) {
       facts.push(`Project Name: "${proj.name}" (Sector: ${proj.sector}, Status: ${proj.status})`);
@@ -385,8 +433,8 @@ CORE DIRECTIVES:
         } else {
           missingData.push('This project has not yet been risk-scored — no forensic risk assessment exists on record.');
         }
-        if (risk.findings?.length > 0) {
-          risk.findings.forEach((f: any) => {
+        if (risk.findings && risk.findings.length > 0) {
+          risk.findings.forEach((f: ToolRiskFinding) => {
             analysis.push(`Statutory Indicator: [${f.severity}] ${f.title} (${f.ruleCode})`);
           });
         }
@@ -399,9 +447,9 @@ CORE DIRECTIVES:
       if (actions.length === 0) {
         actions.push(user.role === UserRole.CITIZEN ? 'Verify physical project site in person or review community reports.' : 'Review latest contractor milestone and scheduled field inspections.');
       }
-    } else if (search && search.projects?.length > 0) {
+    } else if (search && search.projects && search.projects.length > 0) {
       facts.push(`Identified ${search.projects.length} matching works in the national database.`);
-      search.projects.forEach((p: any) => {
+      search.projects.forEach((p: ToolSearchProject) => {
         facts.push(`• [${p.status}] ${p.name} — ₹${p.approvedAmountINR?.toLocaleString('en-IN')} (${p.location})`);
       });
       answer = `Found ${search.projects.length} relevant project records matching your inquiry in the VOJAS registry. You can inspect individual project dossiers for full financial lifecycle, satellite telemetry, and statutory audits.`;
