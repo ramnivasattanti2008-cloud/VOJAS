@@ -356,6 +356,7 @@ model User {
   anomaliesResolved        Anomaly[]           @relation("AnomalyResolver")
   anomaliesLawEscalated    Anomaly[]           @relation("AnomalyLawEscalator")
   reportsAssigned          Report[]            @relation("ReportAssignee")
+  reportsSubmitted         Report[]            @relation("ReportSubmitter")
   reportModerations       ReportModeration[]
   reportMediaVerified     ReportMedia[]
   citizenClaimsVerified   CitizenClaim[]
@@ -1502,6 +1503,12 @@ model Report {
   // References
   projectId     String?        @map("project_id")
   assignedToId  String?        @map("assigned_to_id")
+  // The account that submitted this report, when submitted while logged in
+  // and not anonymous. Null for anonymous submissions (never set, so an
+  // anonymous report can't be de-anonymized via this field) and for
+  // reports submitted without an account. Powers "my reports" scoping —
+  // reporterEmail/Name alone can't (free text, not an auth link).
+  reporterId    String?        @map("reporter_id")
   resolution    String?
   resolvedAt    DateTime?      @map("resolved_at") @db.Timestamptz(6)
   // Source metadata
@@ -1515,6 +1522,7 @@ model Report {
 
   project     Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
   assignedTo  User?             @relation("ReportAssignee", fields: [assignedToId], references: [id])
+  reporter    User?             @relation("ReportSubmitter", fields: [reporterId], references: [id], onDelete: SetNull)
   media       ReportMedia[]
   claims      CitizenClaim[]
   moderations ReportModeration[]
@@ -1527,6 +1535,7 @@ model Report {
   @@index([triageStatus])
   @@index([projectId])
   @@index([assignedToId])
+  @@index([reporterId])
   @@index([createdAt])
   @@index([submittedAt])
   @@index([latitude, longitude])

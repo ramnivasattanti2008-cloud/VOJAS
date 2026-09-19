@@ -51,6 +51,13 @@ ENV PORT=5000
 WORKDIR /app
 COPY --from=build /app ./
 EXPOSE 5000
+# `prisma migrate deploy` runs on every container start, before the server
+# comes up. It only applies already-committed migration files in
+# packages/db/prisma/migrations (never generates or infers schema changes,
+# never touches data outside those files) — safe to run unconditionally,
+# including when there's nothing new to apply. Without this, every schema
+# change needed someone to run migrate deploy against production by hand
+# after each push, which this session had to do manually more than once.
 # Matches apps/api/package.json's own "start" script (tsx, not plain node —
 # the compiled ESM output needs tsx's loader; see that script for why).
-CMD ["pnpm", "--filter", "@vojas/api", "start"]
+CMD ["sh", "-c", "pnpm --filter @vojas/db db:migrate:deploy && pnpm --filter @vojas/api start"]

@@ -32,7 +32,7 @@ import fs from 'fs';
 import multer from 'multer';
 import path from 'path';
 import { z } from 'zod';
-import { authenticate, requireRole } from '../middleware/auth.js';
+import { authenticate, optionalAuth, requireRole } from '../middleware/auth.js';
 import { MediaValidationService } from '../services/mediaValidationService.js';
 import { ReportTriageService } from '../services/reportTriageService.js';
 import { created, error, success } from '../utils/apiResponse.js';
@@ -179,6 +179,12 @@ const reportListSchema = z
     triageStatus: z.string().optional(),
     projectId: z.string().optional(),
     assignedToId: z.string().optional(),
+    // Opt-in scoping for the citizen-facing "My Reports" view — GET /reports
+    // is otherwise platform-wide (any authenticated user can browse any
+    // report, per this route's redaction-not-restriction design), so this
+    // must stay an explicit filter rather than an automatic role-based
+    // restriction.
+    mine: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(200).default(20),
   })
@@ -282,9 +288,12 @@ router.post('/validate', async (req: Request, res: Response, next: NextFunction)
 });
 
 /**
- * POST /reports — public citizen submission
+ * POST /reports — public citizen submission. optionalAuth so an
+ * authenticated, non-anonymous submitter gets attributed via reporterId
+ * (powers "my reports"); everyone else, including a logged-out visitor,
+ * can still submit exactly as before.
  */
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = reportSubmitSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -342,6 +351,11 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
           reporterName: data.isAnonymous ? null : (data.reporterName ?? null),
           reporterEmail: data.isAnonymous ? null : (data.reporterEmail ?? null),
           reporterPhone: data.isAnonymous ? null : (data.reporterPhone ?? null),
+          // Same anonymity condition as name/email/phone above — an
+          // anonymous submission stays unattributed even to the
+          // submitter's own account, so "my reports" can never be used to
+          // de-anonymize a report they explicitly asked to keep anonymous.
+          reporterId: data.isAnonymous ? null : (req.user?.userId ?? null),
           isAnonymous: data.isAnonymous,
           source: data.source ?? 'WEB',
           ipAddress: req.ip ?? null,
@@ -503,6 +517,15 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 
     const p = parsed.data;
     const where = buildReportWhere(p);
+    // Explicit opt-in only (?mine=true) — this backs the citizen-facing "My
+    // Reports" page, but GET /reports itself stays platform-wide by design
+    // (any authenticated caller can browse any report; identity is what's
+    // redacted, not the report — see the redaction tests in
+    // security.test.ts). A report with no reporterId (anonymous, or
+    // submitted before this field existed) never matches "mine".
+    if (p.mine) {
+      where.reporterId = req.user!.userId;
+    }
 
     const [data, total] = await prisma.$transaction([
       prisma.report.findMany({

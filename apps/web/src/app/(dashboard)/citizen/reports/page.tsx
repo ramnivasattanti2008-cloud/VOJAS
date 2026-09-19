@@ -119,7 +119,10 @@ export default function CitizenReportsPage() {
 
   // Build filters based on active tab
   const buildFilters = () => {
-    const filters: any = { limit: 50 };
+    // GET /reports is platform-wide by default (any authenticated user can
+    // browse any report); this page is titled "My Reports", so it must
+    // opt in to the caller's own submissions explicitly.
+    const filters: any = { limit: 50, mine: true };
 
     switch (activeTab) {
       case 'active':

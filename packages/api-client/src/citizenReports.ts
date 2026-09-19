@@ -39,6 +39,8 @@ export interface ReportFilters {
   triageStatus?: string;
   projectId?: string;
   assignedToId?: string;
+  /** Scope to the authenticated caller's own submitted reports. */
+  mine?: boolean;
   page?: number;
   limit?: number;
 }
