@@ -208,8 +208,31 @@ router.get('/me/projects', authenticate, async (req: Request, res: Response, nex
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
 
+    const REAL_STATUSES = new Set([
+      'PROPOSED', 'APPROVED', 'SANCTIONED', 'IN_PROGRESS', 'COMPLETED', 'VERIFIED', 'CANCELLED', 'UNSANCTIONED',
+    ]);
+
     const where: Record<string, unknown> = { mpId: mp.id };
-    if (status) where.status = status;
+    // "DELAYED" and "ATTENTION_NEEDED" aren't real ProjectStatus enum values
+    // — they're the same derived categories /me/constituency reports as
+    // delayedProjects/attentionNeeded counts, computed here the same way so
+    // clicking through from those numbers actually works instead of
+    // crashing Prisma with an invalid enum value.
+    if (status === 'DELAYED') {
+      where.status = 'IN_PROGRESS';
+      where.expectedEndDate = { lt: new Date() };
+    } else if (status === 'ATTENTION_NEEDED') {
+      where.OR = [
+        { status: 'IN_PROGRESS', expectedEndDate: { lt: new Date() } },
+        { projectRisk: { riskScore: { gte: 50 } } },
+      ];
+    } else if (status && REAL_STATUSES.has(status)) {
+      where.status = status;
+    } else if (status) {
+      // An unrecognized status value gets an honest empty result, not a
+      // Prisma enum-validation crash and not a silently unfiltered list.
+      return success(res, { linked: true, data: [], total: 0, page: pageNum, limit: limitNum, totalPages: 0 });
+    }
     if (sector) where.sector = sector;
     if (district) where.district = district;
     if (search) where.name = { contains: search, mode: 'insensitive' };
