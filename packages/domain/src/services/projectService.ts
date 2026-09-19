@@ -58,6 +58,19 @@ export class ProjectService {
       );
     }
 
+    // createdById is required on Project but isn't part of
+    // createProjectSchema yet, so it arrives as an untyped extra field
+    // rather than a validated one. Fail loudly rather than attributing the
+    // project to a fabricated identity — this class is not currently wired
+    // into any route (the live create path is apps/api/src/routes/projects.ts),
+    // so nothing in production depends on a fallback existing here.
+    const createdById = (parsed.data as Record<string, unknown>).createdById;
+    if (typeof createdById !== 'string' || createdById.length === 0) {
+      throw new ValidationError('Invalid project data', [
+        { field: 'createdById', message: 'createdById is required and must be a real user id' },
+      ]);
+    }
+
     return this.prisma.project.create({
       data: {
         name: parsed.data.name,
@@ -78,10 +91,7 @@ export class ProjectService {
         longitude: parsed.data.longitude,
         source: parsed.data.source,
         sourceWorkId: parsed.data.sourceWorkId,
-        // createdById is required on Project; caller must provide it. Not
-        // part of createProjectSchema yet, so it's read as an untyped extra
-        // field rather than a validated one.
-        createdById: (parsed.data as Record<string, unknown>).createdById as string ?? '00000000-0000-0000-0000-000000000000',
+        createdById,
       },
     });
   }
