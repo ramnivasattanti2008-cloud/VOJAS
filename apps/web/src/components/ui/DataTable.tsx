@@ -27,16 +27,16 @@ export function DataTable<T extends { id?: string }>({
   className,
 }: DataTableProps<T>) {
   return (
-    <div className={cn('overflow-x-auto rounded-lg border border-slate-200', className)}>
+    <div className={cn('overflow-x-auto rounded-[16px] border border-black/[0.06] bg-white shadow-ios-card', className)}>
       <table className="w-full text-sm" role="table" aria-label="Data table">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-200">
+          <tr className="ios-hairline-b">
             {columns.map((col) => (
               <th
                 key={col.key}
                 scope="col"
                 className={cn(
-                  'px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider',
+                  'px-4 py-3 text-left text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wider',
                   col.className
                 )}
               >
@@ -48,10 +48,10 @@ export function DataTable<T extends { id?: string }>({
         <tbody>
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="border-b border-slate-100">
+              <tr key={i} className="ios-hairline-b">
                 {columns.map((col) => (
                   <td key={col.key} className="px-4 py-3">
-                    <div className="h-4 bg-slate-100 rounded animate-pulse" />
+                    <div className="ios-shimmer h-4 rounded-[6px]" />
                   </td>
                 ))}
               </tr>
@@ -60,7 +60,7 @@ export function DataTable<T extends { id?: string }>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-4 py-12 text-center text-slate-500"
+                className="px-4 py-14 text-center text-[13px] text-[#8E8E93]"
               >
                 {emptyMessage}
               </td>
@@ -72,8 +72,8 @@ export function DataTable<T extends { id?: string }>({
                 <tr
                   key={row.id ?? JSON.stringify(row)}
                   className={cn(
-                    'border-b border-slate-100 last:border-0',
-                    'hover:bg-slate-50 transition-colors',
+                    'ios-hairline-b last:border-b-0',
+                    'hover:bg-black/[0.02] transition-colors',
                     isClickable && 'cursor-pointer'
                   )}
                   onClick={isClickable ? () => onRowClick(row) : undefined}
@@ -91,7 +91,7 @@ export function DataTable<T extends { id?: string }>({
                   }
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className={cn('px-4 py-3 text-slate-700', col.className)}>
+                    <td key={col.key} className={cn('px-4 py-3 text-[#1C1C1E]', col.className)}>
                       {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '—')}
                     </td>
                   ))}

@@ -49,16 +49,16 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-      <div className="px-6 py-3 flex items-center justify-end gap-3">
+    <header className="ios-material-thick ios-hairline-b sticky top-0 z-10">
+      <div className="px-6 h-16 flex items-center justify-end gap-2">
         {/* AI Copilot Trigger */}
         <button
           type="button"
           onClick={() => setCopilotOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/80 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-[10px] bg-[#5856D6]/10 text-[#5856D6] hover:bg-[#5856D6]/[0.16] text-[13px] font-semibold tracking-[-0.01em] transition-all active:scale-[0.97] cursor-pointer"
           aria-label={t('common.aiCopilot', 'AI Copilot')}
         >
-          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+          <Sparkles className="w-4 h-4" />
           <span className="hidden sm:inline">{t('common.aiCopilot', 'AI Copilot')}</span>
         </button>
 
@@ -68,12 +68,12 @@ export function Header() {
         {/* Notification bell */}
         <Link
           href="/notifications"
-          className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-600"
+          className="relative h-9 w-9 flex items-center justify-center rounded-[10px] hover:bg-black/[0.04] transition-colors text-[#48484A]"
           aria-label={`${t('common.notifications', 'Notifications')}${unread > 0 ? ` (${unread} unread)` : ''}`}
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-[19px] w-[19px]" />
           {unread > 0 && (
-            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+            <span className="absolute top-1 right-1 min-w-[17px] h-[17px] bg-[#FF3B30] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none ring-2 ring-white">
               {unread > 99 ? '99+' : unread}
             </span>
           )}
@@ -84,17 +84,17 @@ export function Header() {
             type="button"
             onClick={() => setOpen((s) => !s)}
             onKeyDown={handleMenuKeyDown}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-50 text-sm text-slate-700"
+            className="flex items-center gap-2 h-9 pl-1 pr-2.5 rounded-full hover:bg-black/[0.04] text-[13px] font-medium text-[#1C1C1E] transition-colors"
             aria-haspopup="menu"
             aria-expanded={open}
             aria-controls={open ? menuId : undefined}
             aria-label="User menu"
           >
-            <div className="w-7 h-7 rounded-full bg-vojas-100 text-vojas-700 flex items-center justify-center text-xs font-semibold">
-              {user?.name?.[0]?.toUpperCase() ?? <UserIcon className="h-4 w-4" />}
+            <div className="w-7 h-7 rounded-full bg-[#007AFF] text-white flex items-center justify-center text-[12px] font-semibold">
+              {user?.name?.[0]?.toUpperCase() ?? <UserIcon className="h-3.5 w-3.5" />}
             </div>
             <span className="hidden sm:inline">{user?.email}</span>
-            <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            <ChevronDown className="h-3.5 w-3.5 text-[#8E8E93]" aria-hidden="true" />
           </button>
 
           {open && (
@@ -102,16 +102,17 @@ export function Header() {
               id={menuId}
               role="menu"
               className={cn(
-                'absolute right-0 mt-2 w-48 bg-white rounded-lg border border-slate-200 shadow-lg py-1 z-20'
+                'absolute right-0 mt-2 w-52 bg-white rounded-[14px] border border-black/[0.06] shadow-ios-floating py-1.5 z-20',
+                'animate-[ios-sheet-in_0.16s_cubic-bezier(0.32,0.72,0,1)]'
               )}
             >
-              <div className="px-3 py-2 border-b border-slate-100">
-                <p className="text-sm font-medium text-slate-900 truncate">
+              <div className="px-3.5 py-2.5 ios-hairline-b">
+                <p className="text-[13px] font-semibold text-[#1C1C1E] truncate">
                   {user?.name ?? 'User'}
                 </p>
-                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <p className="text-[12px] text-[#8E8E93] truncate">{user?.email}</p>
                 {user?.role && (
-                  <p className="text-xs text-vojas-600 mt-0.5">{user.role}</p>
+                  <p className="text-[11px] text-[#007AFF] font-medium mt-0.5">{user.role}</p>
                 )}
               </div>
               <button
@@ -119,7 +120,7 @@ export function Header() {
                 role="menuitem"
                 onClick={onLogout}
                 aria-label={t('common.signOut', 'Sign out')}
-                className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                className="w-full text-left px-3.5 py-2.5 text-[13px] font-medium text-[#FF3B30] hover:bg-[#FF3B30]/[0.06] flex items-center gap-2 transition-colors"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 {t('common.signOut', 'Sign out')}
