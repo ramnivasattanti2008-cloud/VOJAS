@@ -72,7 +72,8 @@ router.get(
 
       const project = await getProjectOrThrow(projectId);
 
-      const hasCoords = project.latitude != null && project.longitude != null;
+      const hasCoords = project.latitude != null && project.longitude != null
+        && isValidCoords(project.latitude, project.longitude);
       // CDSE catalog search (dates, cloud cover, product ids, quicklook
       // imagery) is public and needs no credential. Only pixel-level
       // processing -- true-colour rendering cropped to the AOI, and NDVI /
@@ -281,7 +282,7 @@ router.post(
       }
       const project = await getProjectOrThrow(projectId);
 
-      if (!project.latitude || !project.longitude) {
+      if (project.latitude == null || project.longitude == null || !isValidCoords(project.latitude, project.longitude)) {
         return success(res, { status: 'NO_COORDINATES', message: 'Project has no coordinates' });
       }
       // Sync runs the CDSE catalog search (public, no credential needed) to
