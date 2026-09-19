@@ -304,6 +304,7 @@ enum AuditAction {
   FIELD_VERIFICATION_SCHEDULED
   FIELD_VERIFICATION_COMPLETED
   CONTRACTOR_UPDATE_REVIEWED
+  HIGH_RISK_MILESTONE_OVERRIDE
   // Phase 4: Enforcement Referral
   VERIFICATION_CASE_CREATED
   REFERRAL_CREATED
@@ -1579,7 +1580,11 @@ model ReportMedia {
   stripLocation    Boolean   @default(false) @map("strip_location") // metadata stripped for public view
   // Forensic signals (not accusations)
   forensicStatus   String    @default("PENDING") @map("forensic_status") // PENDING | REVIEW_REQUIRED | CLEAN | ANOMALY_DETECTED
-  forensicSignals  Json?     @map("forensic_signals") // { metadataInconsistency, timestampInconsistency, duplicateMedia, perceptualSimilarity, manipulationIndicators, compressionAnomalies }
+  forensicSignals  Json?     @map("forensic_signals") // { metadataInconsistency, timestampInconsistency, duplicateMedia, perceptualSimilarity, manipulationIndicators, compressionAnomalies, aiManipulationCheck }
+  // Real DCT-based perceptual hash (image uploads only; null for video/audio/
+  // document) — powers actual duplicate-image detection in mediaValidationService.
+  // Never used for anything beyond similarity comparison.
+  perceptualHash   String?   @map("perceptual_hash")
   verifiedById     String?   @map("verified_by_id")
   verifiedAt       DateTime? @map("verified_at") @db.Timestamptz(6)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -1588,6 +1593,7 @@ model ReportMedia {
   verifiedBy User? @relation(fields: [verifiedById], references: [id])
 
   @@index([reportId])
+  @@index([perceptualHash])
   @@map("report_media")
 }
 
