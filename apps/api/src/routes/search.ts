@@ -8,12 +8,40 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '@vojas/db';
+import type { Prisma } from '@vojas/db';
 import { ValidationError } from '@vojas/domain';
 import { UserRole } from '@vojas/shared';
 import { authenticate } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 
 const router = Router();
+
+type ProjectSearchHit = Prisma.ProjectGetPayload<{
+  select: {
+    id: true; name: true; state: true; district: true; sector: true; status: true;
+    _count: { select: { reports: true; anomalies: true } };
+  };
+}>;
+type ReportSearchHit = Prisma.ReportGetPayload<{
+  select: { id: true; title: true; status: true; category: true; projectId: true; createdAt: true };
+}>;
+type VendorSearchHit = Prisma.VendorGetPayload<{
+  select: { id: true; name: true; contactEmail: true; totalValue: true };
+}>;
+type MPSearchHit = Prisma.MPGetPayload<{
+  select: { id: true; name: true; constituency: true; party: true; state: true };
+}>;
+type AnomalySearchHit = Prisma.AnomalyGetPayload<{
+  select: { id: true; title: true; severity: true; status: true; ruleCode: true; projectId: true; createdAt: true };
+}>;
+
+interface UnifiedSearchResults {
+  projects?: { data: ProjectSearchHit[]; total: number };
+  reports?: { data: ReportSearchHit[]; total: number };
+  vendors?: { data: VendorSearchHit[]; total: number };
+  mps?: { data: MPSearchHit[]; total: number };
+  anomalies?: { data: AnomalySearchHit[]; total: number };
+}
 
 /**
  * GET /search — unified search across all entities
@@ -48,10 +76,10 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     const searchTerm = { contains: q };
     const skip = (page - 1) * limit;
      
-    const results: Record<string, any> = {};
+    const results: UnifiedSearchResults = {};
 
-    const user = (req as any).user;
-    const isPrivileged = [UserRole.ADMIN, UserRole.OFFICER, UserRole.ANALYST, UserRole.REVIEWER].includes(user?.role);
+    const user = req.user!;
+    const isPrivileged = [UserRole.ADMIN, UserRole.OFFICER, UserRole.ANALYST, UserRole.REVIEWER].includes(user.role);
 
     if (type === 'projects' || type === 'all') {
       const projectWhere: Record<string, unknown> = {

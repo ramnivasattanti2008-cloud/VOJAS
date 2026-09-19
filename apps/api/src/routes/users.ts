@@ -122,7 +122,7 @@ router.post(
       const passwordHash = await hashPassword(password);
 
       const user = await prisma.user.create({
-        data: { email, passwordHash, name, role: (role ?? UserRole.VIEWER) as any },
+        data: { email, passwordHash, name, role: role ?? UserRole.VIEWER },
         select: {
           id: true,
           email: true,
@@ -179,7 +179,7 @@ router.patch(
       if (parsed.data.name !== undefined) data.name = parsed.data.name;
       if (parsed.data.isActive !== undefined) data.isActive = parsed.data.isActive;
       if (parsed.data.role !== undefined && currentUser.role === UserRole.ADMIN) {
-        data.role = parsed.data.role as any;
+        data.role = parsed.data.role;
       }
       if (parsed.data.mpId !== undefined && currentUser.role === UserRole.ADMIN) {
         if (parsed.data.mpId === null) {

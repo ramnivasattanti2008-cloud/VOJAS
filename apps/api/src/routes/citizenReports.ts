@@ -759,7 +759,7 @@ router.post(
       }
 
       await auditService.logEvent({
-        actorId: req.user?.userId,
+        actorId: req.user!.userId,
         actorType: 'USER',
         action: AuditAction.REPORT_CLAIMS_EXTRACTED,
         entityType: 'Report',
@@ -807,13 +807,13 @@ router.patch('/:id', authenticate, async (req: Request, res: Response, next: Nex
           reportId: id,
           fromStatus: existing.status as ReportStatus,
           toStatus: body.status as ReportStatus,
-          changedById: req.user?.userId,
+          changedById: req.user!.userId,
           notes: body.statusNote as string | undefined,
         },
       });
 
       await auditService.logEvent({
-        actorId: req.user?.userId,
+        actorId: req.user!.userId,
         actorType: 'USER',
         action: AuditAction.REPORT_STATUS_CHANGED,
         entityType: 'Report',
@@ -849,7 +849,7 @@ router.post(
       if (!report) throw new NotFoundError('Report');
 
       const { action, reason } = parsed.data;
-      const userId = req.user?.userId;
+      const userId = req.user!.userId;
 
       // Create moderation record
       const moderation = await prisma.reportModeration.create({

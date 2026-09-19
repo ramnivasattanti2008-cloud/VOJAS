@@ -59,7 +59,7 @@ router.get('/search', authenticate, async (req: Request, res: Response, next: Ne
     }
 
     const p = parsed.data;
-    const user = req.user;
+    const user = req.user!;
 
     // Role-based privacy filtering
     const isPrivileged = [UserRole.ADMIN, UserRole.OFFICER, UserRole.ANALYST, UserRole.REVIEWER].includes(user?.role);

@@ -6,8 +6,9 @@
  */
 
 import { prisma } from '@vojas/db';
+import type { Prisma } from '@vojas/db';
 import { SECTOR_CODES, SECTOR_CONFIGS, type SectorConfig } from '@vojas/domain';
-import { ReportPrivacyLevel, ReportStatus, type ProjectSector } from '@vojas/shared';
+import { ReportPrivacyLevel, ReportStatus, type ProjectSector, type ProjectStatus } from '@vojas/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { success } from '../utils/apiResponse.js';
@@ -164,11 +165,11 @@ router.get('/projects', async (req: Request, res: Response, next: NextFunction) 
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 100);
     const status = req.query.status as string | undefined;
 
-    const where: { sector: ProjectSector; status?: string } = { sector: sectorCode };
-    if (status) where.status = status;
+    const where: Prisma.ProjectWhereInput = { sector: sectorCode };
+    if (status) where.status = status as ProjectStatus;
 
     const projects = await prisma.project.findMany({
-      where: where as any,
+      where,
       take: limit,
       orderBy: { updatedAt: 'desc' },
       select: {
