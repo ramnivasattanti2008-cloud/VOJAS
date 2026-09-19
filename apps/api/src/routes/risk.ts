@@ -322,8 +322,8 @@ router.get(
 
       const user = req.user!;
       const perms = req.userPermissions ?? getPermissionsForRole(user.role);
-      const userCtx = buildUserContext(user.role, user.userId, perms as any);
-      if (!canAccessProject(userCtx, project as any)) {
+      const userCtx = buildUserContext(user.role, user.userId, perms);
+      if (!canAccessProject(userCtx, project)) {
         return res.status(403).json({
           success: false,
           error: { code: 'FORBIDDEN', message: 'You do not have access to this project' },
