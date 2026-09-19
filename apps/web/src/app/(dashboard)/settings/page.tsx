@@ -283,7 +283,7 @@ export default function SettingsPage() {
       </div>
 
       {saveToast && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm flex items-center gap-2 animate-in fade-in duration-200">
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm flex items-center gap-2 animate-[ios-sheet-in_0.2s_cubic-bezier(0.32,0.72,0,1)]">
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           <span>Telemetry and provider status refreshed successfully from live services.</span>
         </div>
@@ -584,7 +584,7 @@ export default function SettingsPage() {
 
               {/* Running State Animation */}
               {isAuditing && (
-                <div className="p-6 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-4 animate-in fade-in">
+                <div className="p-6 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-4 animate-[ios-sheet-in_0.2s_cubic-bezier(0.32,0.72,0,1)]">
                   <div className="flex items-center gap-3">
                     <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
                     <div>
@@ -618,7 +618,7 @@ export default function SettingsPage() {
 
               {/* AUDIT RESULTS DISPLAY */}
               {auditResult && !isAuditing && (
-                <div className="space-y-4 pt-2 border-t border-slate-200 animate-in fade-in duration-300">
+                <div className="space-y-4 pt-2 border-t border-slate-200 animate-[ios-sheet-in_0.2s_cubic-bezier(0.32,0.72,0,1)]">
                   {/* Verdict Banner */}
                   <div
                     className={cn(

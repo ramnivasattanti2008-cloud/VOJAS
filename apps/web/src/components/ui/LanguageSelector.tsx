@@ -106,7 +106,7 @@ export function LanguageSelector({
 
       {/* Dropdown Panel */}
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-88 rounded-[20px] bg-white/95 backdrop-blur-2xl border border-black/[0.08] shadow-ios-floating z-50 overflow-hidden flex flex-col text-[#1C1C1E] animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-80 sm:w-88 rounded-[20px] bg-white/95 backdrop-blur-2xl border border-black/[0.08] shadow-ios-floating z-50 overflow-hidden flex flex-col text-[#1C1C1E] animate-[ios-sheet-in_0.16s_cubic-bezier(0.32,0.72,0,1)]">
           {/* Header */}
           <div className="p-3 bg-[#F7F7F9] border-b border-black/[0.06] flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -142,9 +142,9 @@ export function ExportButton({
               ref={menuRef}
               id={menuId}
               role="menu"
-              className="absolute right-0 z-50 mt-1.5 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100"
+              className="absolute right-0 z-50 mt-1.5 w-64 bg-white border border-black/[0.06] rounded-[14px] shadow-ios-floating py-1.5 animate-[ios-sheet-in_0.16s_cubic-bezier(0.32,0.72,0,1)]"
             >
-              <div className="px-3 py-1.5 text-xs font-medium text-slate-400 uppercase tracking-wider">
+              <div className="px-3.5 py-1.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wider">
                 Export as
               </div>
               {options.map((opt) => (
@@ -155,13 +155,13 @@ export function ExportButton({
                   disabled={opt.format === 'csv' && !csvEndpoint}
                   aria-label={opt.label}
                   className={cn(
-                    'w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                    'w-full flex items-start gap-3 px-3.5 py-2.5 text-left hover:bg-black/[0.04] transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
                   )}
                 >
-                  <span className="mt-0.5 text-slate-400 shrink-0" aria-hidden="true">{opt.icon}</span>
+                  <span className="mt-0.5 text-[#007AFF] shrink-0" aria-hidden="true">{opt.icon}</span>
                   <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{opt.label}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{opt.description}</div>
+                    <div className="text-[13px] font-semibold text-[#1C1C1E]">{opt.label}</div>
+                    <div className="text-[12px] text-[#8E8E93] mt-0.5">{opt.description}</div>
                   </div>
                 </button>
               ))}
@@ -224,17 +224,36 @@ async function downloadCsv(
 // ── Print to PDF ─────────────────────────────────────────────────────────────
 
 function triggerPrint(selector?: string): void {
-  if (selector) {
-    // Temporarily hide everything except the target
-    const originalBody = document.body.innerHTML;
-    const target = document.querySelector(selector);
-    if (target) {
-      document.body.innerHTML = '';
-      document.body.appendChild(target.cloneNode(true));
-      window.print();
-      document.body.innerHTML = originalBody;
-      return;
-    }
+  const target = selector ? document.querySelector(selector) : null;
+  if (!target) {
+    window.print();
+    return;
   }
-  window.print();
+
+  // Print just the target element via a detached iframe rather than
+  // replacing document.body.innerHTML — the previous approach swapped out
+  // every live DOM node React had attached fibers/listeners to, which
+  // leaves the whole app inert (no click handlers fire) the moment
+  // window.print() returns and the original markup is restored as inert
+  // HTML strings instead of the nodes React still thinks it owns.
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.top = '-10000px';
+  iframe.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    document.body.removeChild(iframe);
+    window.print();
+    return;
+  }
+
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><title>${document.title}</title></html><body>${target.outerHTML}</body></html>`);
+  doc.close();
+
+  iframe.contentWindow?.focus();
+  iframe.contentWindow?.print();
+  setTimeout(() => document.body.removeChild(iframe), 1000);
 }
