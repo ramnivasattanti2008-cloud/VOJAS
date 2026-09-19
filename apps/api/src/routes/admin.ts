@@ -16,6 +16,11 @@ import { created, success } from '../utils/apiResponse.js';
 const router = Router();
 const auditService = new AuditService(prisma);
 
+interface DailyProjectCountRow {
+  date: Date | string;
+  count: number;
+}
+
 async function resolveActorNames(actorIds: string[]): Promise<Map<string, string>> {
   const realIds = [...new Set(actorIds)].filter((id) => id !== 'SYSTEM' && id !== 'AI');
   if (realIds.length === 0) return new Map();
@@ -826,7 +831,7 @@ router.get('/activity', async (req: Request, res: Response, next: NextFunction) 
 
     // Daily breakdown for projects
     
-    const dailyProjects = await prisma.$queryRaw<any[]>`
+    const dailyProjects = await prisma.$queryRaw<DailyProjectCountRow[]>`
       SELECT DATE(created_at) as date, COUNT(*)::int as count
       FROM projects
       WHERE created_at >= ${since}
