@@ -411,7 +411,7 @@ export interface UpdateProjectPayload {
 export function createProjectsApi(client: ApiClient) {
   return {
     list(filters?: ProjectFilters) {
-      return client.get<PaginatedResponse<Project>>('/projects', filters as Record<string, any>);
+      return client.get<PaginatedResponse<Project>>('/projects', filters);
     },
     getById(id: string) {
       return client.get<Project>(`/projects/${id}`);
@@ -454,7 +454,7 @@ export function createProjectsApi(client: ApiClient) {
         return client.get<ProjectCluster>(`/projects/public/cluster/${projectId}`);
       },
       list(filters?: PublicProjectFilters) {
-        return client.get<PaginatedResponse<PublicProjectListItem>>('/projects/public', filters as Record<string, any>);
+        return client.get<PaginatedResponse<PublicProjectListItem>>('/projects/public', filters);
       },
       getById(id: string) {
         return client.get<PublicProjectDetail>(`/projects/public/${id}`);

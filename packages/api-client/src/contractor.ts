@@ -196,7 +196,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Projects (contractor's own projects only)
     getProjects(params?: { search?: string; status?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<ContractorProject>>('/contractor/projects', params as Record<string, any>);
+      return client.get<PaginatedResponse<ContractorProject>>('/contractor/projects', params);
     },
     getProject(id: string) {
       return client.get<ContractorProject>(`/contractor/projects/${id}`);
@@ -204,7 +204,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Milestones
     getMilestones(params?: { projectId?: string; status?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<ContractorMilestone>>('/contractor/milestones', params as Record<string, any>);
+      return client.get<PaginatedResponse<ContractorMilestone>>('/contractor/milestones', params);
     },
     getMilestone(id: string) {
       return client.get<ContractorMilestone>(`/contractor/milestones/${id}`);
@@ -221,7 +221,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Documents
     getDocuments(params?: { projectId?: string; milestoneId?: string; type?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<ContractorDocument>>('/contractor/documents', params as Record<string, any>);
+      return client.get<PaginatedResponse<ContractorDocument>>('/contractor/documents', params);
     },
     getDocument(id: string) {
       return client.get<ContractorDocument>(`/contractor/documents/${id}`);
@@ -239,7 +239,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Payments
     getPayments(params?: { projectId?: string; status?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<ContractorPayment>>('/contractor/payments', params as Record<string, any>);
+      return client.get<PaginatedResponse<ContractorPayment>>('/contractor/payments', params);
     },
     getPayment(id: string) {
       return client.get<ContractorPayment>(`/contractor/payments/${id}`);
@@ -247,7 +247,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Issues
     getIssues(params?: { projectId?: string; status?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<ContractorIssue>>('/contractor/issues', params as Record<string, any>);
+      return client.get<PaginatedResponse<ContractorIssue>>('/contractor/issues', params);
     },
     getIssue(id: string) {
       return client.get<ContractorIssue>(`/contractor/issues/${id}`);
@@ -258,7 +258,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Responses / Findings
     getResponses(params?: { projectId?: string; status?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<ContractorResponse>>('/contractor/responses', params as Record<string, any>);
+      return client.get<PaginatedResponse<ContractorResponse>>('/contractor/responses', params);
     },
     getResponse(id: string) {
       return client.get<ContractorResponse>(`/contractor/responses/${id}`);
@@ -273,7 +273,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Work Diary
     getWorkDiary(projectId: string, params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<WorkDiaryEntry>>(`/contractor/projects/${projectId}/work-diary`, params as Record<string, any>);
+      return client.get<PaginatedResponse<WorkDiaryEntry>>(`/contractor/projects/${projectId}/work-diary`, params);
     },
     submitWorkDiary(projectId: string, payload: {
       date: string;
@@ -288,7 +288,7 @@ export function createContractorApi(client: ApiClient) {
 
     // Inspections
     getInspections(params?: { projectId?: string; status?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<Inspection>>('/contractor/inspections', params as Record<string, any>);
+      return client.get<PaginatedResponse<Inspection>>('/contractor/inspections', params);
     },
   };
 }

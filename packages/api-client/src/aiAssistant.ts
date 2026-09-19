@@ -26,9 +26,17 @@ export interface AIAssistantResponse {
   roleContext: string;
 }
 
+// Matches AIToolDefinition in apps/api/src/services/aiAgent/aiTools.ts — the
+// catalog of server-side controlled tools returned by GET /ai/tools.
+export interface AIToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, { type: string; description: string; required?: boolean }>;
+}
+
 export interface AIAssistantApi {
   ask(request: AIAssistantRequest): Promise<AIAssistantResponse>;
-  getTools(): Promise<{ tools: any[]; enforcement: string }>;
+  getTools(): Promise<{ tools: AIToolDefinition[]; enforcement: string }>;
 }
 
 export function createAIAssistantApi(client: ApiClient): AIAssistantApi {
@@ -36,7 +44,7 @@ export function createAIAssistantApi(client: ApiClient): AIAssistantApi {
     ask(request: AIAssistantRequest): Promise<AIAssistantResponse> {
       return client.post<AIAssistantResponse>('/ai/assistant', request);
     },
-    getTools(): Promise<{ tools: any[]; enforcement: string }> {
+    getTools(): Promise<{ tools: AIToolDefinition[]; enforcement: string }> {
       return client.get('/ai/tools');
     },
   };

@@ -27,7 +27,7 @@ export class ApiClient {
     try {
       url = new URL(fullPath);
     } catch {
-      const g = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
+      const g = typeof globalThis !== 'undefined' ? (globalThis as { location?: { origin?: string } }) : {};
       const fallbackOrigin = g.location?.origin ?? 'http://127.0.0.1:5000';
       url = new URL(fullPath, fallbackOrigin);
     }
@@ -74,15 +74,23 @@ export class ApiClient {
 
     if (!json.success) {
       const details = Array.isArray(json.error?.details)
-        ? json.error.details.map((d: any) => d.message || JSON.stringify(d)).join('; ')
+        ? json.error.details.map((d: unknown) => {
+            const message = d && typeof d === 'object' && 'message' in d ? (d as { message?: unknown }).message : undefined;
+            return typeof message === 'string' && message ? message : JSON.stringify(d);
+          }).join('; ')
         : '';
       throw new Error(details ? `${json.error?.message}: ${details}` : (json.error?.message ?? 'Request failed'));
     }
     return json.data as T;
   }
 
-  get<T>(endpoint: string, params?: Record<string, any>) {
-    return this.request<T>('GET', endpoint, { params });
+  // `params` is typed as `object` (not `Record<string, any>`/`Record<string, unknown>`)
+  // deliberately: callers pass many different filter interfaces (ProjectFilters,
+  // PublicProjectFilters, etc.) that don't declare a string index signature.
+  // `object` accepts any of them at the call site with no cast, while still
+  // rejecting non-object values the way `any` would not.
+  get<T>(endpoint: string, params?: object) {
+    return this.request<T>('GET', endpoint, { params: params as Record<string, string | number | boolean | undefined> | undefined });
   }
   post<T>(endpoint: string, body?: unknown) {
     return this.request<T>('POST', endpoint, { body });

@@ -261,7 +261,10 @@ export function createAnalyticsApi(client: ApiClient) {
         id: string;
         entityType: string;
         entityId: string;
-        metrics: any;
+        // AnalyticsSnapshot.metrics (Prisma `Json`) is stored verbatim from whatever
+        // the caller of POST /analytics/snapshots sent — the route does not validate
+        // or coerce its shape — so it is truly unknown JSON, not necessarily an object.
+        metrics: unknown;
         computedAt: string;
       }>;
       total: number;
@@ -275,12 +278,14 @@ export function createAnalyticsApi(client: ApiClient) {
     createSnapshot(data: {
       entityType: string;
       entityId: string;
-      metrics: any;
+      // Sent through verbatim to POST /analytics/snapshots, which stores it as-is
+      // in a Json column with no shape validation — genuinely unknown JSON.
+      metrics: unknown;
     }): Promise<{
       id: string;
       entityType: string;
       entityId: string;
-      metrics: any;
+      metrics: unknown;
       computedAt: string;
     }> {
       return client.post('/analytics/snapshots', data);

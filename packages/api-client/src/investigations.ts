@@ -101,7 +101,7 @@ export function createInvestigationsApi(client: ApiClient) {
       return client.post<InvestigationCase>('/investigations', payload);
     },
     list(filters?: { status?: string; projectId?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<InvestigationCase>>('/investigations', filters as Record<string, any>);
+      return client.get<PaginatedResponse<InvestigationCase>>('/investigations', filters);
     },
     getById(id: string) {
       return client.get<InvestigationCase>(`/investigations/${id}`);
@@ -124,7 +124,7 @@ export function createInvestigationsApi(client: ApiClient) {
 export function createReferralsApi(client: ApiClient) {
   return {
     list(filters?: { status?: string; projectId?: string; destinationAuthority?: string; page?: number; limit?: number }) {
-      return client.get<PaginatedResponse<Referral>>('/referrals', filters as Record<string, any>);
+      return client.get<PaginatedResponse<Referral>>('/referrals', filters);
     },
     getById(id: string) {
       return client.get<Referral>(`/referrals/${id}`);

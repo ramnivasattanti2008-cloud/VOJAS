@@ -114,7 +114,7 @@ export function createCitizenApi(client: ApiClient) {
 
     // Get citizen notifications
     getNotifications(params?: { limit?: number; unreadOnly?: boolean }) {
-      return client.get<PaginatedResponse<CitizenNotification>>('/citizen/notifications', params as Record<string, any>);
+      return client.get<PaginatedResponse<CitizenNotification>>('/citizen/notifications', params);
     },
 
     // Mark notification as read

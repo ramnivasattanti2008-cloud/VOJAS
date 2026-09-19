@@ -49,7 +49,8 @@ export interface AuditEvent {
   action: string;
   entityType: string;
   entityId: string;
-  metadata?: any;
+  /** Matches AuditEvent.metadata (Prisma `Json?`) — an arbitrary JSON object, or absent. */
+  metadata?: Record<string, unknown> | null;
   ipAddress?: string;
   userAgent?: string;
   timestamp: string;
@@ -124,8 +125,9 @@ export interface RoleChangeAudit {
   actorId: string;
   actorName: string;
   action: 'CREATE' | 'UPDATE' | 'DELETE';
-  previousValue: any;
-  newValue: any;
+  /** Read from the triggering AuditEvent's `metadata` (Prisma `Json?`) — an arbitrary JSON object, or null. */
+  previousValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
   timestamp: string;
 }
 
@@ -158,6 +160,17 @@ export interface DataSourceSyncResult {
   error?: string;
 }
 
+/** Matches the projection returned by GET /admin/data-sources/:id/records — see DataSourceRecord in schema.prisma. */
+export interface DataSourceRecordSummary {
+  id: string;
+  externalRecordId: string;
+  fetchedAt: string;
+  transformationStatus: string;
+  quality: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
 // Rules Management
 export interface RiskRule {
   id: string;
@@ -180,9 +193,23 @@ export interface RuleChangeAudit {
   ruleName: string;
   actorId: string;
   actorName: string;
-  previousValue: any;
-  newValue: any;
+  /** Read from the triggering AuditEvent's `metadata` (Prisma `Json?`) — an arbitrary JSON object, or null. */
+  previousValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
   timestamp: string;
+}
+
+/** Matches the projection returned by GET /admin/rules/:ruleId/versions — see RiskRuleVersion in schema.prisma. */
+export interface RiskRuleVersion {
+  id: string;
+  ruleId: string;
+  version: string;
+  conditions: Record<string, unknown>;
+  severityModifier: string;
+  confidenceModifier: string;
+  effectiveAt: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 // AI Providers
@@ -230,6 +257,18 @@ export interface SatelliteProvider {
     failedJobs: number | null;
     avgProcessingTimeMs: number | null;
   };
+}
+
+/** Matches the projection returned by GET /admin/satellites/observations — see SatelliteObservation in schema.prisma. */
+export interface AdminSatelliteObservation {
+  id: string;
+  projectId: string;
+  projectName: string | null;
+  provider: string;
+  dataset: string;
+  observationDate: string;
+  quality: string;
+  cloudCover: number;
 }
 
 // Background Jobs
@@ -282,7 +321,8 @@ export interface SecurityEvent {
   resource: string;
   action: string;
   result: 'SUCCESS' | 'FAILURE' | 'BLOCKED';
-  metadata?: any;
+  /** Matches AuditEvent.metadata (Prisma `Json?`) — an arbitrary JSON object, or absent. */
+  metadata?: Record<string, unknown> | null;
   timestamp: string;
 }
 
@@ -430,7 +470,7 @@ export function createAdminApi(client: ApiClient) {
     },
 
     getDataSourceRecords(id: string, params?: { page?: number; limit?: number }): Promise<{
-      records: any[];
+      records: DataSourceRecordSummary[];
       pagination: { page: number; limit: number; total: number };
     }> {
       return client.get(`/admin/data-sources/${id}/records`, params);
@@ -453,7 +493,7 @@ export function createAdminApi(client: ApiClient) {
       return client.get(`/admin/rules/${ruleId}/audit`);
     },
 
-    getRuleVersions(ruleId: string): Promise<any[]> {
+    getRuleVersions(ruleId: string): Promise<RiskRuleVersion[]> {
       return client.get(`/admin/rules/${ruleId}/versions`);
     },
 
@@ -478,7 +518,7 @@ export function createAdminApi(client: ApiClient) {
     },
 
     getSatelliteObservations(params?: { page?: number; limit?: number; status?: string }): Promise<{
-      observations: any[];
+      observations: AdminSatelliteObservation[];
       pagination: { page: number; limit: number; total: number };
     }> {
       return client.get('/admin/satellites/observations', params);
@@ -582,7 +622,8 @@ export function createAdminApi(client: ApiClient) {
         action: string;
         actorId: string;
         timestamp: string;
-        metadata?: any;
+        /** Matches AuditEvent.metadata (Prisma `Json?`) — an arbitrary JSON object, or absent. */
+        metadata?: Record<string, unknown> | null;
       }>;
       total: number;
     }> {
