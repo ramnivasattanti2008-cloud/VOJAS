@@ -681,9 +681,23 @@ router.post(
       // Extract metadata
       const metadata = mediaService.extractMetadata(file.path, file.mimetype);
 
-      // Forensic assessment
-      const forensicSignals = mediaService.assessMediaForensics(file.path, new Date());
-      const forensicStatus = 'REVIEW_REQUIRED' as const;
+      // Real duplicate-image check: compare this upload's perceptual hash
+      // against every other image already on record (across all reports —
+      // reusing an old photo for an unrelated site is the actual fraud
+      // pattern this exists to catch, not just within-report duplicates).
+      const existingHashes = await prisma.reportMedia.findMany({
+        where: { perceptualHash: { not: null } },
+        select: { id: true, perceptualHash: true },
+      });
+      const { signals: forensicSignals, perceptualHash } = await mediaService.assessMediaForensics(
+        file.path,
+        buffer,
+        file.mimetype,
+        existingHashes.map((m) => ({ mediaId: m.id, hash: m.perceptualHash! }))
+      );
+      // Honest status derived from what was actually found, not a constant
+      // applied to every upload regardless of content.
+      const forensicStatus = forensicSignals.duplicateMedia ? 'ANOMALY_DETECTED' : 'REVIEW_REQUIRED';
 
       const url = `/uploads/reports/${file.filename}`;
 
@@ -702,6 +716,7 @@ router.post(
           stripLocation: false,
           forensicStatus,
           forensicSignals: JSON.parse(JSON.stringify(forensicSignals)) as Prisma.InputJsonValue,
+          perceptualHash,
         },
       });
 

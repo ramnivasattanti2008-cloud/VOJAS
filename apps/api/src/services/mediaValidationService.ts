@@ -9,6 +9,8 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { z } from 'zod';
+import { Jimp, compareHashes } from 'jimp';
+import { logger } from '../utils/logger.js';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -68,10 +70,18 @@ export const mediaValidationSchema = z.object({
 export interface ForensicSignals {
   metadataInconsistency: boolean;
   timestampInconsistency: boolean;
+  // Real, computed from a DCT-based perceptual hash (see computePerceptualHash)
+  // compared against every other image already on record — not a stub.
   duplicateMedia: boolean;
-  perceptualSimilarity: number; // 0-1, 1 = identical
+  perceptualSimilarity: number; // 0-1, 1 = identical (0 when not computed)
+  matchedMediaId?: string; // the closest prior upload, when duplicateMedia is true
   manipulationIndicators: boolean;
   compressionAnomalies: boolean;
+  // Detecting AI-generated/deepfake imagery needs a trained classifier or a
+  // paid detection API (e.g. Hive, Sensity) — neither exists here. Reported
+  // honestly as unavailable rather than a fabricated true/false verdict.
+  aiManipulationCheck: 'NOT_AVAILABLE';
+  aiManipulationCheckReason: string;
   [key: string]: unknown;
 }
 
@@ -175,21 +185,73 @@ export class MediaValidationService {
   }
 
   /**
+   * Compute a real DCT-based perceptual hash for an image buffer (via
+   * Jimp's pHash — resize to 32x32, greyscale, 2D DCT, threshold against
+   * the median coefficient: the same published algorithm as Hacker
+   * Factor's "Looks Like It"). Returns null for non-image content or if
+   * the buffer can't be decoded as an image — never a fabricated hash.
+   */
+  async computePerceptualHash(buffer: Buffer, mimeType: string): Promise<string | null> {
+    if (!mimeType.startsWith('image/')) return null;
+    try {
+      const image = await Jimp.read(buffer);
+      return image.pHash();
+    } catch (err) {
+      logger.warn('[media-forensics] Could not decode image for perceptual hashing', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Find the closest match to `hash` among `candidates` by normalized
+   * Hamming distance (0 = identical, 1 = maximally different — see Jimp's
+   * pHash `distance`/`compareHashes`). Returns null if there are no
+   * candidates to compare against.
+   */
+  findClosestMatch(
+    hash: string,
+    candidates: Array<{ mediaId: string; hash: string }>
+  ): { mediaId: string; distance: number } | null {
+    let best: { mediaId: string; distance: number } | null = null;
+    for (const candidate of candidates) {
+      const distance = compareHashes(hash, candidate.hash);
+      if (!best || distance < best.distance) {
+        best = { mediaId: candidate.mediaId, distance };
+      }
+    }
+    return best;
+  }
+
+  /**
    * Assess media for forensic manipulation signals.
    * Returns REVIEW_REQUIRED signals — never makes definitive accusations.
    *
-   * In production, this would call:
-   * - Image hashing (pHash, dHash) for perceptual similarity
-   * - EXIF extraction for metadata consistency checks
-   * - JPEG quantization analysis for recompression detection
+   * Duplicate detection is real (perceptual-hash comparison against every
+   * other image already on record, passed in by the caller). Manipulation/
+   * compression-anomaly detection and AI-image-generation detection are
+   * not — those need EXIF/JPEG-quantization analysis and a trained
+   * classifier or paid API (Google PhotoDNA, Adobe Content Authenticity
+   * Initiative, Hive, Sensity, ...) respectively, none of which exist
+   * here, so they're reported as explicit unavailable states rather than
+   * a fabricated verdict.
    */
-  assessMediaForensics(filePath: string, _uploadDate: Date): ForensicSignals {
+  async assessMediaForensics(
+    filePath: string,
+    buffer: Buffer,
+    mimeType: string,
+    existingHashes: Array<{ mediaId: string; hash: string }>
+  ): Promise<{ signals: ForensicSignals; perceptualHash: string | null }> {
+    const aiManipulationCheck = 'NOT_AVAILABLE' as const;
+    const aiManipulationCheckReason = 'AI-generated/deepfake image detection requires a trained classifier or a paid detection API (e.g. Hive, Sensity) — not configured on this deployment.';
+
     let stats: fs.Stats;
     try {
       stats = fs.statSync(filePath);
     } catch {
       // File may not exist yet (pre-upload validation)
-      return this.defaultForensicSignals();
+      return { signals: this.defaultForensicSignals(), perceptualHash: null };
     }
 
     const fileSize = stats.size;
@@ -197,36 +259,45 @@ export class MediaValidationService {
     // Check file size anomalies (tiny files likely invalid or corrupted)
     if (fileSize < 1024) {
       return {
-        metadataInconsistency: false,
-        timestampInconsistency: false,
-        duplicateMedia: false,
-        perceptualSimilarity: 0,
-        manipulationIndicators: false,
-        compressionAnomalies: false,
+        perceptualHash: null,
+        signals: {
+          metadataInconsistency: false,
+          timestampInconsistency: false,
+          duplicateMedia: false,
+          perceptualSimilarity: 0,
+          manipulationIndicators: false,
+          compressionAnomalies: false,
+          aiManipulationCheck,
+          aiManipulationCheckReason,
+        },
       };
     }
 
-    // Basic consistency checks
+    const hash = await this.computePerceptualHash(buffer, mimeType);
+    const match = hash ? this.findClosestMatch(hash, existingHashes) : null;
+    // 0.10 is a conservative near-duplicate threshold for this DCT pHash —
+    // well below it means the same underlying image (recompressed, resized,
+    // lightly cropped), not just visually similar.
+    const duplicateMedia = match !== null && match.distance < 0.10;
+
     const signals: ForensicSignals = {
       // Metadata inconsistency: we flag for review if we can't verify
       // (in production, compare EXIF date vs upload date vs incident date)
       metadataInconsistency: false,
       // Timestamp inconsistency: EXIF capture date vs upload time
       timestampInconsistency: false,
-      // Duplicate: perceptual hash match (would need hash database in production)
-      duplicateMedia: false,
-      // Perceptual similarity: 0 = unknown, would need content-addressable store
-      perceptualSimilarity: 0,
+      duplicateMedia,
+      perceptualSimilarity: match ? Math.round((1 - match.distance) * 100) / 100 : 0,
+      ...(duplicateMedia && match ? { matchedMediaId: match.mediaId } : {}),
       // Manipulation indicators: compression ratio anomalies
       manipulationIndicators: false,
       // Compression anomalies: unusual quantization (JPEG)
       compressionAnomalies: false,
+      aiManipulationCheck,
+      aiManipulationCheckReason,
     };
 
-    // Mark as REVIEW_REQUIRED for now — full forensic analysis requires
-    // external ML services (Google PhotoDNA, Adobe Content Authenticity Initiative,
-    // or custom perceptual hash infrastructure)
-    return signals;
+    return { signals, perceptualHash: hash };
   }
 
   /**
@@ -247,6 +318,8 @@ export class MediaValidationService {
       perceptualSimilarity: 0,
       manipulationIndicators: false,
       compressionAnomalies: false,
+      aiManipulationCheck: 'NOT_AVAILABLE',
+      aiManipulationCheckReason: 'AI-generated/deepfake image detection requires a trained classifier or a paid detection API (e.g. Hive, Sensity) — not configured on this deployment.',
     };
   }
 }
