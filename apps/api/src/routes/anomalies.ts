@@ -11,7 +11,7 @@ import {
   anomalyEscalateSchema,
   anomalyCreateSchema,
 } from '@vojas/domain';
-import { AuditAction, UserRole, PERMISSIONS, getPermissionsForRole, getFindingVisibilityFilter } from '@vojas/shared';
+import { AuditAction, UserRole, getPermissionsForRole, getFindingVisibilityFilter } from '@vojas/shared';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { success, created } from '../utils/apiResponse.js';
@@ -35,7 +35,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
     const visibilityFilter = getFindingVisibilityFilter({
       userId: user.userId,
       role: user.role,
-      permissions: perms as any,
+      permissions: perms,
     });
 
     const where: Record<string, unknown> = { ...visibilityFilter };
@@ -102,7 +102,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
     const visibilityFilter = getFindingVisibilityFilter({
       userId: user.userId,
       role: user.role,
-      permissions: perms as any,
+      permissions: perms,
     });
 
     const anomaly = await prisma.anomaly.findFirst({
