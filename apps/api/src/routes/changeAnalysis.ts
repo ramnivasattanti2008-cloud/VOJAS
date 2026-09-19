@@ -23,7 +23,6 @@ import { NotFoundError } from '@vojas/domain';
 import { authenticate, requirePermission } from '../middleware/auth.js';
 import { success } from '../utils/apiResponse.js';
 import { changeAnalysisJobQueue } from '../services/changeAnalysisJobQueue.js';
-import type { ChangeClassification, Confidence } from '../services/changeAnalysisEngine.js';
 
 const router = Router();
 
