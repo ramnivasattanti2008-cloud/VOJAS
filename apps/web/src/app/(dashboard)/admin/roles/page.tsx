@@ -5,110 +5,54 @@
  * Role permissions, permission matrix, audit trail
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  Lock, Shield, Users, Clock, ChevronRight, RefreshCw,
-  AlertCircle, X, Eye, Save, CheckCircle,
+  Lock, Shield, Users, Clock, RefreshCw, CheckCircle,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { cn, formatDateTime } from '@/lib/utils';
-import { useAdminRoles, useUpdateRole, useRoleAuditTrail, useRolePermissionsMatrix } from '@/hooks/useAdmin';
-
-// Permission categories for display
-const PERMISSION_CATEGORIES = [
-  { key: 'projects', label: 'Projects', permissions: ['read', 'create', 'update', 'delete', 'verify'] },
-  { key: 'anomalies', label: 'Anomalies', permissions: ['read', 'create', 'update', 'resolve', 'escalate'] },
-  { key: 'reports', label: 'Reports', permissions: ['read', 'create', 'update', 'moderate', 'delete'] },
-  { key: 'users', label: 'Users', permissions: ['read', 'create', 'update', 'delete', 'assign_role'] },
-  { key: 'roles', label: 'Roles', permissions: ['read', 'create', 'update', 'delete'] },
-  { key: 'data_sources', label: 'Data Sources', permissions: ['read', 'sync', 'create', 'update', 'delete'] },
-  { key: 'rules', label: 'Rules', permissions: ['read', 'create', 'update', 'delete', 'toggle'] },
-  { key: 'satellites', label: 'Satellites', permissions: ['read', 'analyze', 'retry'] },
-  { key: 'health', label: 'Health', permissions: ['read', 'configure'] },
-  { key: 'audit', label: 'Audit', permissions: ['read', 'export'] },
-  { key: 'security', label: 'Security', permissions: ['read', 'manage'] },
-];
-
-// Default role permissions
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  ADMIN: PERMISSION_CATEGORIES.flatMap(c => c.permissions.map(p => `${c.key}:${p}`)),
-  SUPER_ADMIN: PERMISSION_CATEGORIES.flatMap(c => c.permissions.map(p => `${c.key}:${p}`)),
-  OFFICER: [
-    'projects:read', 'projects:create', 'projects:update', 'projects:verify',
-    'anomalies:read', 'anomalies:create', 'anomalies:update', 'anomalies:resolve',
-    'reports:read', 'reports:create', 'reports:update', 'reports:moderate',
-    'satellites:read', 'satellites:analyze',
-  ],
-  ANALYST: [
-    'projects:read',
-    'anomalies:read', 'anomalies:create',
-    'reports:read',
-    'satellites:read', 'satellites:analyze',
-  ],
-  REVIEWER: [
-    'projects:read',
-    'anomalies:read', 'anomalies:update', 'anomalies:resolve',
-    'reports:read', 'reports:moderate',
-  ],
-  MP: ['projects:read', 'anomalies:read', 'reports:read'],
-  VIEWER: ['projects:read', 'anomalies:read', 'reports:read'],
-};
+import { formatDateTime } from '@/lib/utils';
+import { useAdminRoles, useRoleAuditTrail, useRolePermissionsMatrix } from '@/hooks/useAdmin';
 
 export default function AdminRolesPage() {
   const [selectedRole, setSelectedRole] = useState<any>(null);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-  const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const { data: roles, isLoading, refetch } = useAdminRoles();
   const { data: permissionsMatrix } = useRolePermissionsMatrix();
   const { data: auditTrail } = useRoleAuditTrail(selectedRole?.id ?? '');
-  const updateMutation = useUpdateRole();
 
-  const handleEditPermissions = (role: any) => {
+  // Every permission that appears on any role — real values from the
+  // matrix actually enforced by requirePermission(), not an invented
+  // taxonomy. Grouped by the segment before the first '.' (e.g.
+  // "project.read.public" -> "project"), a real property of the string,
+  // not a fabricated category.
+  const allPermissions = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(permissionsMatrix ?? {}).forEach((perms) => perms.forEach((p) => set.add(p)));
+    return [...set].sort();
+  }, [permissionsMatrix]);
+
+  const groupedPermissions = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    allPermissions.forEach((p) => {
+      const category = p.split('.')[0];
+      groups.set(category, [...(groups.get(category) ?? []), p]);
+    });
+    return [...groups.entries()];
+  }, [allPermissions]);
+
+  const handleViewPermissions = (role: any) => {
     setSelectedRole(role);
-    setEditingPermissions(role.permissions || DEFAULT_ROLE_PERMISSIONS[role.name] || []);
     setShowPermissionsModal(true);
-    setHasChanges(false);
   };
 
   const handleViewAudit = (role: any) => {
     setSelectedRole(role);
     setShowAuditModal(true);
-  };
-
-  const togglePermission = (permission: string) => {
-    setEditingPermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter(p => p !== permission)
-        : [...prev, permission]
-    );
-    setHasChanges(true);
-  };
-
-  const handleSavePermissions = async () => {
-    if (!selectedRole) return;
-    try {
-      await updateMutation.mutateAsync({
-        id: selectedRole.id,
-        data: { permissions: editingPermissions },
-      });
-      setShowPermissionsModal(false);
-      setSelectedRole(null);
-      setEditingPermissions([]);
-      setHasChanges(false);
-    } catch {
-      setError('Failed to update permissions');
-    }
-  };
-
-  const getRolePermissionCount = (role: any) => {
-    return role.permissions?.length ?? DEFAULT_ROLE_PERMISSIONS[role.name]?.length ?? 0;
   };
 
   return (
@@ -136,17 +80,6 @@ export default function AdminRolesPage() {
           </Button>
         </div>
       </div>
-
-      {/* Error Banner */}
-      {error && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError(null)} className="hover:text-red-900">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* Roles Grid */}
       {isLoading ? (
@@ -184,7 +117,7 @@ export default function AdminRolesPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Lock className="h-4 w-4" />
-                    <span>{getRolePermissionCount(role)} permissions</span>
+                    <span>{role.permissions.length} permissions</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
@@ -192,10 +125,10 @@ export default function AdminRolesPage() {
                     variant="secondary"
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleEditPermissions(role)}
+                    onClick={() => handleViewPermissions(role)}
                     leftIcon={<Lock className="h-3 w-3" />}
                   >
-                    Edit Permissions
+                    View Permissions
                   </Button>
                   <Button
                     variant="ghost"
@@ -235,21 +168,20 @@ export default function AdminRolesPage() {
               </tr>
             </thead>
             <tbody>
-              {PERMISSION_CATEGORIES.map((category) => (
+              {groupedPermissions.map(([category, perms]) => (
                 <>
-                  <tr key={`header-${category.key}`} className="bg-slate-100">
-                    <td colSpan={(roles?.length ?? 0) + 1} className="px-4 py-1 font-semibold text-slate-700 sticky left-0 bg-slate-100">
-                      {category.label}
+                  <tr key={`header-${category}`} className="bg-slate-100">
+                    <td colSpan={(roles?.length ?? 0) + 1} className="px-4 py-1 font-semibold text-slate-700 sticky left-0 bg-slate-100 capitalize">
+                      {category}
                     </td>
                   </tr>
-                  {category.permissions.map((perm) => (
-                    <tr key={`${category.key}-${perm}`} className="border-b border-slate-50 hover:bg-slate-50">
+                  {perms.map((perm) => (
+                    <tr key={perm} className="border-b border-slate-50 hover:bg-slate-50">
                       <td className="px-4 py-2 text-slate-600 font-medium sticky left-0 bg-white">
-                        {category.key}:{perm}
+                        {perm}
                       </td>
                       {roles?.map((role) => {
-                        const rolePerms = role.permissions || DEFAULT_ROLE_PERMISSIONS[role.name] || [];
-                        const hasPermission = rolePerms.includes(`${category.key}:${perm}`);
+                        const hasPermission = role.permissions.includes(perm);
                         return (
                           <td key={role.id} className="text-center px-3 py-2">
                             {hasPermission ? (
@@ -275,73 +207,45 @@ export default function AdminRolesPage() {
         onClose={() => {
           setShowPermissionsModal(false);
           setSelectedRole(null);
-          setEditingPermissions([]);
-          setHasChanges(false);
         }}
-        title={`Edit Permissions: ${selectedRole?.name}`}
+        title={`Permissions: ${selectedRole?.name}`}
         size="lg"
         footer={
-          <div className="flex justify-between">
-            <div className="text-sm text-slate-500">
-              {editingPermissions.length} permissions assigned
-            </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => setShowPermissionsModal(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSavePermissions}
-                isLoading={updateMutation.isPending}
-                disabled={!hasChanges}
-                leftIcon={<Save className="h-4 w-4" />}
-              >
-                Save Changes
-              </Button>
-            </div>
-          </div>
+          <Button variant="secondary" onClick={() => setShowPermissionsModal(false)}>
+            Close
+          </Button>
         }
       >
+        <p className="text-xs text-slate-500 mb-4">
+          Role permissions are defined in code and enforced on every request.
+          They cannot be changed from this screen.
+        </p>
         <div className="space-y-6 max-h-[60vh] overflow-y-auto">
-          {PERMISSION_CATEGORIES.map((category) => (
-            <div key={category.key}>
-              <h4 className="text-sm font-semibold text-slate-700 mb-2">{category.label}</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {category.permissions.map((perm) => {
-                  const fullPerm = `${category.key}:${perm}`;
-                  const isSelected = editingPermissions.includes(fullPerm);
-                  return (
-                    <button
+          {groupedPermissions.map(([category, perms]) => {
+            const rolePerms = selectedRole?.permissions ?? [];
+            const granted = perms.filter((p) => rolePerms.includes(p));
+            if (granted.length === 0) return null;
+            return (
+              <div key={category}>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 capitalize">{category}</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {granted.map((perm) => (
+                    <div
                       key={perm}
-                      onClick={() => togglePermission(fullPerm)}
-                      className={cn(
-                        'p-2 rounded-lg border text-left transition-colors text-sm',
-                        isSelected
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600'
-                      )}
+                      className="p-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm flex items-center gap-2"
                     >
-                      <div className="flex items-center gap-2">
-                        {isSelected ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-500" />
-                        ) : (
-                          <div className="w-4 h-4 border-2 border-slate-300 rounded" />
-                        )}
-                        <span className="capitalize">{perm}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+                      <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span>{perm}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+          {selectedRole && selectedRole.permissions.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-4">This role has no permissions.</p>
+          )}
         </div>
-        {hasChanges && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-700">
-              Changes will be logged in the audit trail. Previous permissions will be preserved in history.
-            </p>
-          </div>
-        )}
       </Modal>
 
       {/* Role Audit Trail Modal */}

@@ -52,8 +52,8 @@ export default function AdminDataSourcesPage() {
     try {
       await syncMutation.mutateAsync(id);
       setError(null);
-    } catch {
-      setError('Sync failed. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sync failed. Please try again.');
     } finally {
       setSyncingId(null);
     }

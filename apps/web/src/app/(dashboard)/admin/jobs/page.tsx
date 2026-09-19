@@ -71,8 +71,8 @@ export default function AdminJobsPage() {
     try {
       await retryMutation.mutateAsync(jobId);
       setError(null);
-    } catch {
-      setError('Failed to retry job');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to retry job');
     } finally {
       setRetryingId(null);
     }
@@ -84,8 +84,8 @@ export default function AdminJobsPage() {
     try {
       await cancelMutation.mutateAsync(jobId);
       setError(null);
-    } catch {
-      setError('Failed to cancel job');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel job');
     } finally {
       setCancellingId(null);
     }

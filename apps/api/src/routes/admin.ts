@@ -6,13 +6,22 @@
  */
 
 import { prisma } from '@vojas/db';
+import { AuditService } from '@vojas/domain';
 import { NotFoundError, ValidationError } from '@vojas/domain';
-import { UserRole } from '@vojas/shared';
+import { AuditAction, getPermissionsForRole, ROLE_PERMISSIONS, UserRole } from '@vojas/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import { created, success } from '../utils/apiResponse.js';
 
 const router = Router();
+const auditService = new AuditService(prisma);
+
+async function resolveActorNames(actorIds: string[]): Promise<Map<string, string>> {
+  const realIds = [...new Set(actorIds)].filter((id) => id !== 'SYSTEM' && id !== 'AI');
+  if (realIds.length === 0) return new Map();
+  const users = await prisma.user.findMany({ where: { id: { in: realIds } }, select: { id: true, name: true } });
+  return new Map(users.map((u) => [u.id, u.name]));
+}
 
 // ── GET /admin/stats — system-wide statistics ───────────────────────────────
 
@@ -326,6 +335,163 @@ router.post('/users', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
+// ── GET /admin/users/:id — single user with real permissions + access log ───
+
+const ACCESS_LOG_ACTIONS = [AuditAction.AUTH_LOGIN, AuditAction.AUTH_FAILED_LOGIN, AuditAction.AUTH_LOGOUT, AuditAction.AUTH_TOKEN_REFRESH];
+
+router.get('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true, lastLoginAt: true },
+    });
+    if (!user) throw new NotFoundError('User');
+
+    const accessHistory = await prisma.auditEvent.findMany({
+      where: { actorId: id, action: { in: ACCESS_LOG_ACTIONS } },
+      orderBy: { timestamp: 'desc' },
+      take: 50,
+      select: { action: true, timestamp: true, ipAddress: true },
+    });
+
+    success(res, {
+      ...user,
+      permissions: [...getPermissionsForRole(user.role as UserRole)],
+      accessHistory: accessHistory.map((e) => ({
+        action: e.action,
+        timestamp: e.timestamp.toISOString(),
+        ipAddress: e.ipAddress ?? undefined,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/users/:id/access — real login/logout history ─────────────────
+
+router.get('/users/:id/access', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const existing = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundError('User');
+
+    const accessHistory = await prisma.auditEvent.findMany({
+      where: { actorId: id, action: { in: ACCESS_LOG_ACTIONS } },
+      orderBy: { timestamp: 'desc' },
+      take: 50,
+      select: { action: true, timestamp: true, ipAddress: true },
+    });
+
+    success(res, accessHistory.map((e) => ({
+      action: e.action,
+      timestamp: e.timestamp.toISOString(),
+      ipAddress: e.ipAddress ?? undefined,
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /admin/users/:id — update user (the route the admin/users page
+// actually calls; the PUT roles/disable/enable routes below are older,
+// unused-by-the-frontend siblings kept for API compatibility) ───────────────
+
+router.patch('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const { name, role, isActive } = req.body as { name?: string; role?: string; isActive?: boolean };
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('User');
+
+    if (role !== undefined && !Object.values(UserRole).includes(role as UserRole)) {
+      throw new ValidationError(`Invalid role. Must be one of: ${Object.values(UserRole).join(', ')}`);
+    }
+
+    const data: Record<string, unknown> = {};
+    if (name !== undefined) data.name = name;
+    if (isActive !== undefined) data.isActive = isActive;
+    if (role !== undefined) data.role = role;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data,
+      select: { id: true, name: true, email: true, role: true, isActive: true, createdAt: true, lastLoginAt: true },
+    });
+
+    if (role !== undefined && role !== existing.role) {
+      await auditService.logEvent({
+        actorId: req.user!.userId,
+        actorType: 'USER',
+        action: AuditAction.USER_ROLE_CHANGED,
+        entityType: 'User',
+        entityId: id,
+        metadata: { previousValue: { role: existing.role }, newValue: { role } },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+    }
+    await auditService.logEvent({
+      actorId: req.user!.userId,
+      actorType: 'USER',
+      action: AuditAction.USER_UPDATED,
+      entityType: 'User',
+      entityId: id,
+      metadata: { fields: Object.keys(data) },
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    success(res, user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── DELETE /admin/users/:id — real deletion, honest on FK conflicts ─────────
+// Many models reference User without onDelete: Cascade (Project.createdBy,
+// case assignments, referrals, etc.) — a user who has ever created real
+// records cannot be hard-deleted without orphaning them. Rather than silently
+// no-op or fabricate success, this surfaces that constraint as a clear
+// message and tells the admin to disable the account instead.
+
+router.delete('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const existing = await prisma.user.findUnique({ where: { id }, select: { id: true, email: true } });
+    if (!existing) throw new NotFoundError('User');
+
+    try {
+      await prisma.user.delete({ where: { id } });
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code === 'P2003' || code === 'P2014') {
+        throw new ValidationError(
+          'This user has created projects, cases, or other records and cannot be deleted. Disable the account instead.'
+        );
+      }
+      throw err;
+    }
+
+    await auditService.logEvent({
+      actorId: req.user!.userId,
+      actorType: 'USER',
+      action: AuditAction.USER_DELETED,
+      entityType: 'User',
+      entityId: id,
+      metadata: { email: existing.email },
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    success(res, { id });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── PUT /admin/users/:id/roles — update user roles ──────────────────────────
 
 router.put('/users/:id/roles', async (req: Request, res: Response, next: NextFunction) => {
@@ -588,7 +754,47 @@ router.get('/jobs', async (req: Request, res: Response, next: NextFunction) => {
         total,
         totalPages: Math.ceil(total / limit),
       },
+      // Every row here is a historical AuditEvent, which only ever lands in
+      // this list once the thing it records has already happened — so this
+      // "job history" is 100% COMPLETED by construction, never QUEUED/
+      // RUNNING/FAILED. Not a fabricated status split.
+      summary: { byStatus: { COMPLETED: total } },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/jobs/:jobId/retry — NOT supported ────────────────────────────
+// POST /admin/jobs/:jobId/cancel — NOT supported ─────────────────────────────
+// The list above is derived entirely from historical, already-happened
+// AuditEvent rows (append-only by design — see schema.prisma). There is no
+// job queue or scheduler behind this endpoint (that's a real thing only for
+// satellite jobs — see /admin/satellites/jobs/:jobId/retry). A "COMPLETED"
+// audit record has nothing left to retry or cancel; faking either action
+// would mean inventing in-flight state on top of immutable history.
+
+router.post('/jobs/:jobId/retry', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const jobId = req.params.jobId as string;
+    const event = await prisma.auditEvent.findUnique({ where: { id: jobId }, select: { id: true } });
+    if (!event) throw new NotFoundError('Job');
+    throw new ValidationError(
+      'This entry is a historical audit record, not a running job — there is no job queue or scheduler backing it, so it cannot be retried.'
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/jobs/:jobId/cancel', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const jobId = req.params.jobId as string;
+    const event = await prisma.auditEvent.findUnique({ where: { id: jobId }, select: { id: true } });
+    if (!event) throw new NotFoundError('Job');
+    throw new ValidationError(
+      'This entry is a historical audit record, not a running job — there is no job queue or scheduler backing it, so it cannot be cancelled.'
+    );
   } catch (err) {
     next(err);
   }
@@ -777,38 +983,517 @@ router.get('/ai/stats', async (_req: Request, res: Response, next: NextFunction)
 
 router.get('/satellites/providers', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const totalObservations = await prisma.satelliteObservation.count();
+    const [totalObservations, l2a, l1c] = await Promise.all([
+      prisma.satelliteObservation.count(),
+      prisma.satelliteObservation.aggregate({
+        where: { dataset: { contains: 'L2A', mode: 'insensitive' } },
+        _count: true,
+        _max: { observationDate: true },
+      }),
+      prisma.satelliteObservation.aggregate({
+        where: { dataset: { contains: 'L1C', mode: 'insensitive' } },
+        _count: true,
+        _max: { observationDate: true },
+      }),
+    ]);
+
     const providers = [
       {
         id: 'esa-sentinel-2',
         name: 'ESA Copernicus Sentinel-2 MSI',
-        status: 'ONLINE' as const,
+        // No real upstream health probe exists — honest UNKNOWN rather than
+        // a hardcoded ONLINE.
+        status: 'UNKNOWN' as const,
         datasets: [
           {
             id: 'sentinel-2-l2a',
             name: 'Sentinel-2 Level-2A Surface Reflectance (BOA)',
-            available: true,
-            lastUpdated: new Date().toISOString(),
+            available: l2a._count > 0,
+            lastUpdated: l2a._max.observationDate?.toISOString() ?? null,
             coverage: 'Pan-India Multi-Spectral (10m - 20m)',
           },
           {
             id: 'sentinel-2-l1c',
             name: 'Sentinel-2 Level-1C Top-of-Atmosphere (TOA)',
-            available: true,
-            lastUpdated: new Date().toISOString(),
+            available: l1c._count > 0,
+            lastUpdated: l1c._max.observationDate?.toISOString() ?? null,
             coverage: 'Global 5-day revisit',
           },
         ],
         stats: {
-          totalObservations: totalObservations || 35,
-          processingQueue: 0,
-          failedJobs: 0,
-          avgProcessingTimeMs: 450,
+          totalObservations,
+          // No real job queue or failure-tracking system exists in this
+          // codebase — null (not measured), never a fabricated number.
+          processingQueue: null,
+          failedJobs: null,
+          avgProcessingTimeMs: null,
         },
       },
     ];
 
     success(res, providers);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/rules — list risk detection rules ─────────────────────────────
+// Maps 1:1 onto the real RiskRule table — no fabricated rule metadata.
+
+router.get('/rules', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { category, status } = req.query as Record<string, string | undefined>;
+    const where: Record<string, unknown> = {};
+    if (category) where.category = category;
+    if (status) where.status = status;
+
+    const rules = await prisma.riskRule.findMany({ where, orderBy: { name: 'asc' } });
+
+    success(res, rules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      version: r.version,
+      status: r.status,
+      severityModifier: r.severityModifier,
+      confidenceModifier: r.confidenceModifier,
+      enabled: r.enabled,
+      lastRun: r.lastRun?.toISOString() ?? null,
+      matchCount: r.matchCount,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/rules/:id — single rule ────────────────────────────────────────
+
+router.get('/rules/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const r = await prisma.riskRule.findUnique({ where: { id } });
+    if (!r) throw new NotFoundError('Rule');
+
+    success(res, {
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      version: r.version,
+      status: r.status,
+      severityModifier: r.severityModifier,
+      confidenceModifier: r.confidenceModifier,
+      enabled: r.enabled,
+      lastRun: r.lastRun?.toISOString() ?? null,
+      matchCount: r.matchCount,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /admin/rules/:id — enable/disable a rule ───────────────────────────
+// Only `enabled` is genuinely mutable here — conditions/templates are
+// authored in code (RiskRule.conditions), not through this API. Every
+// change is logged so GET /rules/:id/audit reflects something real.
+
+router.patch('/rules/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const { enabled } = req.body as { enabled?: boolean };
+    if (typeof enabled !== 'boolean') {
+      throw new ValidationError('enabled (boolean) is required');
+    }
+
+    const existing = await prisma.riskRule.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Rule');
+
+    const updated = await prisma.riskRule.update({
+      where: { id },
+      data: { enabled, status: enabled ? 'ENABLED' : 'DISABLED' },
+    });
+
+    await auditService.logEvent({
+      actorId: req.user!.userId,
+      actorType: 'USER',
+      action: AuditAction.SYSTEM_CONFIG_CHANGED,
+      entityType: 'RiskRule',
+      entityId: id,
+      metadata: {
+        ruleName: existing.name,
+        previousValue: { enabled: existing.enabled, status: existing.status },
+        newValue: { enabled: updated.enabled, status: updated.status },
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    success(res, {
+      id: updated.id,
+      name: updated.name,
+      category: updated.category,
+      version: updated.version,
+      status: updated.status,
+      severityModifier: updated.severityModifier,
+      confidenceModifier: updated.confidenceModifier,
+      enabled: updated.enabled,
+      lastRun: updated.lastRun?.toISOString() ?? null,
+      matchCount: updated.matchCount,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/rules/:ruleId/audit — real change history ─────────────────────
+// Reads back only events this API itself has written via PATCH above — an
+// empty list for a rule nobody has touched yet is the honest answer, not an
+// invented history.
+
+router.get('/rules/:ruleId/audit', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ruleId = req.params.ruleId as string;
+    const rule = await prisma.riskRule.findUnique({ where: { id: ruleId }, select: { id: true } });
+    if (!rule) throw new NotFoundError('Rule');
+
+    const events = (await auditService.getEventsForEntity('RiskRule', ruleId)) as Array<{
+      id: string;
+      actorId: string;
+      metadata: Record<string, unknown> | null;
+      timestamp: Date;
+    }>;
+    const actorNames = await resolveActorNames(events.map((e) => e.actorId));
+
+    success(res, events.map((e) => ({
+      id: e.id,
+      ruleId,
+      ruleName: (e.metadata?.ruleName as string) ?? '',
+      actorId: e.actorId,
+      actorName: actorNames.get(e.actorId) ?? (e.actorId === 'SYSTEM' ? 'System' : e.actorId === 'AI' ? 'AI' : 'Unknown'),
+      previousValue: e.metadata?.previousValue ?? null,
+      newValue: e.metadata?.newValue ?? null,
+      timestamp: e.timestamp.toISOString(),
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/rules/:ruleId/versions — real version history ────────────────
+
+router.get('/rules/:ruleId/versions', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ruleId = req.params.ruleId as string;
+    const rule = await prisma.riskRule.findUnique({ where: { id: ruleId }, select: { id: true } });
+    if (!rule) throw new NotFoundError('Rule');
+
+    const versions = await prisma.riskRuleVersion.findMany({
+      where: { ruleId },
+      orderBy: { effectiveAt: 'desc' },
+    });
+
+    success(res, versions.map((v) => ({
+      id: v.id,
+      ruleId: v.ruleId,
+      version: v.version,
+      conditions: v.conditions,
+      severityModifier: v.severityModifier,
+      confidenceModifier: v.confidenceModifier,
+      effectiveAt: v.effectiveAt.toISOString(),
+      isActive: v.isActive,
+      createdAt: v.createdAt.toISOString(),
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Roles & Permissions ───────────────────────────────────────────────────────
+// Roles and their permissions are NOT stored in the database — they are the
+// static ROLE_PERMISSIONS matrix in packages/shared/src/permissions.ts,
+// which is what requirePermission() actually enforces on every request.
+// These routes surface that real matrix (plus a real per-role user count);
+// they never invent a permission set that isn't the one actually enforced.
+
+const ROLE_DESCRIPTIONS: Record<string, string> = {
+  ADMIN: 'Full system access — user management, configuration, and all data.',
+  OFFICER: 'Government officer with full operational access to assigned verification work.',
+  FIELD_OFFICER: 'Mobile-first field verification access, scoped to assigned projects.',
+  MP: 'Constituency-level access to public and permitted internal project data.',
+  CONTRACTOR: 'Access to own projects and milestone/document response workflows.',
+  CITIZEN: 'Public project visibility and the ability to submit citizen reports.',
+  REVIEWER: 'Read access plus moderation and limited write for finding/case review.',
+  ANALYST: 'Read-only deep access across the system for analysis and reporting.',
+  VIEWER: 'Minimal read-only access to public data.',
+};
+
+function buildRoleSummary(role: string, userCount: number) {
+  const permissions = ROLE_PERMISSIONS[role as keyof typeof ROLE_PERMISSIONS] ?? [];
+  return {
+    id: role,
+    name: role,
+    description: ROLE_DESCRIPTIONS[role] ?? 'No description available.',
+    permissions: [...permissions],
+    userCount,
+    // Every role in this system is defined in code, not created by an
+    // admin — there is no user-created role concept to distinguish from.
+    isSystem: true,
+    createdAt: null,
+    updatedAt: null,
+  };
+}
+
+router.get('/roles', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const roles = Object.keys(ROLE_PERMISSIONS);
+    const counts = await prisma.user.groupBy({ by: ['role'], _count: true });
+    const countByRole = new Map(counts.map((c) => [c.role, c._count]));
+
+    success(res, roles.map((role) => buildRoleSummary(role, countByRole.get(role as UserRole) ?? 0)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/roles/permissions-matrix', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    success(res, ROLE_PERMISSIONS);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/roles/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    if (!(id in ROLE_PERMISSIONS)) throw new NotFoundError('Role');
+
+    const userCount = await prisma.user.count({ where: { role: id as UserRole } });
+    success(res, buildRoleSummary(id, userCount));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /admin/roles/:id — NOT supported ───────────────────────────────────
+// Role permissions are fixed in code (ROLE_PERMISSIONS) and enforced there;
+// writing to the database here would not change what requirePermission()
+// actually allows. Returning a fake "saved" response would be worse than no
+// endpoint at all — it would tell an admin they changed access control when
+// they did not. Making this genuinely editable needs a DB-backed permission
+// override layered onto the static matrix, which is a real schema/security
+// design decision, not a drop-in fix.
+
+router.patch('/roles/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    if (!(id in ROLE_PERMISSIONS)) throw new NotFoundError('Role');
+    throw new ValidationError(
+      'Role permissions are defined in code (packages/shared/src/permissions.ts) and are not editable through this API.'
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/roles/:roleId/audit — real change history ─────────────────────
+// Since PATCH above never succeeds, this is honestly always empty — there
+// is nothing to have changed. Kept as a real endpoint (not removed) so the
+// frontend's audit modal shows a genuine "no changes" state rather than a
+// broken request.
+
+router.get('/roles/:roleId/audit', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const roleId = req.params.roleId as string;
+    if (!(roleId in ROLE_PERMISSIONS)) throw new NotFoundError('Role');
+    success(res, []);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/data-sources — list ingestion data sources ───────────────────
+// Maps directly onto the real DataSource/DataSourceRecord tables described
+// in CLAUDE.md's Phase 2 provenance model — no parallel/fabricated tracking.
+
+router.get('/data-sources', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { status, search } = req.query as Record<string, string | undefined>;
+    const where: Record<string, unknown> = {};
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { sourceName: { contains: search, mode: 'insensitive' } },
+        { datasetName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const sources = await prisma.dataSource.findMany({ where, orderBy: { sourceName: 'asc' } });
+
+    const [counts, lastErrors] = await Promise.all([
+      prisma.dataSourceRecord.groupBy({ by: ['dataSourceId'], _count: true }),
+      prisma.dataSourceRecord.findMany({
+        where: { dataSourceId: { in: sources.map((s) => s.id) }, errorMessage: { not: null } },
+        orderBy: { fetchedAt: 'desc' },
+        select: { dataSourceId: true, errorMessage: true },
+      }),
+    ]);
+    const countBySource = new Map(counts.map((c) => [c.dataSourceId, c._count]));
+    const lastErrorBySource = new Map<string, string>();
+    for (const rec of lastErrors) {
+      if (!lastErrorBySource.has(rec.dataSourceId) && rec.errorMessage) {
+        lastErrorBySource.set(rec.dataSourceId, rec.errorMessage);
+      }
+    }
+
+    success(res, sources.map((s) => ({
+      id: s.id,
+      sourceName: s.sourceName,
+      datasetName: s.datasetName,
+      department: s.department,
+      officialUrl: s.officialUrl,
+      lastFetched: s.lastFetched?.toISOString() ?? null,
+      lastUpdated: s.lastUpdated?.toISOString() ?? null,
+      format: s.format,
+      apiAvailable: s.apiAvailable,
+      downloadAvailable: s.downloadAvailable,
+      status: s.status,
+      notes: s.notes,
+      transformationNotes: s.transformationNotes,
+      createdAt: s.createdAt.toISOString(),
+      recordCount: countBySource.get(s.id) ?? 0,
+      lastError: lastErrorBySource.get(s.id) ?? null,
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/data-sources/:id/records — real ingested records ─────────────
+
+router.get('/data-sources/:id/records', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const existing = await prisma.dataSource.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundError('Data source');
+
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 100);
+
+    const [records, total] = await Promise.all([
+      prisma.dataSourceRecord.findMany({
+        where: { dataSourceId: id },
+        orderBy: { fetchedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.dataSourceRecord.count({ where: { dataSourceId: id } }),
+    ]);
+
+    success(res, {
+      records: records.map((r) => ({
+        id: r.id,
+        externalRecordId: r.externalRecordId,
+        fetchedAt: r.fetchedAt.toISOString(),
+        transformationStatus: r.transformationStatus,
+        quality: r.quality,
+        errorMessage: r.errorMessage,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      pagination: { page, limit, total },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/data-sources/:id/sync — NOT wired to a real trigger ─────────
+// Real ingestion runs via the standalone CLI scripts in scripts/ingest/
+// (vonter.ts, dataful.ts, opencity.ts, lgd.ts, normalize.ts — see
+// scripts/ingest/README.md). None of them expose a callable function or a
+// source-id -> script mapping, and ingesting tens of thousands of rows
+// can't happen inside one HTTP request without a real job queue, which
+// this codebase doesn't have. Returning a fabricated
+// "success: true, recordsImported: N" here would be exactly the kind of
+// invented result CLAUDE.md prohibits — so this is an honest 400, not a
+// fake success.
+
+router.post('/data-sources/:id/sync', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.id as string;
+    const existing = await prisma.dataSource.findUnique({ where: { id }, select: { id: true, sourceName: true } });
+    if (!existing) throw new NotFoundError('Data source');
+
+    throw new ValidationError(
+      `Automated sync is not wired up for "${existing.sourceName}". This source is ingested by running scripts/ingest/*.ts manually — see scripts/ingest/README.md.`
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /admin/satellites/observations — real observations, all projects ────
+
+router.get('/satellites/observations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
+    const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10), 100);
+    const { quality } = req.query as Record<string, string | undefined>;
+    const where: Record<string, unknown> = {};
+    if (quality) where.quality = quality;
+
+    const [observations, total] = await Promise.all([
+      prisma.satelliteObservation.findMany({
+        where,
+        orderBy: { observationDate: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { project: { select: { id: true, name: true } } },
+      }),
+      prisma.satelliteObservation.count({ where }),
+    ]);
+
+    success(res, {
+      observations: observations.map((o) => ({
+        id: o.id,
+        projectId: o.projectId,
+        projectName: o.project?.name ?? null,
+        provider: o.provider,
+        dataset: o.dataset,
+        observationDate: o.observationDate.toISOString(),
+        quality: o.quality,
+        cloudCover: o.cloudCover,
+      })),
+      pagination: { page, limit, total },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /admin/satellites/jobs/:jobId/retry — real requeue ─────────────────
+// Backed by the real satelliteJobQueue (BullMQ or in-process, see
+// services/satelliteJobQueue.ts). There's no in-place "retry this exact
+// job" primitive in either backend, so a genuine retry means enqueueing a
+// fresh job for the same project — the only real mechanism available.
+
+router.post('/satellites/jobs/:jobId/retry', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { satelliteJobQueue } = await import('../services/satelliteJobQueue.js');
+    const jobId = req.params.jobId as string;
+    const job = satelliteJobQueue.getJob(jobId);
+    if (!job) throw new NotFoundError('Satellite job');
+    if (job.status !== 'FAILED') {
+      throw new ValidationError(`Job ${jobId} is ${job.status}, not FAILED — nothing to retry.`);
+    }
+
+    const result = satelliteJobQueue.enqueue(job.projectId);
+    success(res, result);
   } catch (err) {
     next(err);
   }

@@ -8,14 +8,14 @@
 import { useState } from 'react';
 import {
   Satellite, RefreshCw, Globe, CheckCircle, AlertTriangle, XCircle,
-  Activity, Clock, Database, Play, Loader2, Eye,
+  Activity, Clock, Database, Eye,
   AlertCircle, X,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn, formatDateTime } from '@/lib/utils';
-import { useSatelliteProviders, useSatelliteObservations, useRetrySatelliteJob } from '@/hooks/useAdmin';
+import { useSatelliteProviders, useSatelliteObservations } from '@/hooks/useAdmin';
 
 const PROVIDER_STATUS_COLORS = {
   ONLINE: 'text-emerald-500',
@@ -33,25 +33,16 @@ const PROVIDER_STATUS_BG = {
 
 export default function AdminSatellitesPage() {
   const [refreshing, setRefreshing] = useState(false);
-  const [retryingId, setRetryingId] = useState<string | null>(null);
 
-  const { data: providers, isLoading: providersLoading } = useSatelliteProviders();
-  const { data: observationsData, isLoading: obsLoading } = useSatelliteObservations({ limit: 20 });
-  const retryMutation = useRetrySatelliteJob();
+  const { data: providers, isLoading: providersLoading, refetch: refetchProviders } = useSatelliteProviders();
+  const { data: observationsData, isLoading: obsLoading, refetch: refetchObservations } = useSatelliteObservations({ limit: 20 });
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
-
-  const handleRetry = async (jobId: string) => {
-    setRetryingId(jobId);
     try {
-      await retryMutation.mutateAsync(jobId);
-    } catch {
-      // Error handled by hook
+      await Promise.all([refetchProviders(), refetchObservations()]);
     } finally {
-      setRetryingId(null);
+      setRefreshing(false);
     }
   };
 
@@ -128,7 +119,8 @@ export default function AdminSatellitesPage() {
                         <Badge
                           variant={
                             provider.status === 'ONLINE' ? 'success' :
-                            provider.status === 'DEGRADED' ? 'warning' : 'danger'
+                            provider.status === 'DEGRADED' ? 'warning' :
+                            provider.status === 'OFFLINE' ? 'danger' : 'neutral'
                           }
                         >
                           {provider.status}
@@ -187,19 +179,19 @@ export default function AdminSatellitesPage() {
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-bold text-blue-600">
-                        {provider.stats.processingQueue}
+                        {provider.stats.processingQueue ?? 'N/A'}
                       </p>
                       <p className="text-xs text-slate-500">Processing Queue</p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-bold text-red-600">
-                        {provider.stats.failedJobs}
+                        {provider.stats.failedJobs ?? 'N/A'}
                       </p>
                       <p className="text-xs text-slate-500">Failed Jobs</p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-bold text-slate-600">
-                        {(provider.stats.avgProcessingTimeMs / 1000).toFixed(1)}s
+                        {provider.stats.avgProcessingTimeMs != null ? `${(provider.stats.avgProcessingTimeMs / 1000).toFixed(1)}s` : 'N/A'}
                       </p>
                       <p className="text-xs text-slate-500">Avg Processing Time</p>
                     </div>
@@ -238,41 +230,31 @@ export default function AdminSatellitesPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50">
+                    <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Project</th>
                     <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Provider</th>
                     <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Dataset</th>
                     <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Date</th>
                     <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Quality</th>
                     <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Cloud Cover</th>
-                    <th className="text-left px-4 py-2 text-xs font-medium text-slate-500">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {observations.map((obs: any) => (
                     <tr key={obs.id} className="border-b border-slate-50 hover:bg-slate-50">
+                      <td className="px-4 py-3 text-sm text-slate-600">{obs.projectName ?? '—'}</td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-700">{obs.provider}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{obs.dataset}</td>
                       <td className="px-4 py-3 text-xs text-slate-500">
                         {formatDateTime(obs.observationDate)}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant={obs.quality === 'PROCESSED' ? 'success' : obs.quality === 'ANALYZED' ? 'info' : 'neutral'}
-                        >
+                        <Badge variant={obs.quality === 'USABLE' ? 'success' : 'neutral'}>
                           {obs.quality}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
-                        {(obs.cloudCover * 100).toFixed(1)}%
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={retryingId === obs.id}
-                          leftIcon={retryingId === obs.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
-                        >
-                          Retry
-                        </Button>
+                        {/* cloudCover is stored as a 0-100 percentage, not a 0-1 fraction */}
+                        {obs.cloudCover.toFixed(1)}%
                       </td>
                     </tr>
                   ))}

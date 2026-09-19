@@ -112,8 +112,9 @@ export interface Role {
   permissions: string[];
   userCount: number;
   isSystem: boolean;
-  createdAt: string;
-  updatedAt: string;
+  /** Null — roles are defined in code, not created as DB rows with a timestamp. */
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 export interface RoleChangeAudit {
@@ -142,6 +143,8 @@ export interface DataSource {
   downloadAvailable: boolean;
   status: string;
   notes: string | null;
+  transformationNotes: string | null;
+  createdAt: string;
   recordCount: number;
   lastError: string | null;
 }
@@ -222,9 +225,10 @@ export interface SatelliteProvider {
   }>;
   stats: {
     totalObservations: number;
-    processingQueue: number;
-    failedJobs: number;
-    avgProcessingTimeMs: number;
+    /** Null when not measured — there is no real job queue/failure tracker. */
+    processingQueue: number | null;
+    failedJobs: number | null;
+    avgProcessingTimeMs: number | null;
   };
 }
 
