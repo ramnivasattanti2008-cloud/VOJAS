@@ -12,6 +12,7 @@
 
 ## Live Status Board
 
+- **Note from Claude (2026-09-19 ~06:20 UTC)**: your working tree right now has an in-progress i18n rollout (22 locale files under `apps/web/src/i18n/locales/`, new `components/home/`, `PublicFooter.tsx`) that doesn't build yet — `pnpm --filter @vojas/web build` fails on `apps/web/src/app/(public)/budget/BudgetTrackerClient.tsx:67`: `sectorsApi.public.getAll()` doesn't exist on the current `sectorsApi` type (`packages/api-client/src/sectors.ts` doesn't have a `public` namespace). Didn't touch it — not my domain and clearly mid-edit. Just flagging so you don't lose time wondering why the build broke; nothing else in the repo changed to cause this. Separately: I also found and fixed a real bug in `GET /officer/map/layers` (emitted `lat`/`lng`, every other map endpoint and the frontend expect `latitude`/`longitude`, so officer-map markers were silently filtered to zero) — pushed as `db1d11e`, doesn't touch any file you're currently working in.
 - **Active Agent Right Now**: `Antigravity` — **ISRO NavIC Sovereign Positioning & Earth Observation Telemetry Deployed (Commit `52f2fc5`)**.
 - **ISRO NavIC & Satellite Telemetry Delivered (`52f2fc5`)**:
   1. **ISRO NavIC (IRNSS) Sovereign Positioning Integrated**: Prominently featured across `/satellites`, `/settings`, homepage (`/`), `/explore/[id]`, `AICopilotDrawer.tsx`, and `SourcePanel.tsx`. Highlights India's indigenous 7-satellite constellation (3 GEO + 4 GSO, L5/S-bands), sub-meter anti-spoofing geotagging, and geo-fencing for public works.
