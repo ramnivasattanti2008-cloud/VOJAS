@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { formatCurrency } from '@/lib/utils';
+import { useMemo } from 'react';
 
 interface PublicMoneyViewProps {
   approvedAmount?: number | null;
@@ -89,60 +88,66 @@ export function PublicMoneyView({
           <>
             {/* Summary row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Approved</p>
-                <p className="text-sm font-bold text-slate-800 tabular-nums">{formatINR(values.approved)}</p>
+              <div className="bg-slate-900/5 rounded-xl p-3.5 border border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Approved</p>
+                <p className="text-base font-mono font-bold text-slate-900 tabular-nums">{formatINR(values.approved)}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Sanctioned Budget</p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Released</p>
-                <p className={`text-sm font-bold tabular-nums ${values.releaseTracked ? 'text-blue-600' : 'text-slate-400'}`}>
+              <div className="bg-slate-900/5 rounded-xl p-3.5 border border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Released</p>
+                <p className={`text-base font-mono font-bold tabular-nums ${values.releaseTracked ? 'text-blue-700' : 'text-slate-400'}`}>
                   {values.releaseTracked ? formatINR(values.released) : 'Not tracked'}
                 </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {values.releaseTracked ? `${values.releasePct.toFixed(1)}% of budget` : 'Direct ministry release'}
+                </p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Expended</p>
-                <p className="text-sm font-bold text-emerald-600 tabular-nums">{formatINR(values.spent)}</p>
+              <div className="bg-slate-900/5 rounded-xl p-3.5 border border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Expended</p>
+                <p className="text-base font-mono font-bold text-emerald-700 tabular-nums">{formatINR(values.spent)}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{values.spendPct.toFixed(1)}% utilized</p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Remaining</p>
-                <p className="text-sm font-bold text-amber-600 tabular-nums">{formatINR(values.remaining)}</p>
+              <div className="bg-slate-900/5 rounded-xl p-3.5 border border-slate-200">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Remaining</p>
+                <p className="text-base font-mono font-bold text-amber-700 tabular-nums">{formatINR(values.remaining)}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Unspent balance</p>
               </div>
             </div>
 
             {/* Visualization */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Allocation Breakdown</h3>
+            <div className="space-y-3 pt-2">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Treasury Allocation Breakdown</h3>
 
               <ProgressBar
                 value={values.approved}
                 max={values.approved}
-                color="bg-slate-400"
-                label="APPROVED"
+                color="bg-slate-500"
+                label="APPROVED BUDGET"
               />
               {values.releaseTracked ? (
                 <ProgressBar
                   value={values.released}
                   max={values.approved}
-                  color="bg-blue-400"
-                  label={`RELEASED (${values.releasePct.toFixed(0)}%)`}
+                  color="bg-sky-500"
+                  label={`TREASURY RELEASED (${values.releasePct.toFixed(1)}%)`}
                 />
               ) : (
-                <div className="flex justify-between text-xs text-slate-400">
-                  <span className="font-medium">RELEASED</span>
-                  <span>Not tracked for this project</span>
+                <div className="flex justify-between text-xs text-slate-400 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <span className="font-medium">TREASURY RELEASED</span>
+                  <span>Not tracked for this reporting source</span>
                 </div>
               )}
               <ProgressBar
                 value={values.spent}
                 max={values.approved}
                 color="bg-emerald-500"
-                label={`EXPENDED (${values.spendPct.toFixed(0)}%)`}
+                label={`EXPENDED ON RECORD (${values.spendPct.toFixed(1)}%)`}
               />
               <ProgressBar
                 value={values.remaining}
                 max={values.approved}
-                color="bg-amber-400"
-                label="REMAINING"
+                color="bg-amber-500"
+                label="UNSPENT TREASURY BALANCE"
               />
             </div>
 

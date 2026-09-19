@@ -1,21 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  ShieldAlert, TrendingUp, MapPin, Activity, ChevronRight,
-  AlertTriangle, CheckCircle, Clock, Zap
-} from 'lucide-react';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import {
-  useNationalRiskSummary,
-  useRiskTrends,
-  useRiskHotspots,
-  useRiskFindings,
+    useNationalRiskSummary,
+    useRiskFindings,
+    useRiskHotspots,
+    useRiskTrends,
 } from '@/hooks/useRisk';
-import { formatCurrency } from '@/lib/utils';
+import {
+    Activity,
+    AlertTriangle, CheckCircle,
+    ChevronRight,
+    Clock,
+    MapPin,
+    ShieldAlert,
+    Zap
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const SEVERITY_COLORS: Record<string, string> = {
   LOW: 'bg-slate-100 text-slate-700',

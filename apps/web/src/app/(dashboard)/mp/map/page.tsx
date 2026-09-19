@@ -12,11 +12,11 @@ import { useMPProjects } from '@/hooks/useMP';
 import { formatCurrency } from '@/lib/utils';
 import { ProjectStatus } from '@vojas/shared';
 import {
-  AlertTriangle,
-  ChevronRight,
-  Layers,
-  MapPin,
-  X
+    AlertTriangle,
+    ChevronRight,
+    Layers,
+    MapPin,
+    X
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';

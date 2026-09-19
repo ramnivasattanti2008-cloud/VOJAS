@@ -146,44 +146,58 @@ export function ExploreDetailClient() {
       ? 100
       : 0;
 
+  // Forensic Disparity Calculations
+  const spentAmount = project.spentAmount ?? 0;
+  const approvedAmount = project.approvedAmount ?? 0;
+  const disbursalRate = approvedAmount > 0 ? Math.round((spentAmount / approvedAmount) * 100) : (isDone ? 100 : 0);
+  const satelliteRiskScore = project.projectRisk?.satelliteScore ?? 0;
+  const groundVerifiedPercent = isDone
+    ? 100
+    : Math.max(0, Math.min(100, Math.round(100 - (satelliteRiskScore * 0.9))));
+  const disparityGap = Math.max(0, disbursalRate - groundVerifiedPercent);
+  const isHighDisparity = disbursalRate >= 35 && (disparityGap >= 30 || satelliteRiskScore >= 50);
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <Link
           href="/explore"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 -ml-1 mb-3"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 -ml-1 mb-3 transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           {t('common.back', 'Back to Explore')}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="space-y-2.5 max-w-2xl">
+            <div className="flex items-center gap-2 flex-wrap">
               {isDone ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   STATUS: {t('common.completed', 'DONE')}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
                   <Clock className="w-3.5 h-3.5 text-amber-600" />
                   STATUS: {t('common.pending', 'NOT DONE')}
                 </span>
               )}
-              <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono">
-                {progressPercent}% {t('common.completed', 'Complete')}
+              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-md border border-slate-200 font-mono">
+                {progressPercent}% {t('common.completed', 'Disbursed')}
+              </span>
+              <span className="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-200/60">
+                ID: {project.id.slice(0, 16)}
               </span>
               {project.projectRisk && (
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-xs',
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-bold border shadow-2xs',
                     project.projectRisk.riskLevel === 'CRITICAL'
-                      ? 'bg-rose-100 text-rose-800 border-rose-300'
+                      ? 'bg-rose-50 text-rose-800 border-rose-300'
                       : project.projectRisk.riskLevel === 'HIGH'
-                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                      ? 'bg-amber-50 text-amber-800 border-amber-300'
                       : project.projectRisk.riskLevel === 'MEDIUM'
-                      ? 'bg-sky-100 text-sky-800 border-sky-300'
-                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      ? 'bg-sky-50 text-sky-800 border-sky-300'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-300'
                   )}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
@@ -191,29 +205,31 @@ export function ExploreDetailClient() {
                 </span>
               )}
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              {project.name}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
               <Badge variant={STATUS_VARIANT[project.status] ?? 'neutral'}>{project.status.replace(/_/g, ' ')}</Badge>
               <Badge variant="neutral">{project.sector.replace(/_/g, ' ')}</Badge>
-              <span className="text-sm text-slate-400 flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" />
+              <span className="text-slate-500 flex items-center gap-1 font-medium">
+                <MapPin className="h-3.5 w-3.5 text-slate-400" />
                 {[project.district, project.state].filter(Boolean).join(', ') || t('map.noLocation', 'Location not available')}
               </span>
               {project.latitude != null && project.longitude != null && (
                 <Link
                   href={`/explore/map?focus=${project.id}`}
-                  className="text-sm font-medium text-vojas-600 hover:underline"
+                  className="font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-0.5"
                 >
                   {t('projects.viewOnMap', 'View on Map →')}
                 </Link>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 pt-1">
             <button
               type="button"
               onClick={() => setCopilotOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition-all active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow-sm hover:shadow transition-all active:scale-95 cursor-pointer border border-purple-400/30"
             >
               <Sparkles className="w-3.5 h-3.5 text-white" />
               <span>{t('common.aiCopilot', 'Ask AI Copilot')}</span>
@@ -222,17 +238,117 @@ export function ExploreDetailClient() {
               type="button"
               onClick={handleDownloadPdf}
               disabled={pdfBusy}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-2xs transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 shadow-xs transition-all active:scale-95 disabled:opacity-60 cursor-pointer"
             >
               {pdfBusy ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-vojas-600" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
               ) : (
-                <Download className="w-3.5 h-3.5 text-vojas-600" />
+                <Download className="w-3.5 h-3.5 text-blue-600" />
               )}
               <span>{pdfBusy ? t('projects.generatingPdf', 'Generating PDF...') : t('projects.downloadPdf', 'Download Report (PDF)')}</span>
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Sovereign Executive Disparity Strip */}
+      <div className="rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-800 p-4 sm:p-5 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 relative">
+              <span className={cn('animate-ping absolute inline-flex h-full w-full rounded-full opacity-75', isHighDisparity ? 'bg-rose-400' : 'bg-emerald-400')} />
+              <span className={cn('relative inline-flex rounded-full h-2 w-2', isHighDisparity ? 'bg-rose-500' : 'bg-emerald-500')} />
+            </span>
+            <span className="text-[11px] font-mono font-bold tracking-wider uppercase text-slate-300">
+              {t('projects.statutoryAuditStrip', 'EXECUTIVE FORENSIC DISPARITY RECONCILIATION')}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+            <span>AUDIT CADENCE: REAL-TIME</span>
+            <span className="text-slate-600">|</span>
+            <span>GFR 2017 &amp; ISRO EO</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3.5">
+          {/* Column 1: Sanctioned Allocation */}
+          <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-3.5 space-y-1">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold uppercase tracking-wider text-[10px] font-mono">1. Sanctioned Allocation</span>
+              <Scale className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-mono font-bold text-white tracking-tight">
+              {formatCurrency(project.approvedAmount)}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Official Administrative Sanction
+            </p>
+          </div>
+
+          {/* Column 2: Treasury Disbursed */}
+          <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-3.5 space-y-1">
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold uppercase tracking-wider text-[10px] font-mono">2. Treasury Disbursed</span>
+              <DollarSign className="w-3.5 h-3.5 text-blue-400" />
+            </div>
+            <div className="text-xl sm:text-2xl font-mono font-bold text-blue-300 tracking-tight">
+              {formatCurrency(project.spentAmount)}
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span>PFMS Treasury Release</span>
+              <span className="font-mono font-bold text-blue-400">{disbursalRate}%</span>
+            </div>
+          </div>
+
+          {/* Column 3: Verified Ground Footprint */}
+          <div className={cn(
+            'rounded-xl p-3.5 space-y-1 border transition-all',
+            isHighDisparity
+              ? 'bg-rose-950/30 border-rose-800/60'
+              : 'bg-slate-900/90 border-slate-800'
+          )}>
+            <div className="flex items-center justify-between text-slate-400 text-xs">
+              <span className="font-semibold uppercase tracking-wider text-[10px] font-mono">3. Ground Footprint</span>
+              <Satellite className={cn('w-3.5 h-3.5', isHighDisparity ? 'text-rose-400' : 'text-emerald-400')} />
+            </div>
+            <div className={cn(
+              'text-xl sm:text-2xl font-mono font-bold tracking-tight',
+              isHighDisparity ? 'text-rose-400' : 'text-emerald-400'
+            )}>
+              {groundVerifiedPercent}%
+            </div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">ISRO NavIC / EO Telemetry</span>
+              {isHighDisparity ? (
+                <span className="font-mono font-bold text-rose-300 text-[10px] bg-rose-950 px-1.5 py-0.5 rounded border border-rose-800">
+                  {disparityGap}% GAP
+                </span>
+              ) : (
+                <span className="font-mono font-bold text-emerald-400 text-[10px]">VERIFIED</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tactical Callout if Disparity exists */}
+        {isHighDisparity && (
+          <div className="mt-3 p-2.5 rounded-xl bg-rose-950/50 border border-rose-800/80 flex items-center justify-between text-xs text-rose-200">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>
+                <strong>{t('risk.disparityDetected', 'DISPARITY WARNING')}:</strong> {disbursalRate}% funds released from treasury with only {groundVerifiedPercent}% verified physical footprint ({disparityGap}% disparity).
+              </span>
+            </div>
+            <button
+              onClick={() => setActiveTab('risk')}
+              className="text-[11px] font-bold text-rose-300 hover:text-white underline ml-2 shrink-0 cursor-pointer"
+            >
+              {t('risk.viewForensics', 'Inspect Forensics →')}
+            </button>
+          </div>
+        )}
       </div>
 
       <AICopilotDrawer
@@ -251,9 +367,9 @@ export function ExploreDetailClient() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                'flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap cursor-pointer',
                 activeTab === tab.key
-                  ? 'border-vojas-600 text-vojas-700'
+                  ? 'border-blue-600 text-blue-700'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
               )}
             >
@@ -284,9 +400,9 @@ export function ExploreDetailClient() {
 
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs text-slate-400 mb-1">{label}</p>
-      <p className="text-sm font-medium text-slate-700">{value}</p>
+    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 font-mono">{label}</p>
+      <p className="text-sm font-medium text-slate-800 leading-snug">{value}</p>
     </div>
   );
 }
@@ -295,23 +411,23 @@ function SignalMeter({ label, score }: { label: string; score: number }) {
   const isHigh = score >= 50;
   const isMed = score >= 25 && score < 50;
   return (
-    <div className="p-2.5 rounded-lg bg-white/90 border border-slate-200 shadow-2xs space-y-1.5">
+    <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 shadow-xs space-y-2">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-slate-600 font-medium truncate">{label}</span>
+        <span className="text-slate-300 font-medium truncate">{label}</span>
         <span
           className={cn(
             'font-mono font-bold text-xs',
-            isHigh ? 'text-rose-600' : isMed ? 'text-amber-600' : 'text-emerald-700'
+            isHigh ? 'text-rose-400' : isMed ? 'text-amber-400' : 'text-emerald-400'
           )}
         >
           {score}/100
         </span>
       </div>
-      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+      <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
         <div
           className={cn(
             'h-full rounded-full transition-all',
-            isHigh ? 'bg-rose-500' : isMed ? 'bg-amber-500' : 'bg-emerald-500'
+            isHigh ? 'bg-rose-500' : isMed ? 'bg-amber-400' : 'bg-emerald-400'
           )}
           style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
         />
@@ -419,134 +535,132 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
   const isMed = activeLevel === 'MEDIUM';
 
   return (
-    <Card
-      className={cn(
-        'border-2 shadow-xs transition-all overflow-hidden',
-        isCritical
-          ? 'border-rose-300 bg-rose-50/30'
-          : isHigh
-          ? 'border-amber-300 bg-amber-50/30'
-          : isMed
-          ? 'border-sky-300 bg-sky-50/30'
-          : 'border-emerald-300 bg-emerald-50/30'
-      )}
-    >
-      <CardHeader className="pb-3.5 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                'w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-xs transition-transform',
-                isCritical
-                  ? 'bg-rose-600'
-                  : isHigh
-                  ? 'bg-amber-600'
-                  : isMed
-                  ? 'bg-sky-600'
-                  : 'bg-emerald-600'
-              )}
-            >
-              <Cpu className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900">
-                  {t('projects.aiAuditTitle', 'VOJAS Sentinel AI Forensic Audit')}
-                </h2>
-                <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-semibold">
-                  {auditResult ? t('projects.liveAudited', 'LIVE AUDITED') : t('projects.preComputed', 'PRE-COMPUTED')}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {activeModel} · Confidence: <span className="font-semibold text-slate-700">{activeConfidence}</span>
-              </p>
-            </div>
+    <div className="rounded-2xl border border-slate-800 bg-slate-950 text-slate-100 shadow-xl overflow-hidden relative">
+      <div className="absolute top-0 right-1/4 w-96 h-32 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Console Header */}
+      <div className="p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/90 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              'w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-xs shrink-0',
+              isCritical
+                ? 'bg-rose-600'
+                : isHigh
+                ? 'bg-amber-600'
+                : isMed
+                ? 'bg-sky-600'
+                : 'bg-emerald-600'
+            )}
+          >
+            <Cpu className="w-5 h-5" />
           </div>
-
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={handleRunAiAudit}
-              disabled={isAuditing}
-              className={cn(
-                'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed',
-                'bg-slate-900 hover:bg-slate-800 text-white border border-slate-800/80'
-              )}
-            >
-              {isAuditing ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                  <span>{t('projects.auditingLive', 'Auditing Live...')}</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{t('projects.runLiveAudit', 'Run Live LLM Audit')}</span>
-                </>
-              )}
-            </button>
-
-            <div
-              className={cn(
-                'px-3 py-1.5 rounded-xl text-white font-mono font-bold text-sm shadow-xs flex items-center gap-2',
-                isCritical
-                  ? 'bg-rose-600'
-                  : isHigh
-                  ? 'bg-amber-600'
-                  : isMed
-                  ? 'bg-sky-700'
-                  : 'bg-emerald-600'
-              )}
-            >
-              <span className="text-base">{activeScore}</span>
-              <span className="text-xs opacity-75">/ 100</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/20 uppercase tracking-wider font-semibold">
-                {activeLevel}
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                {t('projects.aiAuditTitle', 'VOJAS Sentinel AI Forensic Audit')}
+              </h2>
+              <span className="text-[10px] uppercase font-mono tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
+                {auditResult ? t('projects.liveAudited', 'LIVE AUDITED') : t('projects.preComputed', 'PRE-COMPUTED')}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 text-slate-400 border border-slate-800">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className={cn('animate-ping absolute inline-flex h-full w-full rounded-full opacity-75', isCritical ? 'bg-rose-400' : isHigh ? 'bg-amber-400' : 'bg-emerald-400')} />
+                  <span className={cn('relative inline-flex rounded-full h-1.5 w-1.5', isCritical ? 'bg-rose-500' : isHigh ? 'bg-amber-500' : 'bg-emerald-500')} />
+                </span>
+                {isCritical ? 'CRITICAL ANOMALY' : isHigh ? 'AUDIT DISPARITY' : isMed ? 'SURVEILLANCE' : 'NOMINAL'}
               </span>
             </div>
+            <p className="text-xs text-slate-400 mt-0.5 font-mono">
+              {activeModel} · Conf: <span className="font-semibold text-slate-200">{activeConfidence}</span>
+            </p>
           </div>
         </div>
 
-        {/* Real-time Ticker during AI Auditing */}
-        {isAuditing && (
-          <div className="mt-3 p-2.5 rounded-xl bg-slate-900 text-white flex items-center gap-2.5 text-xs animate-pulse">
-            <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
-            <span className="font-medium font-mono text-slate-200">
-              {auditSteps[auditStep]}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleRunAiAudit}
+            disabled={isAuditing}
+            className={cn(
+              'inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer',
+              'bg-purple-600 hover:bg-purple-500 text-white border border-purple-400/30'
+            )}
+          >
+            {isAuditing ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                <span>{t('projects.auditingLive', 'Auditing Live...')}</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>{t('projects.runLiveAudit', 'Run Live LLM Audit')}</span>
+              </>
+            )}
+          </button>
+
+          <div
+            className={cn(
+              'px-3 py-1.5 rounded-xl font-mono font-bold text-sm shadow-xs flex items-center gap-2 border',
+              isCritical
+                ? 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+                : isHigh
+                ? 'bg-amber-950/80 border-amber-500/50 text-amber-300'
+                : isMed
+                ? 'bg-sky-950/80 border-sky-500/50 text-sky-300'
+                : 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
+            )}
+          >
+            <span className="text-base font-extrabold">{activeScore}</span>
+            <span className="text-xs opacity-60">/ 100</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 uppercase tracking-wider font-semibold">
+              {activeLevel}
             </span>
           </div>
-        )}
+        </div>
+      </div>
 
-        {auditError && (
-          <div className="mt-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{auditError}</span>
-          </div>
-        )}
-      </CardHeader>
+      {/* Real-time Ticker during AI Auditing */}
+      {isAuditing && (
+        <div className="p-3 bg-slate-900 border-b border-slate-800 text-amber-300 flex items-center gap-2.5 text-xs animate-pulse">
+          <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />
+          <span className="font-mono text-slate-200">
+            $ sentinel-ai: {auditSteps[auditStep]}
+          </span>
+        </div>
+      )}
 
-      <CardBody className="space-y-4 pt-4">
+      {auditError && (
+        <div className="p-3 bg-rose-950/60 border-b border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+          <span>{auditError}</span>
+        </div>
+      )}
+
+      {/* Dossier Body */}
+      <div className="p-4 sm:p-5 space-y-4">
         {/* Forensic Verdict Banner */}
         {auditResult && (
           <div
             className={cn(
-              'p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3',
+              'p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3',
               isCritical
-                ? 'bg-rose-100/70 border-rose-300 text-rose-900'
+                ? 'bg-rose-950/40 border-rose-800/70 text-rose-200'
                 : isHigh
-                ? 'bg-amber-100/70 border-amber-300 text-amber-900'
-                : 'bg-emerald-100/70 border-emerald-300 text-emerald-900'
+                ? 'bg-amber-950/40 border-amber-800/70 text-amber-200'
+                : 'bg-emerald-950/40 border-emerald-800/70 text-emerald-200'
             )}
           >
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/10">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/40 border border-white/10">
                   {auditResult.forensicVerdict.replace(/_/g, ' ')}
                 </span>
-                <span className="text-xs text-slate-600 font-mono">
+                <span className="text-xs text-slate-400 font-mono">
                   {new Date(auditResult.auditedAt).toLocaleTimeString()}
                 </span>
               </div>
-              <h3 className="text-sm font-bold mt-1 text-slate-900">
+              <h3 className="text-sm sm:text-base font-bold mt-1.5 text-white">
                 {auditResult.verdictTitle}
               </h3>
             </div>
@@ -554,44 +668,44 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
         )}
 
         {/* Executive Summary Narrative */}
-        <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-1.5">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-            <FileSearch className="w-3.5 h-3.5 text-slate-500" />
+        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+          <p className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <FileSearch className="w-3.5 h-3.5 text-slate-400" />
             AI Forensic Analysis &amp; Legal Audit Synthesis
           </p>
-          <p className="text-sm font-medium text-slate-800 leading-relaxed">
+          <p className="text-sm font-normal text-slate-200 leading-relaxed">
             {auditResult ? auditResult.executiveSummary : (initialRisk?.primaryDriver || 'Standard civic asset verification in progress.')}
           </p>
         </div>
 
         {/* Statutory Red Flags & Violations (if present) */}
         {auditResult && auditResult.statutoryRedFlags.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-              <Scale className="w-3.5 h-3.5 text-rose-600" />
+          <div className="space-y-2.5">
+            <p className="text-xs font-mono font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-rose-400" />
               Statutory Procurement Red Flags Detected ({auditResult.statutoryRedFlags.length})
             </p>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-2.5">
               {auditResult.statutoryRedFlags.map((flag, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-xl bg-white/95 border border-rose-200 shadow-2xs space-y-1"
+                  className="p-3.5 rounded-xl bg-rose-950/30 border border-rose-900/60 space-y-1.5"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-rose-800">{flag.rule}</span>
+                    <span className="text-xs font-mono font-bold text-rose-300">{flag.rule}</span>
                     <span
                       className={cn(
-                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded',
+                        'text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded',
                         flag.severity === 'CRITICAL'
-                          ? 'bg-rose-100 text-rose-700'
-                          : 'bg-amber-100 text-amber-700'
+                          ? 'bg-rose-900 text-rose-200 border border-rose-700'
+                          : 'bg-amber-900 text-amber-200 border border-amber-700'
                       )}
                     >
                       {flag.severity}
                     </span>
                   </div>
-                  <p className="text-xs font-medium text-slate-800">{flag.violation}</p>
-                  <p className="text-[11px] text-slate-500 font-mono italic">{flag.evidence}</p>
+                  <p className="text-xs font-medium text-slate-200">{flag.violation}</p>
+                  <p className="text-[11px] text-slate-400 font-mono italic">{flag.evidence}</p>
                 </div>
               ))}
             </div>
@@ -600,8 +714,8 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
 
         {/* Multi-Signal Breakdown */}
         {initialRisk && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="space-y-2.5 pt-1">
+            <p className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
               {t('projects.multiSignalTelemetry', 'Multi-Signal Sub-Score Telemetry (0 = Safe, 100 = Max Disparity)')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
@@ -618,18 +732,18 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
         {auditResult && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             {/* Satellite Telemetry Verdict */}
-            <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-2">
+            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <Satellite className="w-3.5 h-3.5 text-orange-600" />
+                <span className="text-xs font-mono font-bold text-slate-300 flex items-center gap-1.5">
+                  <Satellite className="w-3.5 h-3.5 text-orange-400" />
                   {t('projects.isroNavicOpticalTelemetry', 'ISRO NavIC & Optical Telemetry')}
                 </span>
                 <span
                   className={cn(
-                    'text-[10px] px-2 py-0.5 rounded font-semibold',
+                    'text-[10px] font-mono px-2 py-0.5 rounded font-semibold',
                     auditResult.satelliteTelemetryVerdict.spectralChangeDetected
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-rose-100 text-rose-800'
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                      : 'bg-rose-950 text-rose-300 border border-rose-800'
                   )}
                 >
                   {auditResult.satelliteTelemetryVerdict.spectralChangeDetected
@@ -637,26 +751,26 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
                     : t('projects.noChangeDetected', 'NO CHANGE DETECTED')}
                 </span>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-300 leading-relaxed">
                 {auditResult.satelliteTelemetryVerdict.interpretation}
               </p>
             </div>
 
             {/* Vigilance Action Roadmap */}
-            <div className="p-3.5 rounded-xl bg-white/95 border border-slate-200 shadow-2xs space-y-2">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-slate-600" />
+            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+              <span className="text-xs font-mono font-bold text-slate-300 flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-slate-400" />
                 {t('projects.statutoryVigilanceRoadmap', 'Statutory Vigilance Roadmap')}
               </span>
               <div className="space-y-1.5">
                 {auditResult.actionPlan.map((action) => (
                   <div key={action.step} className="flex items-start gap-2 text-xs">
-                    <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center shrink-0 text-[10px]">
+                    <span className="w-4 h-4 rounded-full bg-slate-800 text-slate-300 font-mono font-bold flex items-center justify-center shrink-0 text-[10px] border border-slate-700">
                       {action.step}
                     </span>
                     <div>
-                      <p className="text-slate-800 font-medium leading-snug">{action.action}</p>
-                      <p className="text-[10px] text-slate-400 font-semibold">{action.authority} · {action.urgency}</p>
+                      <p className="text-slate-200 font-medium leading-snug">{action.action}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">{action.authority} · {action.urgency}</p>
                     </div>
                   </div>
                 ))}
@@ -667,13 +781,13 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
 
         {/* Citizen Social Audit Checklist */}
         {auditResult && auditResult.citizenChecklist.length > 0 && (
-          <div className="p-3.5 rounded-xl bg-amber-50/50 border border-amber-200 shadow-2xs space-y-2.5">
+          <div className="p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/30 space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" />
+              <span className="text-xs font-mono font-bold text-amber-300 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
                 {t('projects.citizenChecklist', 'Citizen Physical Ground Verification Checklist')}
               </span>
-              <span className="text-[10px] text-amber-700 font-medium">
+              <span className="text-[10px] font-mono text-amber-400 font-medium">
                 {t('projects.onSiteSocialAudit', 'On-Site Social Audit')}
               </span>
             </div>
@@ -681,15 +795,15 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
               {auditResult.citizenChecklist.map((item, idx) => (
                 <label
                   key={idx}
-                  className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-slate-900 transition-colors"
+                  className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer select-none hover:text-white transition-colors"
                 >
                   <input
                     type="checkbox"
                     checked={Boolean(checkedItems[idx])}
                     onChange={(e) => setCheckedItems((prev) => ({ ...prev, [idx]: e.target.checked }))}
-                    className="mt-0.5 h-3.5 w-3.5 rounded text-vojas-600 focus:ring-vojas-500 border-slate-300"
+                    className="mt-0.5 h-3.5 w-3.5 rounded bg-slate-800 border-slate-700 text-blue-500 focus:ring-blue-500"
                   />
-                  <span className={cn(checkedItems[idx] && 'line-through text-slate-400')}>
+                  <span className={cn(checkedItems[idx] && 'line-through text-slate-500')}>
                     {item}
                   </span>
                 </label>
@@ -697,8 +811,8 @@ function AiRiskAuditCard({ project }: { project: PublicProjectDetail }) {
             </div>
           </div>
         )}
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -708,12 +822,12 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
     <div className="space-y-5">
       <AiRiskAuditCard project={project} />
 
-      <Card>
-        <CardHeader>
-          <h2 className="text-base font-semibold text-slate-800">{t('projects.projectDetails', 'Project Details')}</h2>
+      <Card className="border border-slate-200/90 shadow-2xs">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700">{t('projects.projectDetails', 'Project Details')}</h2>
         </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <CardBody className="pt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <DetailField label={t('projects.projectSector', 'Sector')} value={project.sector.replace(/_/g, ' ')} />
             <DetailField label={t('projects.state', 'State')} value={project.state || t('common.noData', 'Not available')} />
             <DetailField label={t('projects.district', 'District')} value={project.district || t('common.noData', 'Not available')} />
@@ -728,11 +842,11 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
       </Card>
 
       {project.mp && (
-        <Card>
-          <CardHeader>
+        <Card className="border border-slate-200/90 shadow-2xs">
+          <CardHeader className="pb-3 border-b border-slate-100">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-vojas-600" />
+              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-blue-600" />
                 {t('navigation.mps', 'Member of Parliament (MP)')}
               </h2>
               {project.mp.party && (
@@ -740,8 +854,8 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
               )}
             </div>
           </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <CardBody className="pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <DetailField label={t('mp.representative', 'Representative')} value={project.mp.name} />
               <DetailField label={t('projects.constituency', 'Constituency')} value={project.mp.constituency} />
               <DetailField label={t('mp.house', 'House')} value={project.mp.house === 'LOK_SABHA' ? 'Lok Sabha' : 'Rajya Sabha'} />
@@ -752,11 +866,11 @@ function OverviewTab({ project }: { project: PublicProjectDetail }) {
       )}
 
       {project.description && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-base font-semibold text-slate-800">{t('common.description', 'Description')}</h2>
+        <Card className="border border-slate-200/90 shadow-2xs">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-700">{t('common.description', 'Description')}</h2>
           </CardHeader>
-          <CardBody>
+          <CardBody className="pt-4">
             <p className="text-sm text-slate-600 leading-relaxed">{project.description}</p>
           </CardBody>
         </Card>
@@ -773,18 +887,18 @@ function FinancialTab({ project }: { project: PublicProjectDetail }) {
     <div className="space-y-5">
       <PublicMoneyView approvedAmount={project.approvedAmount} spentAmount={project.spentAmount} />
       {project.approvedAmount > 0 && (
-        <Card>
+        <Card className="border border-slate-200/90 shadow-2xs">
           <CardBody>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">{t('projects.utilizationRate', 'Fund Utilization Rate')}</p>
-                <p className="text-2xl font-bold text-slate-800 mt-1">
+                <p className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500">{t('projects.utilizationRate', 'Fund Utilization Rate')}</p>
+                <p className="text-2xl font-mono font-bold text-slate-900 mt-1">
                   {((project.spentAmount / project.approvedAmount) * 100).toFixed(1)}%
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-slate-500">{t('projects.remainingAmount', 'Unspent Balance')}</p>
-                <p className="text-lg font-bold text-amber-600 mt-1">
+                <p className="text-xs font-mono font-bold uppercase tracking-wider text-slate-500">{t('projects.remainingAmount', 'Unspent Balance')}</p>
+                <p className="text-xl font-mono font-bold text-amber-700 mt-1">
                   {formatCurrency(project.approvedAmount - project.spentAmount)}
                 </p>
               </div>

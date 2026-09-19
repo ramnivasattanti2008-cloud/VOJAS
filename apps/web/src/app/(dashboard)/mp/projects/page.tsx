@@ -5,19 +5,26 @@
  * Sortable/filterable project list for constituency.
  */
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  Search, Filter, X, Grid3X3, List, Map, ChevronUp, ChevronDown,
-  Building2, CheckCircle2, Clock, AlertTriangle, ArrowUpDown
-} from 'lucide-react';
-import { Card, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Card, CardBody } from '@/components/ui/Card';
 import { DEFAULT_OPTIONS, ExportButton } from '@/components/ui/ExportButton';
 import { useMPProjects, type MPProjectFilters } from '@/hooks/useMP';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { ProjectSector, ProjectStatus } from '@vojas/shared';
+import {
+    AlertTriangle, ArrowUpDown,
+    Building2, CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    Clock,
+    Filter,
+    Grid3X3, List, Map,
+    Search,
+    X
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
 // Sector labels
 const SECTOR_LABELS: Partial<Record<ProjectSector, string>> = {
