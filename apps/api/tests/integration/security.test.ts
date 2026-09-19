@@ -55,23 +55,17 @@ function genEmail() {
 
 runIfDb('Auth Security', () => {
   let adminToken: string;
-  let citizenToken: string;
-  let officerToken: string;
   let adminEmail: string;
   let citizenEmail: string;
-  let officerEmail: string;
 
   beforeAll(async () => {
     adminEmail = genEmail();
     citizenEmail = genEmail();
-    officerEmail = genEmail();
+    const officerEmail = genEmail();
 
     adminToken = await tokenForRole('ADMIN', adminEmail, 'AdminPass123!');
-
-    const citizenRes = await register(citizenEmail, 'CitizenPass123!', 'CITIZEN');
-    citizenToken = citizenRes.body.data?.accessToken ?? '';
-
-    officerToken = await tokenForRole('OFFICER', officerEmail, 'OfficerPass123!');
+    await register(citizenEmail, 'CitizenPass123!', 'CITIZEN');
+    await tokenForRole('OFFICER', officerEmail, 'OfficerPass123!');
   });
 
   // ── Login success ──────────────────────────────────────────────────────────
@@ -220,7 +214,6 @@ runIfDb('RBAC Enforcement', () => {
   let adminToken: string;
   let citizenToken: string;
   let officerToken: string;
-  let analystToken: string;
 
   beforeAll(async () => {
     const adminEmail = genEmail();
@@ -235,7 +228,7 @@ runIfDb('RBAC Enforcement', () => {
 
     officerToken = await tokenForRole('OFFICER', officerEmail, 'OfficerPass123!');
 
-    analystToken = await tokenForRole('ANALYST', analystEmail, 'AnalystPass123!');
+    await tokenForRole('ANALYST', analystEmail, 'AnalystPass123!');
   });
 
   // ── Admin-only routes ───────────────────────────────────────────────────
@@ -443,11 +436,6 @@ runIfDb('IDOR Protection', () => {
   // ── Notification access ───────────────────────────────────────────────
 
   it('User cannot delete another user notification (404 returned)', async () => {
-    const res = await request(app)
-      .get('/api/v1/auth/me')
-      .set(authHeader(user2Token));
-    const user2Id = res.body.data?.id ?? res.body.data?.user?.id;
-
     // Get user1's notifications (none exist but let's see)
     // Since notifications are scoped to userId in the query, IDOR is prevented
     // by the fact that mark-read uses userId from token, not from request param

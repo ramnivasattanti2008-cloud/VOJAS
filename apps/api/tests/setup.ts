@@ -31,7 +31,8 @@ beforeAll(async () => {
     await connectDb();
     console.log('[Test Setup] Database connected');
   } catch (err) {
-    console.warn('[Test Setup] Could not connect to database.');
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[Test Setup] Could not connect to database: ${message}`);
   }
 });
 

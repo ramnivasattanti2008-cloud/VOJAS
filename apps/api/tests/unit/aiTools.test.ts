@@ -1,11 +1,17 @@
+import type { PrismaClient } from '@vojas/db';
 import { UserRole, buildUserContext } from '@vojas/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { AIAgentService } from '../../src/services/aiAgent/aiAgentService.js';
 import { AIToolRegistry } from '../../src/services/aiAgent/aiTools.js';
 
+// These tests exercise RBAC gating and deterministic-calculation logic
+// against hand-built partial mocks, not a real Prisma client — each mock
+// implements only the models the tool under test touches, hence the
+// through-unknown cast rather than a real PrismaClient instance.
+
 describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
   it('enforces RBAC: denies getOfficerQueue to Citizen role', async () => {
-    const mockPrisma: any = {};
+    const mockPrisma = {} as unknown as PrismaClient;
     const registry = new AIToolRegistry(mockPrisma);
     const citizenContext = buildUserContext(UserRole.CITIZEN, 'citizen-1');
 
@@ -17,7 +23,7 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
   });
 
   it('enforces RBAC: denies getContractorProjects to Citizen role', async () => {
-    const mockPrisma: any = {};
+    const mockPrisma = {} as unknown as PrismaClient;
     const registry = new AIToolRegistry(mockPrisma);
     const citizenContext = buildUserContext(UserRole.CITIZEN, 'citizen-1');
 
@@ -29,7 +35,7 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
   });
 
   it('computes deterministic financial balance without LLM fabrication', async () => {
-    const mockPrisma: any = {
+    const mockPrisma = {
       project: {
         findFirst: vi.fn().mockResolvedValue({
           id: 'proj-123',
@@ -48,7 +54,7 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
           ],
         }),
       },
-    };
+    } as unknown as PrismaClient;
 
     const registry = new AIToolRegistry(mockPrisma);
     const citizenContext = buildUserContext(UserRole.CITIZEN, 'citizen-1');
@@ -57,7 +63,14 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
 
     expect(result.success).toBe(true);
     expect(result.data).toBeDefined();
-    const fin: any = result.data;
+    const fin = result.data as {
+      approvedAmountINR: number;
+      spentAmountINR: number;
+      unutilizedBalanceINR: number;
+      utilizationPercentage: number;
+      isOverSpent: boolean;
+      disbursalStatus: string;
+    };
     expect(fin.approvedAmountINR).toBe(1000000);
     expect(fin.spentAmountINR).toBe(650000);
     expect(fin.unutilizedBalanceINR).toBe(350000); // 1000000 - 650000
@@ -67,7 +80,7 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
   });
 
   it('returns NO_GEOSPATIAL_COORDINATES when project has null latitude/longitude', async () => {
-    const mockPrisma: any = {
+    const mockPrisma = {
       project: {
         findFirst: vi.fn().mockResolvedValue({
           id: 'proj-no-coords',
@@ -77,7 +90,7 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
           changeAnalyses: [],
         }),
       },
-    };
+    } as unknown as PrismaClient;
 
     const registry = new AIToolRegistry(mockPrisma);
     const citizenContext = buildUserContext(UserRole.CITIZEN, 'citizen-1');
@@ -85,7 +98,7 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
     const result = await registry.executeTool('getProjectSatellite', { projectId: 'proj-no-coords' }, citizenContext);
 
     expect(result.success).toBe(true);
-    const sat: any = result.data;
+    const sat = result.data as { status: string; usableObservationsCount: number };
     expect(sat.status).toBe('NO_GEOSPATIAL_COORDINATES');
     expect(sat.usableObservationsCount).toBe(0);
   });
@@ -93,7 +106,7 @@ describe('AIToolRegistry — RBAC and Deterministic Calculation Gates', () => {
 
 describe('AIAgentService — In-Process Deterministic Fallback & Structured Schema', () => {
   it('synthesizes structured response without external LLM when API keys are absent', async () => {
-    const mockPrisma: any = {
+    const mockPrisma = {
       project: {
         findFirst: vi.fn().mockResolvedValue({
           id: 'proj-456',
@@ -129,7 +142,7 @@ describe('AIAgentService — In-Process Deterministic Fallback & Structured Sche
       riskSignal: {
         findMany: vi.fn().mockResolvedValue([]),
       },
-    };
+    } as unknown as PrismaClient;
 
     const agent = new AIAgentService(mockPrisma);
     const citizenContext = buildUserContext(UserRole.CITIZEN, 'citizen-1');

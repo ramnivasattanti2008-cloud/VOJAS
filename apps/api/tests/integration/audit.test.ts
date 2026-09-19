@@ -34,13 +34,13 @@ runIfDb('Audit Logging', () => {
 
     expect(auditRes.status).toBe(200);
     expect(auditRes.body.success).toBe(true);
-    const events = auditRes.body.data.data;
-    expect(events.some((e: any) => e.action === 'PROJECT_CREATED')).toBe(true);
+    const events = auditRes.body.data.data as { action: string }[];
+    expect(events.some((e) => e.action === 'PROJECT_CREATED')).toBe(true);
   });
 
   it('login creates an audit log entry', async () => {
     const email = `audit-login-${Date.now()}@example.com`;
-    const registerRes = await request(app)
+    await request(app)
       .post(`${BASE}/auth/register`)
       .send({ email, password: 'TestPass123!', name: 'Audit Login Test' });
 
@@ -60,7 +60,8 @@ runIfDb('Audit Logging', () => {
       .query({ action: 'AUTH_LOGIN' });
 
     expect(auditRes.status).toBe(200);
-    expect(auditRes.body.data.data.some((e: any) => e.action === 'AUTH_LOGIN')).toBe(true);
+    const loginEvents = auditRes.body.data.data as { action: string }[];
+    expect(loginEvents.some((e) => e.action === 'AUTH_LOGIN')).toBe(true);
   });
 
   it('GET /audit is allowed for OFFICER, which holds audit.read', async () => {
