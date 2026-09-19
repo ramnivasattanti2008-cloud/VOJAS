@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
-import { defaultRouteForRole, sanitiseNextPath } from '@/lib/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { KeyRound, ShieldAlert, Sparkles, UserCheck } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { defaultRouteForRole, sanitiseNextPath } from '@/lib/auth-context';
+import { KeyRound, ShieldAlert, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, type FormEvent } from 'react';
 
 export function LoginForm() {
   const router = useRouter();

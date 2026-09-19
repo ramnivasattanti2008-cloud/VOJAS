@@ -1,10 +1,10 @@
 'use client';
 
+import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
+import { Logo } from '@/components/ui/Logo';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
-import { Logo } from '@/components/ui/Logo';
-import { AICopilotDrawer } from '@/components/ai-agent/AICopilotDrawer';
 import {
     Activity,
     AlertTriangle,
