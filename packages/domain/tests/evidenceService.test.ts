@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { UserRole } from '@vojas/shared';
+import type { PrismaClient } from '@vojas/db';
 import { EvidenceService } from '../src/services/evidenceService';
 import type { EvidenceItem } from '../src/services/evidenceService';
 
 // filterPublic/filterForViewer are pure functions — exercise them directly
 // against a fixture array rather than a live Prisma client.
-const service = new EvidenceService({} as any);
+const service = new EvidenceService({} as PrismaClient);
 
 function item(overrides: Partial<EvidenceItem>): EvidenceItem {
   return {

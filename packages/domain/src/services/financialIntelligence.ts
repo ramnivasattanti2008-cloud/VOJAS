@@ -12,14 +12,7 @@
  * Principle: FOLLOW THE MONEY → FOLLOW THE DOCUMENT → FOLLOW THE PHYSICAL REALITY → COMPARE THE SIGNALS
  */
 
-import type { PrismaClient } from '@vojas/db';
-import type {
-  SatelliteObservation,
-  ProgressObservation,
-  FinancialObservation,
-  Document,
-  Project,
-} from '@vojas/db';
+import type { PrismaClient, Project } from '@vojas/db';
 import { NotFoundError, ValidationError } from '../errors/index.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -574,10 +567,9 @@ export class FinancialIntelligenceService {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project) throw NotFoundError.notFound('Project', projectId);
 
-    const [observations, satelliteObs, progressObs, documents] = await Promise.all([
+    const [observations, satelliteObs, documents] = await Promise.all([
       this.prisma.financialObservation.findMany({ where: { projectId }, orderBy: { date: 'asc' } }),
       this.prisma.satelliteObservation.findMany({ where: { projectId, quality: 'PROCESSED' }, orderBy: { observationDate: 'desc' }, take: 3 }),
-      this.prisma.progressObservation.findMany({ where: { projectId }, orderBy: { reportDate: 'desc' }, take: 3 }),
       this.prisma.document.findMany({ where: { projectId } }),
     ]);
 

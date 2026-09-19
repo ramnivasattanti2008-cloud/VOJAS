@@ -78,8 +78,10 @@ export class ProjectService {
         longitude: parsed.data.longitude,
         source: parsed.data.source,
         sourceWorkId: parsed.data.sourceWorkId,
-        // createdById is required on Project; caller must provide it
-        createdById: (parsed.data as any).createdById ?? '00000000-0000-0000-0000-000000000000',
+        // createdById is required on Project; caller must provide it. Not
+        // part of createProjectSchema yet, so it's read as an untyped extra
+        // field rather than a validated one.
+        createdById: (parsed.data as Record<string, unknown>).createdById as string ?? '00000000-0000-0000-0000-000000000000',
       },
     });
   }

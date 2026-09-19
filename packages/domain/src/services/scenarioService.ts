@@ -1,5 +1,5 @@
 // M16: Scenario Service
-import type { PrismaClient } from '@vojas/db';
+import type { PrismaClient, ProjectSector } from '@vojas/db';
 
 export type ScenarioType = 'PROGRESS_RATE' | 'EXPENDITURE_CHANGE' | 'MILESTONE_DELAY' | 'ACCELERATION' | 'COST_ESCALATION';
 
@@ -73,6 +73,11 @@ export class ScenarioService {
         const acceleratedWeeks = weeksToComplete / (1 + rate);
         scenarioValue = 100;
         assumptions.push('Assumes project accelerates by ' + (rate * 100).toFixed(0) + '%');
+        assumptions.push(
+          Number.isFinite(acceleratedWeeks)
+            ? 'Projected time to 100% completion: ' + Math.max(0, Math.round(acceleratedWeeks)) + ' weeks (vs ' + Math.max(0, Math.round(weeksToComplete)) + ' weeks at current pace)'
+            : 'Insufficient progress history to project a completion timeline'
+        );
         break;
       }
       case 'COST_ESCALATION': {
@@ -120,7 +125,7 @@ export class ScenarioService {
     } else if (entityType === 'STATE') {
       projects = await this.prisma.project.findMany({ where: { state: entityId } });
     } else if (entityType === 'SECTOR') {
-      projects = await this.prisma.project.findMany({ where: { sector: entityId as any } });
+      projects = await this.prisma.project.findMany({ where: { sector: entityId as ProjectSector } });
     } else {
       projects = await this.prisma.project.findMany({});
     }
