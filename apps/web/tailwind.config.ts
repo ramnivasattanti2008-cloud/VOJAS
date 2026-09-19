@@ -2,6 +2,14 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+  // No dark theme is designed anywhere in this app (every surface, hairline
+  // and shadow above is tuned for the light iOS palette). Without this,
+  // Tailwind's default 'media' strategy activates any stray `dark:` variant
+  // the moment the OS is in dark mode — a handful of older components carry
+  // one from before this was noticed — producing a half-dark, half-light
+  // page instead of a real dark mode. 'class' neutralizes those until a
+  // real dark theme is built and something actually adds .dark to <html>.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
