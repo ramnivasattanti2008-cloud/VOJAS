@@ -20,6 +20,7 @@ import {
 import {
     AuditAction,
     ModerationAction,
+    NotificationType,
     ReportPrivacyLevel,
     ReportStatus,
     ReportTriageStatus,
@@ -705,7 +706,7 @@ router.post(
       });
 
       await auditService.logEvent({
-        actorId: (req as any).user?.userId ?? 'anonymous',
+        actorId: req.user?.userId ?? 'anonymous',
         actorType: 'USER',
         action: AuditAction.REPORT_MEDIA_UPLOADED,
         entityType: 'ReportMedia',
@@ -758,7 +759,7 @@ router.post(
       }
 
       await auditService.logEvent({
-        actorId: (req as any).user?.userId,
+        actorId: req.user?.userId,
         actorType: 'USER',
         action: AuditAction.REPORT_CLAIMS_EXTRACTED,
         entityType: 'Report',
@@ -806,13 +807,13 @@ router.patch('/:id', authenticate, async (req: Request, res: Response, next: Nex
           reportId: id,
           fromStatus: existing.status as ReportStatus,
           toStatus: body.status as ReportStatus,
-          changedById: (req as any).user?.userId,
+          changedById: req.user?.userId,
           notes: body.statusNote as string | undefined,
         },
       });
 
       await auditService.logEvent({
-        actorId: (req as any).user?.userId,
+        actorId: req.user?.userId,
         actorType: 'USER',
         action: AuditAction.REPORT_STATUS_CHANGED,
         entityType: 'Report',
@@ -848,7 +849,7 @@ router.post(
       if (!report) throw new NotFoundError('Report');
 
       const { action, reason } = parsed.data;
-      const userId = (req as any).user?.userId;
+      const userId = req.user?.userId;
 
       // Create moderation record
       const moderation = await prisma.reportModeration.create({
@@ -910,7 +911,7 @@ router.post(
         await prisma.notification.create({
           data: {
             userId: 'SYSTEM', // In production, would look up reporter user or send email
-            type: 'REPORT_MORE_INFO_REQUESTED' as any,
+            type: NotificationType.REPORT_MORE_INFO_REQUESTED,
             title: 'More information requested',
             message: `Your report ${report.reportReference} requires additional information: ${reason}`,
             resource: 'Report',
