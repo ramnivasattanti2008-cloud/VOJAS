@@ -1317,6 +1317,60 @@ router.get('/roles/:roleId/audit', async (req: Request, res: Response, next: Nex
   }
 });
 
+// ── GET /admin/contractors — real contractor directory ───────────────────────
+// Mirrors GET /mps (the existing public MP directory) — there was no
+// equivalent listing for contractors anywhere, which made the admin-
+// controlled User<->Contractor link (see routes/users.ts PATCH /:id)
+// impossible to use in practice: an admin had no way to find a real
+// Contractor id to link a CONTRACTOR-role user to.
+
+router.get('/contractors', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
+    const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 100);
+    const search = req.query.search as string | undefined;
+
+    const where: Record<string, unknown> = {};
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { district: { contains: search, mode: 'insensitive' } },
+        { state: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [contractors, total] = await Promise.all([
+      prisma.contractor.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { linkedUser: { select: { id: true, email: true } } },
+      }),
+      prisma.contractor.count({ where }),
+    ]);
+
+    success(res, {
+      data: contractors.map((c) => ({
+        id: c.id,
+        name: c.name,
+        district: c.district,
+        state: c.state,
+        totalPaid: c.totalPaid,
+        projectCount: c.projectCount,
+        linkedUserId: c.linkedUser?.id ?? null,
+        linkedUserEmail: c.linkedUser?.email ?? null,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /admin/data-sources — list ingestion data sources ───────────────────
 // Maps directly onto the real DataSource/DataSourceRecord tables described
 // in CLAUDE.md's Phase 2 provenance model — no parallel/fabricated tracking.
