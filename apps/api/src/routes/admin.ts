@@ -11,6 +11,7 @@ import { NotFoundError, ValidationError } from '@vojas/domain';
 import { AuditAction, getPermissionsForRole, ROLE_PERMISSIONS, UserRole } from '@vojas/shared';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
+import { satelliteJobQueue } from '../services/satelliteJobQueue.js';
 import { created, success } from '../utils/apiResponse.js';
 
 const router = Router();
@@ -145,7 +146,90 @@ router.get('/system-overview', async (_req: Request, res: Response, next: NextFu
       }),
     ]);
 
+    // ── Control Center shape (the contract the admin page and api-client's
+    // SystemOverview type expect). Everything below is derived from real data;
+    // where nothing measures a value it is reported as UNKNOWN/0, never guessed.
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const dbStart = Date.now();
+    const dbOk = await prisma.$queryRaw`SELECT 1`.then(
+      () => true,
+      () => false
+    );
+    const dbLatencyMs = Date.now() - dbStart;
+
+    const [lastSource, recordsToday, observationsToday, securityLast24h, recentEvents] =
+      await Promise.all([
+        prisma.dataSource.aggregate({ _max: { lastFetched: true } }),
+        prisma.dataSourceRecord.count({ where: { fetchedAt: { gte: startOfDay } } }),
+        prisma.satelliteObservation.count({ where: { processingDate: { gte: startOfDay } } }),
+        prisma.auditEvent.count({
+          where: {
+            timestamp: { gte: oneDayAgo },
+            action: { in: ['AUTH_FAILED_LOGIN', 'AUTH_LOGIN', 'USER_ROLE_CHANGED'] },
+          },
+        }),
+        prisma.auditEvent.findMany({ orderBy: { timestamp: 'desc' }, take: 10 }),
+      ]);
+
+    const actorIds = [...new Set(recentEvents.map((e) => e.actorId))];
+    const actors = await prisma.user.findMany({
+      where: { id: { in: actorIds } },
+      select: { id: true, name: true, email: true },
+    });
+    const actorLabel = new Map(actors.map((a) => [a.id, a.name || a.email]));
+
+    const satJobs = satelliteJobQueue.getAllJobs();
+    const jobCount = (s: string) => satJobs.filter((j) => j.status === s).length;
+    const finished = satJobs.filter((j) => j.status === 'COMPLETED' && j.startedAt && j.completedAt);
+    const avgProcessingTime = finished.length
+      ? finished.reduce((sum, j) => sum + (j.completedAt!.getTime() - j.startedAt!.getTime()), 0) /
+        finished.length
+      : 0;
+
+    // Only two components are actually health-checked: the database and this API process.
+    const checks = { healthy: dbOk ? 2 : 1, degraded: 0, unhealthy: dbOk ? 0 : 1, total: 2 };
+
     success(res, {
+      status: {
+        overall: dbOk ? 'HEALTHY' : 'UNHEALTHY',
+        score: Math.round((checks.healthy / checks.total) * 100),
+        checks,
+        databaseLatencyMs: dbLatencyMs,
+      },
+      jobs: {
+        active: jobCount('RUNNING'),
+        queued: jobCount('PENDING'),
+        failed: jobCount('FAILED'),
+        retrying: jobCount('RETRYING'),
+      },
+      // Satellite / map / AI providers are not probed anywhere, so their state is unknown.
+      providers: {
+        database: dbOk ? 'ONLINE' : 'OFFLINE',
+        satellite: 'UNKNOWN',
+        map: 'UNKNOWN',
+        ai: 'UNKNOWN',
+      },
+      dataIngestion: {
+        lastSync: lastSource._max.lastFetched?.toISOString() ?? null,
+        status: 'IDLE',
+        recordsToday,
+      },
+      satelliteProcessing: {
+        queueDepth: jobCount('PENDING') + jobCount('RUNNING') + jobCount('RETRYING'),
+        avgProcessingTime,
+        observationsToday,
+      },
+      recentAdminActions: recentEvents.map((e) => ({
+        id: e.id,
+        action: e.action,
+        actor: actorLabel.get(e.actorId) ?? e.actorId,
+        timestamp: e.timestamp.toISOString(),
+      })),
+      // Audit events carry no severity, so only the total is real.
+      securityEventsLast24h: { total: securityLast24h, critical: 0, high: 0 },
       system: {
         status: 'operational',
         uptime: process.uptime(),

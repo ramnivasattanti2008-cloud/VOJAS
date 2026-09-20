@@ -72,6 +72,26 @@ runIfDb('Admin — GET /admin/system-overview', () => {
     expect(res.body.data.counts).toBeDefined();
     expect(res.body.data.activity).toBeDefined();
   });
+
+  // The admin dashboard reads overview.status.overall etc. Before this contract
+  // matched, the page crashed in production with "reading 'overall'" of undefined.
+  it('returns the Control Center shape the admin page reads', async () => {
+    const token = await getAdminToken();
+    const res = await request(app)
+      .get(`${BASE}/admin/system-overview`)
+      .set('Authorization', `Bearer ${token}`);
+    const d = res.body.data;
+    expect(['HEALTHY', 'DEGRADED', 'UNHEALTHY']).toContain(d.status.overall);
+    expect(d.status.checks.total).toBeGreaterThan(0);
+    expect(typeof d.jobs.queued).toBe('number');
+    expect(['ONLINE', 'DEGRADED', 'OFFLINE', 'UNKNOWN']).toContain(d.providers.database);
+    // Unprobed providers must say so, not claim to be online.
+    expect(d.providers.satellite).toBe('UNKNOWN');
+    expect(Array.isArray(d.recentAdminActions)).toBe(true);
+    expect(typeof d.securityEventsLast24h.total).toBe('number');
+    expect(typeof d.satelliteProcessing.queueDepth).toBe('number');
+    expect(typeof d.dataIngestion.recordsToday).toBe('number');
+  });
 });
 
 runIfDb('Admin — GET /admin/health', () => {

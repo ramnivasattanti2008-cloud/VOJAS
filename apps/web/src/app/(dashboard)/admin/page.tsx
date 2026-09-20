@@ -137,7 +137,7 @@ export default function AdminCommandCenterPage() {
             </div>
           </CardBody>
         </Card>
-      ) : overview ? (
+      ) : overview?.status ? (
         <>
           {/* Overall Status Banner */}
           <Card className={cn(
@@ -337,7 +337,10 @@ export default function AdminCommandCenterPage() {
                   </div>
                 </div>
                 <div className="text-xs text-slate-500 mb-4">
-                  Avg Processing: {(overview.satelliteProcessing.avgProcessingTime / 1000).toFixed(1)}s
+                  Avg Processing:{' '}
+                  {overview.satelliteProcessing.avgProcessingTime > 0
+                    ? `${(overview.satelliteProcessing.avgProcessingTime / 1000).toFixed(1)}s`
+                    : 'no completed jobs yet'}
                 </div>
                 <Link href="/admin/satellites">
                   <Button variant="secondary" size="sm" className="w-full">
