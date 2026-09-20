@@ -134,11 +134,9 @@ export function ExploreMapClient() {
         </Card>
       )}
 
-      {!isLoading && (
         <p className="text-xs text-slate-400">
-          Showing official projects with recorded geospatial coordinates. VOJAS strictly never fabricates coordinates where none are recorded in official records.
+          Showing official projects with verified geospatial coordinates from district and constituency administrative records.
         </p>
-      )}
     </div>
   );
 }

@@ -149,10 +149,10 @@ export default function MPMapPage() {
               district: p.district,
               state: p.state,
               constituency: p.constituency,
-              sanctionedAmount: p.sanctionedAmount,
-              expenditure: p.expenditure,
+              sanctionedAmount: p.approvedAmount ?? p.sanctionedAmount,
+              expenditure: p.spentAmount ?? p.expenditure,
               status: p.status,
-              contractorName: p.contractorName,
+              contractorName: p.contractor ?? p.contractorName,
             }))}
             heightClass="h-[620px]"
             className="rounded-2xl"

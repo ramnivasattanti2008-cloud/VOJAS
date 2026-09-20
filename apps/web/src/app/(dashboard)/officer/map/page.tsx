@@ -121,10 +121,10 @@ export default function OfficerMapPage() {
         district: p.district,
         state: p.state,
         constituency: p.constituency,
-        sanctionedAmount: p.sanctionedAmount,
-        expenditure: p.expenditure,
+        sanctionedAmount: p.approvedAmount ?? p.sanctionedAmount,
+        expenditure: p.spentAmount ?? p.expenditure,
         status: p.status,
-        contractorName: p.contractorName,
+        contractorName: p.contractor ?? p.contractorName,
       }));
   }, [data?.projects]);
 

@@ -22,16 +22,20 @@ const BASEMAP_TILES: Record<BasemapMode, { tiles: string[]; attribution: string 
     attribution: '© Esri, Maxar, Earthstar Geographics'
   },
   tactical: {
-    tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+    tiles: [
+      'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+      'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+      'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+    ],
     attribution: '© OpenStreetMap, © CARTO'
   },
   streets: {
     tiles: [
-      'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+      'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+      'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
     ],
-    attribution: '© OpenStreetMap contributors'
+    attribution: '© OpenStreetMap contributors, © CARTO'
   },
   hybrid: {
     tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
@@ -170,13 +174,14 @@ export const InteractiveGisMap: React.FC<InteractiveGisMapProps> = ({
         });
 
         map.on('error', (e) => {
-          if (!cancelled) setLoadError(e.error?.message ?? 'Map load error');
+          // Log non-fatal network/tile/font warnings; never blank out the map UI
+          console.warn('[MapLibre Warning]', e.error?.message || e);
         });
 
         mapRef.current = map;
       })
       .catch((err) => {
-        if (!cancelled) setLoadError('Could not load WebGL map engine');
+        if (!cancelled) setLoadError('Could not load WebGL map engine. Hardware acceleration or WebGL may be disabled.');
       });
 
     return () => {
@@ -188,29 +193,78 @@ export const InteractiveGisMap: React.FC<InteractiveGisMapProps> = ({
     };
   }, []);
 
-  // Switch basemaps dynamically
+  const prevBasemapRef = useRef<BasemapMode>(basemap);
+
+  // Switch basemaps dynamically only when user explicitly toggles the basemap
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    if (prevBasemapRef.current === basemap) return;
+    prevBasemapRef.current = basemap;
+
+    const tileConfig = BASEMAP_TILES[basemap];
+    map.setStyle({
+      version: 8,
+      sources: {
+        basemap: {
+          type: 'raster',
+          tiles: tileConfig.tiles,
+          tileSize: 256,
+          attribution: tileConfig.attribution
+        }
+      },
+      layers: [{ id: 'basemap-layer', type: 'raster', source: 'basemap' }]
+    });
+  }, [basemap, mapReady]);
+
+  // Sync District Boundaries Layer
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
-    const tileConfig = BASEMAP_TILES[basemap];
-    const source = map.getSource('basemap') as import('maplibre-gl').RasterTileSource | undefined;
+    const sourceId = 'district-boundaries';
+    const layerId = 'district-boundaries-line';
 
-    if (source) {
-      map.setStyle({
-        version: 8,
-        sources: {
-          basemap: {
-            type: 'raster',
-            tiles: tileConfig.tiles,
-            tileSize: 256,
-            attribution: tileConfig.attribution
-          }
-        },
-        layers: [{ id: 'basemap-layer', type: 'raster', source: 'basemap' }]
-      });
+    const syncBoundaries = () => {
+      try {
+        if (!map.getSource(sourceId)) {
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: '/data/india-districts.geojson'
+          });
+        }
+
+        if (!map.getLayer(layerId) && map.getSource(sourceId)) {
+          map.addLayer({
+            id: layerId,
+            type: 'line',
+            source: sourceId,
+            paint: {
+              'line-color': '#0284c7',
+              'line-width': 1.2,
+              'line-opacity': 0.4
+            }
+          });
+        }
+
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(
+            layerId,
+            'visibility',
+            layers.boundaries ? 'visible' : 'none'
+          );
+        }
+      } catch (err) {
+        console.warn('Could not sync district boundary layer:', err);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      syncBoundaries();
+    } else {
+      map.once('style.load', syncBoundaries);
     }
-  }, [basemap, mapReady]);
+  }, [layers.boundaries, basemap, mapReady]);
 
   // Sync Markers
   useEffect(() => {
@@ -442,10 +496,20 @@ export const InteractiveGisMap: React.FC<InteractiveGisMapProps> = ({
 
       {/* Error Overlay */}
       {loadError && (
-        <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-2 z-20 p-4 text-center">
-          <AlertTriangle className="w-8 h-8 text-red-400" />
-          <p className="font-semibold text-sm text-red-300">Geospatial Canvas Error</p>
-          <p className="font-mono text-xs text-slate-400">{loadError}</p>
+        <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3 z-20 p-4 text-center">
+          <AlertTriangle className="w-8 h-8 text-amber-400" />
+          <p className="font-semibold text-sm text-slate-200">Geospatial Canvas Notice</p>
+          <p className="font-mono text-xs text-slate-400 max-w-md">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoadError(null);
+              window.location.reload();
+            }}
+            className="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+          >
+            Reload Canvas
+          </button>
         </div>
       )}
 
