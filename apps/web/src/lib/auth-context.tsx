@@ -2,6 +2,9 @@
 
 import type { ApiClient, AuthResponse, User } from '@vojas/api-client';
 import { createAuthApi } from '@vojas/api-client';
+// Import from the `/permissions` subpath, never the `@vojas/domain` barrel: the barrel
+// re-exports Prisma-backed services, and bundling them puts `new PrismaClient()` in the
+// browser, which throws `global is not defined` and stops every page from hydrating.
 import {
     canVerify,
     getPermissions,
@@ -15,7 +18,7 @@ import {
     isMPRole,
     isOfficerRole,
     type Permission,
-} from '@vojas/domain';
+} from '@vojas/domain/permissions';
 import type { UserRole } from '@vojas/shared';
 import {
     createContext,
