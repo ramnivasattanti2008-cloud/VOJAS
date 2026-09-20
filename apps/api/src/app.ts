@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { expressIntegration, setupExpressErrorHandler } from '@sentry/node';
 import { prisma } from '@vojas/db';
+import { AppError } from '@vojas/domain';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
@@ -91,7 +92,9 @@ app.use(
       // that pass this check. Falling through to callback(null, true) here — as a
       // prior version briefly did — would let ANY website issue authenticated
       // requests against this API using a logged-in visitor's session cookie.
-      return callback(new Error('Not allowed by CORS'));
+      // Reject with a typed 403 so the error handler answers "forbidden" rather than
+      // a generic 500 that reads as a server crash and pollutes error monitoring.
+      return callback(AppError.forbidden('call this API from an unrecognised origin'));
     },
     credentials: true,
   })

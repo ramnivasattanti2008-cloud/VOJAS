@@ -68,11 +68,6 @@ export function PublicFooter() {
                   {t('footer.reportDiscrepancy', 'Report Project Discrepancy')}
                 </Link>
               </li>
-              <li>
-                <Link href="/citizen/offline-drafts" className="hover:text-[#007AFF] transition-colors">
-                  {t('footer.offlineDrafts', 'Offline Drafts')}
-                </Link>
-              </li>
             </ul>
           </div>
 
