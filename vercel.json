@@ -60,5 +60,7 @@
   "regions": [
     "iad1"
   ],
-  "buildCommand": "cd ../.. && pnpm db:generate && pnpm --filter @vojas/db build && pnpm --filter @vojas/shared build && pnpm --filter @vojas/domain build && pnpm --filter @vojas/api-client build && pnpm --filter @vojas/web build"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm db:generate && pnpm run build:packages && pnpm --filter @vojas/web build",
+  "outputDirectory": "apps/web/.next"
 }
