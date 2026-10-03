@@ -36,7 +36,16 @@ const nextConfig: NextConfig = {
         },
       ];
     }
-    return [];
+    // Production without an explicit API_INTERNAL_URL: the browser calls
+    // /api/v1/* same-origin, so it still needs somewhere to go. Proxy to the
+    // deployed API (same fallback host as apps/web/src/lib/api.ts) instead of
+    // returning no rewrites, which made every relative API call 404.
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: 'https://vojas-api.onrender.com/api/v1/:path*',
+      },
+    ];
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',

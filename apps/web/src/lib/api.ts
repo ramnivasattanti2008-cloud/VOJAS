@@ -27,10 +27,17 @@ function onUnauthorized() {
   window.location.href = '/login';
 }
 
+// NEXT_PUBLIC_API_URL always wins when set. Otherwise: server-side code (SSR/RSC,
+// which runs on Vercel too, not just local dev) needs an absolute URL because
+// there's no browser to resolve a relative one against, so it falls back to the
+// deployed API in production and localhost in development; the browser can use
+// a same-origin relative path either way, proxied by next.config.ts's rewrites.
 const apiBase = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
   : typeof window === 'undefined'
-  ? 'http://localhost:5000/api/v1'
+  ? process.env.NODE_ENV === 'production'
+    ? 'https://vojas-api.onrender.com/api/v1'
+    : 'http://localhost:5000/api/v1'
   : '/api/v1';
 
 export const apiClient = new ApiClient({

@@ -65,8 +65,7 @@ export function ShowcaseProjectSelector() {
     async function loadShowcase() {
       try {
         setLoading(true);
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
-        const res = await fetch(`${apiBase}/api/v1/showcase/projects`);
+        const res = await fetch(`/api/showcase/projects`);
         const json = await res.json();
         if (json.success) {
           setProjectsData(json.data);
@@ -90,8 +89,7 @@ export function ShowcaseProjectSelector() {
     async function loadWeeklyReport() {
       try {
         setReportLoading(true);
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
-        const res = await fetch(`${apiBase}/api/v1/showcase/projects/${selectedProjectId}/weekly-report`);
+        const res = await fetch(`/api/showcase/projects/${selectedProjectId}/weekly-report`);
         const json = await res.json();
         if (json.success) {
           setWeeklyReport(json.data);

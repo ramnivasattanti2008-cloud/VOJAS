@@ -90,8 +90,7 @@ export function ContractorWeeklySubmission() {
     setResult(null);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await fetch(`${apiBase}/api/v1/showcase/contractor/submit`, {
+      const response = await fetch(`/api/showcase/contractor/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
