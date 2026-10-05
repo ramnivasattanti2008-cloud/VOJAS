@@ -930,7 +930,6 @@
   },
   "explore": {
     "allProjects": "All Projects",
-    "showcaseDemo": "Showcase Demo",
     "highestRisk": "Highest AI Risk Score",
     "lowestRisk": "Lowest AI Risk Score",
     "budgetHigh": "Sanctioned: High to Low",
@@ -948,7 +947,8 @@
     "noProjectsFound": "No projects found",
     "adjustFilters": "Try adjusting or clearing your filters.",
     "page": "Page",
-    "of": "of"
+    "of": "of",
+    "nationalShowcase": "National Showcase"
   },
   "home": {
     "heroBadge": "Public Infrastructure Intelligence",
@@ -994,11 +994,10 @@
     "readCharter": "Read Platform Charter"
   },
   "showcase": {
-    "quickAccess": "SIH Evaluator Quick-Access",
-    "premierDemos": "4 Premier Forensic Demonstrations",
+    "quickAccess": "National Audit Quick-Access",
     "title": "Featured Forensic Showcase Projects",
     "subtitle": "Test instant AI auditing, ISRO NavIC sovereign positioning, satellite spectral telemetry, and statutory GFR/CVC checks across high-consequence civic cases.",
-    "openSandbox": "Open Judges AI Sandbox",
+    "openSandbox": "Open Forensic AI Audit Engine",
     "ghostWork": "CRITICAL GHOST WORK",
     "auditedAnomaly": "AUDITED ANOMALY",
     "activeOngoing": "ACTIVE ONGOING",
@@ -1008,7 +1007,8 @@
     "disbursed": "Disbursed",
     "physicalExecution": "Physical Execution",
     "satelliteNavic": "Satellite & NavIC",
-    "statutoryRule": "Statutory Audit Rule"
+    "statutoryRule": "Statutory Audit Rule",
+    "premierAudits": "4 Premier Forensic Audits"
   },
   "footer": {
     "tagline": "Public infrastructure intelligence platform for Members of Parliament Local Area Development (MPLADS) monitoring. Sourced from official records and Sentinel-2 satellite observations.",

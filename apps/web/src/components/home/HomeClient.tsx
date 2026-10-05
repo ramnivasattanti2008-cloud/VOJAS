@@ -81,7 +81,7 @@ export function HomeClient() {
         </div>
       </section>
 
-      {/* Featured Forensic Showcase Banner for SIH Evaluators */}
+      {/* Featured Forensic Showcase Banner */}
       <ShowcaseBanner />
 
       {/* Core Platform Pillars */}

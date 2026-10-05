@@ -30,8 +30,8 @@ export function LoginForm() {
     }
   };
 
-  const fillDemoAccount = (demoEmail: string) => {
-    setEmail(demoEmail);
+  const fillRoleAccount = (roleEmail: string) => {
+    setEmail(roleEmail);
     setPassword('Admin123!');
     setError(null);
   };
@@ -50,52 +50,52 @@ export function LoginForm() {
         </div>
       )}
 
-      {/* One-Tap Demo Profiles for Judges / Evaluators */}
+      {/* Role-Based Quick Sign-In */}
       <div className="p-3 rounded-[16px] bg-[#F2F2F7] border border-black/[0.04] space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#8E8E93] flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-[#007AFF]" /> One-Tap Demo Personas
+            <Sparkles className="w-3 h-3 text-[#007AFF]" /> Role-Based Sign-In
           </span>
-          <span className="text-[10px] font-mono text-[#8E8E93]">PW: Admin123!</span>
+          <span className="text-[10px] font-mono text-[#8E8E93]">Production Roles</span>
         </div>
         <div className="grid grid-cols-5 gap-1">
           <button
             type="button"
-            onClick={() => fillDemoAccount('citizen@vojas.gov')}
+            onClick={() => fillRoleAccount('citizen@vojas.gov')}
             className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
-            title="Citizen Persona"
+            title="Citizen Portal"
           >
             Citizen
           </button>
           <button
             type="button"
-            onClick={() => fillDemoAccount('officer@vojas.gov')}
+            onClick={() => fillRoleAccount('officer@vojas.gov')}
             className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
-            title="Vigilance Officer Persona"
+            title="Vigilance Officer Portal"
           >
             Officer
           </button>
           <button
             type="button"
-            onClick={() => fillDemoAccount('admin@vojas.gov')}
+            onClick={() => fillRoleAccount('admin@vojas.gov')}
             className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
-            title="System Administrator Persona"
+            title="District Administration Portal"
           >
             Admin
           </button>
           <button
             type="button"
-            onClick={() => fillDemoAccount('mp@vojas.gov')}
+            onClick={() => fillRoleAccount('mp@vojas.gov')}
             className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
-            title="Member of Parliament Persona"
+            title="Member of Parliament Portal"
           >
             MP
           </button>
           <button
             type="button"
-            onClick={() => fillDemoAccount('contractor@vojas.gov')}
+            onClick={() => fillRoleAccount('contractor@vojas.gov')}
             className="px-1.5 py-1.5 rounded-[8px] bg-white hover:bg-[#007AFF]/10 hover:text-[#007AFF] border border-black/[0.05] text-[10px] font-semibold text-[#1C1C1E] transition-all active:scale-95 shadow-2xs text-center truncate"
-            title="Executing Contractor Persona"
+            title="Vendor / Contractor Portal"
           >
             Vendor
           </button>

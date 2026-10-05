@@ -950,7 +950,6 @@
   },
   "explore": {
     "allProjects": "All Projects",
-    "showcaseDemo": "Showcase Demo",
     "highestRisk": "Highest AI Risk Score",
     "lowestRisk": "Lowest AI Risk Score",
     "budgetHigh": "Sanctioned: High to Low",
@@ -968,7 +967,8 @@
     "noProjectsFound": "No projects found",
     "adjustFilters": "Try adjusting or clearing your filters.",
     "page": "Page",
-    "of": "of"
+    "of": "of",
+    "nationalShowcase": "National Showcase"
   },
   "home": {
     "heroBadge": "ସାର୍ବଜନୀନ ଭିତ୍ତିଭୂମି ଇଣ୍ଟେଲିଜେନ୍ସ",
@@ -1014,8 +1014,7 @@
     "readCharter": "ପ୍ଲାଟଫର୍ମ ଚାର୍ଟର୍ ପଢ଼ନ୍ତୁ"
   },
   "showcase": {
-    "quickAccess": "SIH ମୂଲ୍ୟାଙ୍କନକାରୀ ତ୍ୱରିତ ପ୍ରବେଶ",
-    "premierDemos": "୪ ପ୍ରମୁଖ ଫୋରେନସିକ୍ ଡେମୋ",
+    "quickAccess": "National Audit ମୂଲ୍ୟାଙ୍କନକାରୀ ତ୍ୱରିତ ପ୍ରବେଶ",
     "title": "ପ୍ରମୁଖ ଫୋରେନସିକ୍ ଶୋକେସ୍ ପ୍ରକଳ୍ପ",
     "subtitle": "ତତକ୍ଷଣାତ୍ AI ଅଡିଟିଂ, ଇସ୍ରୋ ନାଭିକ୍ ଏବଂ ଉପଗ୍ରହ ଚିତ୍ର ପରୀକ୍ଷା କରନ୍ତୁ।",
     "openSandbox": "AI ସ୍ୟାଣ୍ଡବକ୍ସ ଖୋଲନ୍ତୁ",
@@ -1028,7 +1027,8 @@
     "disbursed": "ପ୍ରଦତ୍ତ ଧନରାଶି",
     "physicalExecution": "ଭୌତିକ ଅଗ୍ରଗତି",
     "satelliteNavic": "ଉପଗ୍ରହ ଓ ନାଭିକ୍",
-    "statutoryRule": "ଅଡିଟ୍ ନିୟମ"
+    "statutoryRule": "ଅଡିଟ୍ ନିୟମ",
+    "premierAudits": "4 Premier Forensic Audits"
   },
   "footer": {
     "tagline": "ସାଂସଦ ପାଣ୍ଠି (MPLADS) ନିରୀକ୍ଷଣ ପାଇଁ ଭିତ୍ତିଭୂମି ଇଣ୍ଟେଲିଜେନ୍ସ ପ୍ଲାଟଫର୍ମ।",

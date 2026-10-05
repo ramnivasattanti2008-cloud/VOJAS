@@ -54,11 +54,10 @@ Building intelligent systems that solve real problems 🚀
 
 ---
 
-## 🛰️ Major Project: VOJAS (SIH 2026)
+## 🛰️ Major Platform: VOJAS
 
-> AI-Powered Accountability Platform for India's MPLAD Scheme
+> National AI-Powered Public Infrastructure Intelligence & Vigilance Platform
 
-- 🏆 **Smart India Hackathon 2026 Finalist**
 - 🌐 **Live:** [vojas-frontend.vercel.app](https://vojas-frontend.vercel.app)
 - 📊 **60,000+** government projects geocoded
 - 🔗 **[GitHub](https://github.com/ramnivasattanti2008-cloud/VOJAS)**

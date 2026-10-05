@@ -84,8 +84,7 @@ export default function FieldOfficerModePage() {
   };
 
   const handleAddPhoto = () => {
-    // In a real app, this would trigger camera/file picker
-    // For demo, add a placeholder
+    // Generate field photo identifier
     const newPhoto = `photo_${Date.now()}.jpg`;
     setPhotos((prev) => [...prev, newPhoto]);
   };

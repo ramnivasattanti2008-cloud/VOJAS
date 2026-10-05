@@ -1,6 +1,6 @@
 # VOJAS
 
-AI-assisted anomaly and fraud detection for MPLADS project monitoring. Smart India Hackathon — SIH26102, Smart Automation, Blockchain & Cybersecurity.
+National Civic Infrastructure Intelligence & Vigilance Platform for Public Works Monitoring (MPLADS / Central Infrastructure Schemes). Real-time satellite telemetry, AI forensic audits, and statutory GFR compliance.
 
 Stack: pnpm 9.12 monorepo · Next.js 15 + React 19 (apps/web) · Express (apps/api) · Prisma 6.19.3 + PostgreSQL/PostGIS (packages/db) · shared code in packages/{domain,shared,api-client} · TypeScript 5.6.
 

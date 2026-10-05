@@ -1,7 +1,7 @@
 # VOJAS — Design Specification v1.0
 
 > **A world-class, premium, futuristic geospatial intelligence platform.**
-> SIH 2026 — MPLAD Accountability Platform
+> National Public Works Accountability & Vigilance Platform
 
 ---
 

@@ -5,7 +5,7 @@
  * =========================================
  * Full-featured AI/LLM Control Center, statutory rules configuration,
  * Sentinel-2 satellite telemetry overview, whistleblower privacy settings,
- * and an interactive Live LLM Forensic Audit Sandbox for judges and evaluators.
+ * and an interactive Live LLM Forensic Audit Sandbox for vigilance officers and analysts.
  */
 
 import { Badge } from '@/components/ui/Badge';
@@ -303,8 +303,8 @@ export default function SettingsPage() {
         >
           <Cpu className="h-4 w-4 text-vojas-600" />
           <span>AI Models & Live Sandbox</span>
-          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded-full">
-            For Judges
+          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-800 rounded-full">
+            Live Engine
           </span>
         </button>
 
@@ -481,7 +481,7 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* JUDGES INTERACTIVE AI AUDIT SANDBOX */}
+          {/* FORENSIC AI AUDIT ENGINE SANDBOX */}
           <Card className="border-2 border-indigo-200 bg-gradient-to-b from-indigo-50/40 via-white to-white shadow-md overflow-hidden">
             <CardHeader className="border-b border-indigo-100 bg-indigo-50/70 px-6 py-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -491,7 +491,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">
-                      Live LLM Forensic Audit Sandbox (Evaluator Demo)
+                      Live LLM Forensic Audit Sandbox
                     </h3>
                     <p className="text-xs text-slate-600">
                       Execute real-time forensic AI audits on showcase or production projects to inspect statutory reasoning live.
@@ -505,10 +505,10 @@ export default function SettingsPage() {
             </CardHeader>
 
             <CardBody className="p-6 space-y-6">
-              {/* Showcase Presets for Judges */}
+              {/* Forensic Case Presets */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                  Select a Showcase Project Preset or Enter Custom ID:
+                  Select a Verified Case Preset or Enter Custom ID:
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {SHOWCASE_PRESETS.map((preset) => {

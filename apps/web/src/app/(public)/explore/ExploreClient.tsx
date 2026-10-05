@@ -174,7 +174,7 @@ export function ExploreClient() {
             )}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>🏛️ {t('explore.showcaseDemo', 'Showcase Demo')}</span>
+            <span>🏛️ {t('explore.nationalShowcase', 'National Showcase')}</span>
             <span
               className={cn(
                 'text-[10px] font-mono px-1.5 py-0.5 rounded-full',
@@ -187,7 +187,7 @@ export function ExploreClient() {
         </div>
       </div>
 
-      {/* Featured SIH Evaluator Showcase Banner */}
+      {/* Featured Forensic Showcase Banner */}
       <ShowcaseBanner />
 
       {/* Search + filters */}

@@ -628,7 +628,7 @@ function buildObservationWmsUrl(obs: SatelliteObservation | null | undefined): s
   if (!obs) return null;
   if (obs.tileUrl) return obs.tileUrl;
   if (!obs.sceneId) return null;
-  // Sentinel Hub L2A WMS (free) — public demo, no token needed for the demo
+  // Sentinel Hub L2A WMS — public tile stream
   // Strip dashes and trailing underscore from the sceneId (S2A_..._NXXXX_...)
   const clean = obs.sceneId;
   const isoMatch = clean.match(/_(\d{8}T\d{6})_/);
@@ -727,7 +727,7 @@ function makeSwipeMaskGeoJSON(positionPct: number, containerWidth: number): GeoJ
   // The mask is a polygon covering everything to the right of positionPct.
   // Since we don't have a screen-space layer in MapLibre, we use a large
   // world-space polygon. Because we apply this only when the user drags the
-  // swipe, the world-space approach is sufficient for the demonstration.
+  // swipe, the world-space approach is sufficient for the visualization.
   const left = -180 + (positionPct / 100) * 360; // approximate
   return {
     type: 'Feature',
